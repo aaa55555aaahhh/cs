@@ -534,6 +534,7 @@ window.forceVerifyKey = function() {
     
     // 这里可以设置你的游戏密码，比如密码是 "123456"
     if(keyInput === "123456") {
+        localStorage.setItem("isGameUnlocked", "true"); // 真正记住解锁状态！
         alert("验证成功！欢迎来到星路制作人！");
         document.getElementById("keyAuthBox").style.display = "none";
         document.getElementById("gameStartBox").style.display = "block";
@@ -1999,7 +2000,7 @@ window.renderChart = function() {
         }
     });
     
-         // 排序并渲染 (分数越高的排越前)
+      // 排序并渲染 (分数越高的排越前)
     list.sort((a,b) => b._chartPts - a._chartPts);
     
     // 遵循榜单规则：如果是 Billboard 的专辑榜，显示前200名；否则显示前100名
@@ -2023,21 +2024,7 @@ window.renderChart = function() {
         </div>`;
     }).join('');
     box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
-
-        let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
-        let peakStr = peakVal ? ` | 最高: #${peakVal} | 在榜: ${t.weeks}周` : ` | 在榜: ${t.weeks}周`;
-        let certStr = (typeof getCert === 'function') ? getCert(t.slTotal) : '';
-        
-        return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
-            <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
-            <div style="flex:1;">
-                <b>${escapeHTML(t.n)}</b> ${certStr}<br>
-                <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}${peakStr}</span>
-            </div>
-            <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${t._chartStr}</div>
-        </div>`;
-    }).join('');
-    box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
+}
 
 </script>
 </body>
