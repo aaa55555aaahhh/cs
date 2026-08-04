@@ -435,12 +435,18 @@ document.addEventListener("DOMContentLoaded", function(){
 
 window.forceVerifyKey = function() {
     let key = document.getElementById("inGameKey").value.trim();
-    if(key === "20021021") {
+    
+    // 👇 在这里加上你想要的所有密码！想加几个加几个
+    let validKeys = ["20021021", "dhtjuffuyjg", "123456", "888888"]; 
+
+    if(validKeys.includes(key)) {
         alert("✅ 验证成功！欢迎进入星路制作人！");
         localStorage.setItem("isGameUnlocked", "true");
         document.getElementById("keyAuthBox").style.display = "none";
         document.getElementById("gameStartBox").style.display = "block";
-    } else { alert("❌ 密钥错误！"); }
+    } else { 
+        alert("❌ 密钥错误！"); 
+    }
 }
 
 // ==================== 基础 UI 交互与路由函数 (修复 Bug) ====================
