@@ -56,7 +56,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 .g-tag{display:inline-block;padding:4px 10px;border:1px solid #d1c290;border-radius:20px;margin:3px;cursor:pointer;font-size:11px;background:#fff8e8;}
 .g-tag.selected{background:#c8a440;color:#000;}
 .phone-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:5px;}
-.app-icon{height:65px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.15);}
+.app-icon{height:65px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.15);transition:transform 0.1s;}
+.app-icon:active{transform:scale(0.95);}
 .row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee;font-size:13px;}
 
 /* 模态弹窗 */
@@ -93,7 +94,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     <button class="top-btn" onclick="advTimeByFlow()">推演时间</button>
   </div>
 </div>
-<!-- === 初始加载页 (免密逻辑已完美保留) === -->
+
+<!-- === 初始加载页 === -->
 <div id="createPage" class="page active">
   <div class="card" style="margin-top:20px;text-align:center;">
     <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人</h2>
@@ -125,7 +127,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- === 榜单大厅弹窗模板 (包含 地区 -> 时间 双层筛选) === -->
+<!-- === 榜单大厅弹窗模板 === -->
 <div class="modal" id="mChart">
   <div class="modal-box" style="padding-top:40px;">
     <button class="modal-x" onclick="closeM('mChart')" style="top:10px;">X 关闭</button>
@@ -255,14 +257,21 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       </div>
       <div id="mapShows" class="card" style="display:none;margin-top:15px;background:#fefcf5;"><h3 class="tg">🏟️ 巅峰舞台</h3><div id="listShows" style="margin-top:10px;"></div></div>
       
-      <!-- 重新设计的颁奖殿堂 UI -->
+      <!-- 全新设计的颁奖殿堂 UI -->
       <div id="mapAwards" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
           <h3 class="tg" style="margin-bottom:10px;">🏆 颁奖季殿堂</h3>
           <p id="txtAwardStatus" style="font-size:12px;color:#888;margin-bottom:10px;">每年 9月上报，11月提名，次年 2月颁奖典礼</p>
-          <button class="sec" onclick="createCustomAward()">✨ 创建自定义大奖评典</button>
-          <button class="sec" onclick="addCustomCategory()">➕ 为【格莱美】添加专属类别</button>
           
-          <div id="awardIntroBox" style="margin-top:15px; font-size:12px;"></div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px;">
+              <button class="sec" onclick="createCustomAward()">✨ 创立全新颁奖典礼 (大奖)</button>
+              <button class="sec" onclick="addCustomCategory()">➕ 为现有大奖添加专属分支类目</button>
+              <button class="sec" onclick="renameAward()">✏️ 重命名现有大奖</button>
+          </div>
+          
+          <h4 style="border-bottom:1px solid #ddd; padding-bottom:5px;">📋 游戏已实装大奖</h4>
+          <div id="awardIntroBox" style="margin-top:10px; font-size:12px; max-height:200px; overflow-y:auto; background:#fff; padding:10px; border-radius:8px; border:1px solid #eee;">
+             <!-- 由 JS 渲染注入 -->
+          </div>
 
           <h4 style="margin-top:20px; border-bottom:1px solid #ddd; padding-bottom:5px;">📜 历史获奖记录</h4>
           <div id="listAwardsLog" style="font-size:12px;margin-top:10px;max-height:250px;overflow-y:auto;"></div>
@@ -336,7 +345,22 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     </div>
   </div>
 
-  <div id="pPhone" class="tab-page"><div class="card"><h2 class="tg">📱 手机桌面</h2><div class="phone-grid" id="phoneGrid"></div></div></div>
+  <!-- 修复：手机桌面 (强制渲染，确保 App 不会消失) -->
+  <div id="pPhone" class="tab-page">
+    <div class="card">
+        <h2 class="tg" style="margin-bottom:15px;">📱 手机桌面</h2>
+        <div class="phone-grid" id="phoneGrid">
+            <!-- 直接硬编码写入 HTML 确保永不丢失 -->
+            <div class="app-icon" style="background:#1db954;" onclick="openApp('Spot')">🎵<br>Spotify</div>
+            <div class="app-icon" style="background:#000;" onclick="openApp('BB')">📊<br>Billboard</div>
+            <div class="app-icon" style="background:#07c160;" onclick="openApp('V')">💬<br>V 交流</div>
+            <div class="app-icon" style="background:#1da1f2;" onclick="openApp('X')">🌐<br>X</div>
+            <div class="app-icon" style="background:#e1306c;" onclick="openApp('Ins')">📷<br>Insta</div>
+            <div class="app-icon" style="background:#000;" onclick="openApp('TikTok')">🎵<br>TikTok</div>
+            <div class="app-icon" style="background:#ff9800;" onclick="openApp('Npc')">🌟<br>艺人库</div>
+        </div>
+    </div>
+  </div>
 
   <!-- 底部导航栏 -->
   <div class="bottom-nav">
@@ -353,27 +377,40 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 <div class="modal" id="mAwardBanner"><div class="modal-box" style="text-align:center;background:linear-gradient(135deg, #111, #333);color:#fff;border:2px solid #c8a440;"><h2 style="color:#c8a440;font-size:24px;margin-bottom:15px;" id="awardBannerTitle">🏆 颁奖盛典 🏆</h2><p id="txtAwardBannerMsg" style="font-size:14px;line-height:1.8;"></p><button onclick="closeM('mAwardBanner')" style="margin-top:20px;background:#c8a440;color:#000;">确认</button></div></div>
 <div class="modal" id="mWeeklyReport"><div class="modal-box"><button class="modal-x" onclick="closeM('mWeeklyReport')">关闭</button><h3 class="tg" style="text-align:center;font-size:20px;margin-bottom:15px;" id="weeklyReportTitle">📊 周期结算</h3><div id="weeklyReportContent" style="font-size:14px;line-height:1.8;"></div><button onclick="closeM('mWeeklyReport')" style="margin-top:20px;">确认</button></div></div>
 <div class="modal" id="mQuarterlyReport"><div class="modal-box"><button class="modal-x" onclick="closeM('mQuarterlyReport')">关闭</button><h3 class="tg" style="text-align:center;font-size:20px;margin-bottom:15px;">🌟 季度星路盘点 🌟</h3><div id="quarterlyReportContent" style="font-size:13px;line-height:1.6;max-height:400px;overflow-y:auto;"></div><button onclick="closeM('mQuarterlyReport')" style="margin-top:20px;background:#111;color:#c8a440;">收下荣誉继续前行</button></div></div>
+
+<!-- 艺人库弹窗 -->
 <div class="modal" id="mCustomNPC">
     <div class="modal-box">
         <button class="modal-x" onclick="closeM('mCustomNPC')">X</button>
-        <h3 class="tg" style="margin-bottom:10px;">🌟 艺人榜管理</h3>
+        <h3 class="tg" style="margin-bottom:10px;">🌟 艺人库管理</h3>
         <div class="sub-tab-bar" style="margin-bottom:10px;justify-content:center;">
-            <div class="sub-tab active" onclick="switchSubTab(this, 'npcListSec', 'npcBoxTabs')">现存艺人</div><div class="sub-tab" onclick="switchSubTab(this, 'npcAddSec', 'npcBoxTabs')">+ 生成</div>
+            <div class="sub-tab active" onclick="switchSubTab(this, 'npcListSec', 'npcBoxTabs')">现存艺人</div>
+            <div class="sub-tab" onclick="switchSubTab(this, 'npcAddSec', 'npcBoxTabs')">+ 生成注入</div>
         </div>
         <div id="npcBoxTabs">
             <div id="npcListSec" class="sub-page active"><div id="uiNpcList" style="max-height:300px;overflow-y:auto;"></div></div>
-            <div id="npcEditSec" class="sub-page"><h4 class="tg" style="margin-bottom:10px;">编辑</h4><input id="eNpcOldName" type="hidden"><input id="eNpcName" placeholder="姓名"><input id="eNpcAge" type="number"><input id="eNpcGender" placeholder="性别"><input id="eNpcFans" type="number"><button onclick="saveNpcEdit()">保存</button></div>
-            <div id="npcAddSec" class="sub-page"><div class="card" style="padding:10px;background:#fefcf5;margin-bottom:10px;"><b style="font-size:14px;">注入艺人</b><input id="aNpcName" placeholder="姓名" style="margin-top:8px;"><input id="aNpcGender" placeholder="性别"><input id="aNpcFans" type="number" placeholder="粉丝"><button onclick="submitCustomNPC()" id="btnCustomNPC">注入</button></div><div class="card" style="padding:10px;background:#fefcf5;"><b style="font-size:14px;">批量生成</b><input id="aNpcCount" type="number" value="5" style="margin-top:8px;"><button class="sec" onclick="batchGenNpc()">生成</button></div></div>
+            <div id="npcAddSec" class="sub-page">
+                <div class="card" style="padding:10px;background:#fefcf5;margin-bottom:10px;">
+                    <b style="font-size:14px;">手动注入艺人</b>
+                    <input id="aNpcName" placeholder="姓名" style="margin-top:8px;">
+                    <input id="aNpcGender" placeholder="性别">
+                    <input id="aNpcFans" type="number" placeholder="粉丝基数">
+                    <button onclick="submitCustomNPC()" id="btnCustomNPC">注入乐坛</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
 <div class="modal" id="mPick"><div class="modal-box"><button class="modal-x" onclick="closeM('mPick')">X</button><h3 class="tg" id="mPickTitle">选择</h3><div id="mPickList" style="max-height:250px;overflow-y:auto;border:1px solid #eee;padding:10px;margin:10px 0;border-radius:8px;font-size:14px;"></div><button onclick="confirmPick()">确认选择</button></div></div>
 <div class="modal" id="mSign"><div class="modal-box"><button class="modal-x" onclick="closeM('mSign')">X</button><h3 class="tg" id="signTitle"></h3><select id="selDealType" style="margin-bottom:10px;"><option value="1">7/3分成 - 全额资源</option><option value="2">2/8分成 - 资源打折</option></select><input type="number" id="signYears" value="3"><button onclick="confirmSign()">签约</button></div></div>
 <div class="modal" id="mAlbDetail"><div class="modal-box"><button class="modal-x" onclick="closeM('mAlbDetail')">X</button><h3 class="tg" id="mAlbDetailTitle" style="margin-bottom:10px;">详情</h3><div id="mAlbDetailContent" style="max-height:300px;overflow-y:auto;font-size:13px;border-top:1px solid #eee;padding-top:10px;"></div></div></div>
+
+<!-- 社交媒体通用弹窗 -->
 <div class="modal" id="mText">
     <div class="modal-box" style="padding:15px;max-height:95vh;">
         <button class="modal-x" onclick="closeM('mText')">X</button>
-        <h3 class="tg" id="mTextTitle" style="text-align:center;"></h3>
+        <h3 class="tg" id="mTextTitle" style="text-align:center;">社交媒体</h3>
         <div class="sub-tab-bar" style="justify-content:center;">
             <div class="sub-tab active" onclick="switchSubTab(this, 'mTextFeed', 'socialTabs')">首页</div><div class="sub-tab" onclick="switchSubTab(this, 'mTextTrend', 'socialTabs')">热搜</div><div class="sub-tab" onclick="switchSubTab(this, 'mTextPost', 'socialTabs')">发布</div>
         </div>
@@ -394,10 +431,11 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         </div>
     </div>
 </div>
+
 <div class="modal" id="mV"><div class="modal-box"><button class="modal-x" onclick="closeM('mV')">X</button><h3 class="tg" style="text-align:center;">💬 V</h3><div class="sub-tab-bar" style="justify-content:center;"><div class="sub-tab active" onclick="switchSubTab(this,'vCont','vTabs')">通讯录</div><div class="sub-tab" onclick="switchSubTab(this,'vMom','vTabs')">朋友圈</div></div><div id="vTabs"><div id="vCont" class="sub-page active"><div id="vList"></div><div id="vChat" style="display:none;"><button class="sec inline" onclick="vBack()">←</button> <b class="tg" id="vName"></b><div id="vHistory" style="height:150px;overflow-y:auto;background:#fafafa;padding:5px;margin:5px 0;border-radius:8px;"></div><input id="vIn" placeholder="聊天..."><button id="btnSendV" onclick="vSendMsg()">发送</button></div></div><div id="vMom" class="sub-page"><textarea id="vMomIn" placeholder="分享动态..."></textarea><button onclick="vSendMom()">发朋友圈</button><div id="vMomList" style="margin-top:10px;"></div></div></div></div></div>
 <div class="modal" id="mInfo"><div class="modal-box" style="padding-top:40px;"><button class="modal-x" onclick="closeM('mInfo')" style="top:10px;">X 关闭</button><h3 class="tg" id="mInfoTitle" style="text-align:center;margin-bottom:15px;"></h3><div id="mInfoContent" style="max-height:60vh;overflow-y:auto;"></div></div></div>
 <!-- 颁奖季专项操作弹窗 -->
-<div class="modal" id="mAwardActions"><div class="modal-box"><button class="modal-x" onclick="closeM('mAwardActions')">X</button><h3 class="tg" id="mAwardActionsTitle" style="text-align:center;margin-bottom:15px;">大奖上报</h3><div id="mAwardActionsContent" style="max-height:50vh;overflow-y:auto;font-size:13px;"></div></div></div>
+<div class="modal" id="mAwardActions"><div class="modal-box"><button class="modal-x" onclick="closeM('mAwardActions')">X 关闭</button><h3 class="tg" id="mAwardActionsTitle" style="text-align:center;margin-bottom:15px;">大奖上报</h3><div id="mAwardActionsContent" style="max-height:50vh;overflow-y:auto;font-size:13px;"></div></div></div>
 <script>
 // ==================== 兼容与安全验证工具 ====================
 function escapeHTML(str) { 
@@ -435,8 +473,6 @@ document.addEventListener("DOMContentLoaded", function(){
 
 window.forceVerifyKey = function() {
     let key = document.getElementById("inGameKey").value.trim();
-    
-    // 👇 在这里加上你想要的所有密码！想加几个加几个
     let validKeys = ["20021021", "dhtjuffuyjg", "123456", "888888"]; 
 
     if(validKeys.includes(key)) {
@@ -449,7 +485,7 @@ window.forceVerifyKey = function() {
     }
 }
 
-// ==================== 基础 UI 交互与路由函数 (修复 Bug) ====================
+// ==================== 基础 UI 交互与路由函数 ====================
 window.switchMainTab = function(btn, pageId) {
     document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -473,6 +509,7 @@ window.showMap = function(mapId) {
         if(d.id && d.id.startsWith('map')) d.style.display = 'none';
     });
     $(mapId).style.display = 'block';
+    if(mapId === 'mapAwards') renderAwardRegistry(); // 点开奖项地图时渲染
 }
 
 window.showProj = function(projId) {
@@ -482,7 +519,6 @@ window.showProj = function(projId) {
     $(projId).style.display = 'block';
 }
 
-// === 修复: 精力消耗函数 ===
 window.costEnergy = function(amount) {
     if(ad.energy >= amount) {
         ad.energy -= amount;
@@ -494,7 +530,7 @@ window.costEnergy = function(amount) {
     }
 }
 
-// 防报错占位函数
+// 占位函数防报错
 window.saveAttr = function() { alert("保存成功 (逻辑待完善)"); }
 window.setSysTime = function() { alert("时间修改成功 (逻辑待完善)"); }
 window.exitToMainMenu = function() { location.reload(); }
@@ -529,23 +565,52 @@ const aKs=[{k:"v",n:"唱功"},{k:"d",n:"舞蹈"},{k:"r",n:"Rap"},{k:"w",n:"创�
 
 // ==================== 全局动态奖项库与分类 ====================
 let awardRegistry = [
-    { id: "awd_bbmas", name: "公告牌音乐奖 (BBMAs)", desc: "完全基于过去一年的销量和流媒体数据，绝对的商业指标。", rules: { weightSpub: 0.0, weightSales: 1.0, weightCatchy: 0.0 }, maxNominations: 5 },
-    { id: "awd_amas", name: "全美音乐奖 (AMAs)", desc: "由粉丝投票决定的主流奖项，流行度、粉丝基数和传唱度是关键。", rules: { weightSpub: 0.1, weightSales: 0.5, weightCatchy: 0.4 }, maxNominations: 5 },
-    { id: "awd_brits", name: "全英音乐奖 (BRIT Awards)", desc: "英国最高音乐奖项，兼顾本土商业成绩与业界评价。", rules: { weightSpub: 0.5, weightSales: 0.5, weightCatchy: 0.0 }, maxNominations: 5 },
-    { id: "awd_vmas", name: "MTV音乐录影带大奖 (VMAs)", desc: "视觉与流行文化的狂欢，极度看重歌曲的病毒传播能力（洗脑度）。", rules: { weightSpub: 0.1, weightSales: 0.3, weightCatchy: 0.6 }, maxNominations: 5 }
+    {
+        id: "awd_grammy",
+        name: "格莱美音乐奖",
+        desc: "音乐界最高荣誉，极度看重乐评与艺术性，商业成绩为辅。",
+        rules: { weightSpub: 0.7, weightSales: 0.2, weightCatchy: 0.1 },
+        categories: [
+            { id: "g_aoty", name: "年度专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "g_roty", name: "年度制作", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "g_soty", name: "年度歌曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "g_bna",  name: "最佳新人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "g_pop_solo", name: "最佳流行独唱", targetType: "track", targetGenre: "流行", targetForm: "solo" },
+            { id: "g_pop_duo",  name: "最佳流行合作/团体", targetType: "track", targetGenre: "流行", targetForm: "collab" }
+        ]
+    },
+    {
+        id: "awd_bbmas",
+        name: "公告牌音乐奖 (BBMAs)",
+        desc: "完全基于过去一年的销量和流媒体数据，绝对的商业指标。",
+        rules: { weightSpub: 0.0, weightSales: 1.0, weightCatchy: 0.0 },
+        categories: [
+            { id: "b_t_art", name: "年度最佳艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "b_t_alb", name: "年度最佳专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "b_t_sng", name: "年度流媒体单曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
+        ]
+    },
+    {
+        id: "awd_amas",
+        name: "全美音乐奖 (AMAs)",
+        desc: "由粉丝投票决定的主流奖项，流行度、粉丝基数和传唱度是关键。",
+        rules: { weightSpub: 0.1, weightSales: 0.5, weightCatchy: 0.4 },
+        categories: [
+            { id: "a_aoty", name: "年度艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "a_pop_sng", name: "最受欢迎流行歌曲", targetType: "track", targetGenre: "流行", targetForm: "ALL" }
+        ]
+    },
+    {
+        id: "awd_vmas",
+        name: "MTV音乐录影带大奖 (VMAs)",
+        desc: "视觉与流行文化的狂欢，极度看重歌曲的病毒传播能力（洗脑度）。",
+        rules: { weightSpub: 0.1, weightSales: 0.3, weightCatchy: 0.6 },
+        categories: [
+            { id: "v_voty", name: "年度最佳音乐录影带", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "v_soty", name: "年度夏日洗脑神曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
+        ]
+    }
 ];
-
-let grammyData = {
-    name: "格莱美音乐奖",
-    categories: [
-        { id: "g_aoty", name: "年度专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
-        { id: "g_roty", name: "年度制作", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
-        { id: "g_soty", name: "年度歌曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
-        { id: "g_bna",  name: "最佳新人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
-        { id: "g_pop_solo", name: "最佳流行独唱", targetType: "track", targetGenre: "流行", targetForm: "solo" },
-        { id: "g_pop_duo",  name: "最佳流行合作/团体", targetType: "track", targetGenre: "流行", targetForm: "collab" }
-    ]
-};
 
 // ==================== API配置与防卡死封装 ====================
 window.saveApiConfig = function() { localStorage.setItem('savedApiEndpoint',$("apiHost").value); localStorage.setItem('savedApiPath',$("apiPath").value); localStorage.setItem('savedApiKey',$("apiToken").value); alert("API配置保存成功！"); }
@@ -555,7 +620,6 @@ window.loadApiConfig = function() {
     if (localStorage.getItem('savedApiKey')) $("apiToken").value = localStorage.getItem('savedApiKey');
 }
 
-// 核心强异步带超时的 API 封装
 window.api = async function(p, timeoutMs = 15000){
   let tk=$("apiToken").value, m=$("apiModel").value||"gpt-3.5-turbo"; 
   if(!tk){ console.log("无API配置，跳过请求。"); return null; }
@@ -565,10 +629,10 @@ window.api = async function(p, timeoutMs = 15000){
       if(pt && !pt.startsWith('/')) pt = '/' + pt;
       if(!pt) pt = '/chat/completions'; 
       let fullUrl = h + pt;
-      let systemEnv = `你是《星路制作人》内置AI。请保持简短，绝不要出现 markdown 代码块，直接返回纯文本。`;
+      let systemEnv = `你是《星路制作人》内置AI。请保持简短，直接返回纯文本。`;
       
       const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeoutMs); // 超时打断
+      const id = setTimeout(() => controller.abort(), timeoutMs); 
       
       let r = await fetch(fullUrl, { 
           method:"POST", 
@@ -581,7 +645,7 @@ window.api = async function(p, timeoutMs = 15000){
       if(!r.ok) throw new Error(`HTTP ${r.status}`); 
       let j = await r.json(); 
       return j.choices[0].message.content.trim(); 
-  }catch(e){ console.log("API请求中断或失败:", e.message); return null; }
+  }catch(e){ console.log("API请求异常:", e.message); return null; }
 }
 
 window.testApi = async function(){ 
@@ -591,13 +655,13 @@ window.testApi = async function(){
     if(res) alert("API返回："+res); else alert("连接失败或超时！");
 }
 
-window.fetchModels = async function(){ /* 同理封装，省略具体过程防超字数，保持原有逻辑 */ }
+window.fetchModels = async function(){ /* 省略 */ }
 
 // ==================== 存档与读写 ====================
 function getSaveKey(){ return "starProSave_" + ($("selSaveSlot")?$("selSaveSlot").value:"1"); }
 window.saveGameImmediate = function(){
   try {
-      let s = { version: GAME_VERSION, ad:ad, lib:lib, std:std, albs:albs, trackPool:trackPool, marketSongs:marketSongs, time:time, Mt:Mt, posts:posts, curPj:curPj, prog:prog, curAlbPj:curAlbPj, historyAwards:historyAwards, pendingAwards:pendingAwards, conts:conts, worldArtists:worldArtists, writers:writers, myWorks:myWorks, awardRegistry:awardRegistry, grammyData:grammyData, currentAwardSeason:currentAwardSeason };
+      let s = { version: GAME_VERSION, ad:ad, lib:lib, std:std, albs:albs, trackPool:trackPool, marketSongs:marketSongs, time:time, Mt:Mt, posts:posts, curPj:curPj, prog:prog, curAlbPj:curAlbPj, historyAwards:historyAwards, pendingAwards:pendingAwards, conts:conts, worldArtists:worldArtists, writers:writers, myWorks:myWorks, awardRegistry:awardRegistry, currentAwardSeason:currentAwardSeason };
       localStorage.setItem(getSaveKey(), JSON.stringify(s));
   } catch(e) { console.log("存档空间不足！"); }
 }
@@ -612,12 +676,10 @@ window.loadGame = function(slotOverride){
       let data = JSON.parse(s);
       ad=data.ad; lib=data.lib||[]; std=data.std||[]; albs=data.albs||[]; trackPool=data.trackPool||[]; marketSongs=data.marketSongs||[]; time=data.time; posts=data.posts||{wb:[],x:[],ins:[],tiktok:[],mom:[]}; curPj=data.curPj; prog=data.prog; curAlbPj=data.curAlbPj; historyAwards=data.historyAwards||[]; pendingAwards=data.pendingAwards||[]; conts=data.conts||[]; worldArtists=data.worldArtists||[]; writers=data.writers||[]; myWorks=data.myWorks||[];
       
-      Mt = data.Mt || 1.0; // 修复：防止 Mt 丢失变为 undefined 导致数值崩坏
+      Mt = data.Mt || 1.0; 
       if(data.awardRegistry) awardRegistry = data.awardRegistry;
-      if(data.grammyData) grammyData = data.grammyData;
       if(data.currentAwardSeason) currentAwardSeason = data.currentAwardSeason;
 
-      // 旧档兼容：赋予基础的双轨字段
       trackPool.forEach(t => { 
           if(t.stmGlobal === undefined) { 
               t.stmGlobal = t.stm || 0; t.stmUS = Math.floor(t.stmGlobal * 0.4); 
@@ -670,26 +732,22 @@ function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_
   let isPop = gnr.includes("流行") || gnr.includes("舞曲") || gnr.includes("电子");
   let scores = calcMediaScores(C_val, V_val, isPop, isConcept);
   
-  // 生成洗脑系数：决定病毒传播能力
   let catchiness = (Math.random() * 1.5) + 0.5;
   if(isPop) catchiness += (Math.random() * 1.5); 
   if(Math.random() < 0.05) catchiness = 3.5 + Math.random(); 
 
   let G = ad.Geffect || 1.0; 
   
-  // 双引擎计算首发全球基础值
   let baseDrive = (scores.Spub * 400) + (catchiness * 15000);
   let baseStmGlobal = Math.floor((fans*0.1 + baseDrive) * (C_val/50) * G * Mt);
   
   if(!isMe) baseStmGlobal = Math.floor(baseStmGlobal * (Math.random()*3+1)); 
   if(type==="album") baseStmGlobal = Math.floor(baseStmGlobal * 5); 
   
-  // 生成美国区首发流媒 (必然是 Global 的 35% ~ 55%)
   let usRatio = (Math.random() * 0.20) + 0.35;
   let baseStmUS = Math.floor(baseStmGlobal * usRatio);
 
-  // 修复：所有的歌（玩家和NPC）初始周数统统为 1 
-  let initialWeeks = 1;
+  let initialWeeks = 1; // 修复：所有的歌初始周数统统为 1 
 
   return { 
       id: "tk_"+Date.now()+"_"+Math.floor(Math.random()*100000), 
@@ -716,12 +774,12 @@ function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_
 window.startWrite = function(){
     let n = $("inSName").value;
     if(!n) return alert("请输入单曲名！");
-    let selG = []; // 假设在这里获取了复选框曲风（你原本的 HTML 漏了选曲风的 checkbox，这里用输入框顶替）
+    let selG = []; 
     let customGenre = $("inSCustom").value.trim();
-    if(customGenre) selG.push(customGenre); else selG.push("流行"); // 兜底
+    if(customGenre) selG.push(customGenre); else selG.push("流行"); 
 
     let c = $("inSCore").value || "无特别概念";
-    let featVal = $("inFeat").value; // 获取合唱信息
+    let featVal = $("inFeat").value; 
     
     curPj = { n:escapeHTML(n), g:selG, c:escapeHTML(c), f:escapeHTML(featVal), ct:customGenre };
     prog = 0;
@@ -776,7 +834,6 @@ window.publishSong = function(i){
     let v_val = Math.floor((ad.sk.v + ad.sk.w + ad.sk.s) / 3) + Math.floor(Math.random()*20);
     let c_val = ad.Geffect * 50 + Math.floor(Math.random()*30); 
     
-    // 生成实体，传入 s.f 作为 feat 字段
     let tk = createEntity(s.n, ad.s, true, "track", s.g.join(','), ad.st.f, c_val, v_val, time.y, time.m, time.w, s.c!=="无特别概念", s.f);
     
     trackPool.push(tk);
@@ -810,12 +867,12 @@ window.populatePromoSongs = function() {
     let mySongs = trackPool.filter(t => t.isMe && t.type === "track"); 
     mySongs.forEach(song => {
         let opt = document.createElement('option');
-        opt.value = song.id; // 【关键修复】使用 ID 防止同名老歌吸血
+        opt.value = song.id; 
         opt.innerText = song.n;
         sel.appendChild(opt);
     });
 }
-window.postSocial = function() { // 占位：简易发布逻辑
+window.postSocial = function() { 
     let t = document.querySelector('input[name="post-type"]:checked').value;
     if(t === 'promo') {
         let selId = document.getElementById('promo-song-select').value;
@@ -825,8 +882,43 @@ window.postSocial = function() { // 占位：简易发布逻辑
     $("mTextInput").value = "";
 }
 
+// ==================== 动态大奖系统：渲染、重命名与自定义 ====================
+window.renderAwardRegistry = function() {
+    let html = "";
+    awardRegistry.forEach((awd, idx) => {
+        let catNames = awd.categories ? awd.categories.map(c => c.name).join(' / ') : "无子奖项";
+        html += `<div style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b class="tg" style="font-size:14px;">${escapeHTML(awd.name)}</b>
+                <div>
+                    <button class="sec inline" onclick="renameAward(${idx})" style="padding:4px 8px; font-size:11px;">重命名</button>
+                    <button class="sec inline" onclick="addCustomCategory(${idx})" style="padding:4px 8px; font-size:11px;">+ 加分支</button>
+                </div>
+            </div>
+            <p style="color:#666; margin:5px 0;">${escapeHTML(awd.desc)}</p>
+            <p style="color:#888; font-size:11px;">包含奖项：${catNames}</p>
+        </div>`;
+    });
+    let box = document.getElementById("awardIntroBox");
+    if(box) box.innerHTML = html;
+}
 
-// ==================== 动态大奖系统：自定义分类与通用算分引擎 ====================
+window.renameAward = function(idx) {
+    if(idx === undefined) {
+        let names = awardRegistry.map((a, i) => `${i}: ${a.name}`).join('\n');
+        let input = prompt(`请输入要重命名的大奖编号:\n${names}`);
+        idx = parseInt(input);
+        if(isNaN(idx) || !awardRegistry[idx]) return;
+    }
+    let newName = prompt(`请输入 [${awardRegistry[idx].name}] 的新名称：`);
+    if(newName && newName.trim() !== "") {
+        awardRegistry[idx].name = newName.trim();
+        saveGameImmediate();
+        renderAwardRegistry();
+        alert("重命名成功！");
+    }
+}
+
 window.createCustomAward = async function() {
     let awardName = prompt("请输入创立的颁奖典礼名称 (例如: 银河系流媒体大赏):");
     if(!awardName) return;
@@ -836,7 +928,8 @@ window.createCustomAward = async function() {
         name: awardName,
         desc: "玩家自定义设立的音乐大奖。",
         rules: { weightSpub: 0.33, weightSales: 0.33, weightCatchy: 0.34 },
-        maxNominations: 5
+        maxNominations: 5,
+        categories: []
     };
 
     let tk = $("apiToken") ? $("apiToken").value : null;
@@ -859,20 +952,29 @@ window.createCustomAward = async function() {
     }
     awardRegistry.push(newAward);
     saveGameImmediate();
+    renderAwardRegistry();
     alert(`🎉 成功设立：${newAward.name}\n${newAward.desc}`);
 }
 
-window.addCustomCategory = async function() {
-    let catName = prompt("为【格莱美】添加专属类目名称 (如：最佳说唱团体、最佳古典专辑)：");
+window.addCustomCategory = async function(idx) {
+    if(idx === undefined) {
+        let names = awardRegistry.map((a, i) => `${i}: ${a.name}`).join('\n');
+        let input = prompt(`请输入要添加分支的大奖编号:\n${names}`);
+        idx = parseInt(input);
+        if(isNaN(idx) || !awardRegistry[idx]) return;
+    }
+    
+    let targetAward = awardRegistry[idx];
+    let catName = prompt(`为【${targetAward.name}】添加专属类目名称 (如：最佳说唱团体、年度最佳MV)：`);
     if(!catName) return;
 
-    let newCategory = { id: "g_custom_" + Date.now(), name: catName, targetType: "track", targetGenre: "ALL", targetForm: "ALL" };
+    let newCategory = { id: "c_custom_" + Date.now(), name: catName, targetType: "track", targetGenre: "ALL", targetForm: "ALL" };
 
     let tk = $("apiToken") ? $("apiToken").value : null;
     if(tk) {
         alert("正在让 AI 测算该奖项的入围标准，请稍候...");
         let promptText = `
-        玩家在格莱美添加了新奖项："${catName}"。
+        玩家在${targetAward.name}中添加了新分支："${catName}"。
         请分析：
         1. type: 单曲(track)还是专辑(album)？
         2. genre: 属于什么曲风？(包含流行/乡村/古典/爵士/摇滚/Rap等，不限则回复 ALL)
@@ -891,8 +993,10 @@ window.addCustomCategory = async function() {
         alert("✅ 未连接AI，已添加为无差别通用类别。");
     }
 
-    grammyData.categories.push(newCategory);
+    if(!targetAward.categories) targetAward.categories = [];
+    targetAward.categories.push(newCategory);
     saveGameImmediate();
+    renderAwardRegistry();
 }
 
 function calculateAwardScore(song, awardRules) {
@@ -912,6 +1016,13 @@ window.openApp = function(id){
         curChartRegion = "Global"; curChartTime = "Day"; 
         updateChartUIVisuals(); renderChartData();
         $("mChart").classList.add("open");
+    } else if(id == 'V') {
+        $("mV").classList.add("open");
+    } else if(id == 'Npc') {
+        // 渲染艺人列表（占位，可以在后续完善具体列表渲染函数 uiNpcList）
+        $("mCustomNPC").classList.add("open");
+    } else {
+        alert("该 APP 功能开发中...");
     }
 }
 
@@ -1010,7 +1121,7 @@ function canSubmitGrammyBNA(artistName) {
     return true; 
 }
 
-// ==================== 时间推演与大盘逻辑 (双轨 + 双引擎制) ====================
+// ==================== 时间推演与大盘逻辑 ====================
 function updTimeUI(){ 
     let s = `${time.y}年 ${time.m}月 第${time.w}周 星期${time.d} ${time.h}:00`; 
     let els=document.querySelectorAll(".uiDateMap"); 
@@ -1052,10 +1163,10 @@ window.advTime = function(weeks, showMsg){
       // ==== 颁奖季核心触发节点 ====
       if(time.m === 9) {
           currentAwardSeason.year = time.y;
-          alert("📢 颁奖季开启！九月大奖报名通道已开放，请前往【颁奖季殿堂】提交作品！");
+          alert(`📢 ${time.y} 颁奖季已开启！\n九月各大奖项报名通道已开放，请随时准备查看入围规则。`);
       }
-      if(time.m === 11) { alert("🌟 提名揭晓！各路大奖提名名单已结算！"); }
-      if(time.m === 2) { alert("🏆 颁奖盛典月！请关注年度大奖最终花落谁家！"); }
+      if(time.m === 11) { alert("🌟 提名揭晓！各路大奖提名名单正在紧密结算中！"); }
+      if(time.m === 2) { alert(`🏆 ${time.y-1}年度颁奖盛典月！各大媒体正在疯狂造势，请关注最终大奖花落谁家！`); }
     } 
     if(time.m > 12){ 
       time.m = 1; time.y++; 
