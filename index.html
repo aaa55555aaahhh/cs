@@ -202,18 +202,12 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       <button class="red" onclick="exitToMainMenu()">🚪 退出存档 (返回主菜单)</button>
       <div style="margin-top:15px;border-top:1px solid #eee;padding-top:15px;">
         <p style="font-size:12px;color:#888;margin-top:5px;">推演流速设定 (右上角按钮生效)：</p>
-        window.advTimeByFlow = function(){ 
-    let v = parseInt(document.getElementById("selTimeFlow").value) || 7; 
-    if (v === 1) {
-        advHour(24); // 按天推演
-    } else if (v === 7) {
-        advTime(1, true); // 按7天(1周)推演
-    } else if (v === 30) {
-        advTime(4, true); // 按30天(4周)(1个月)推演
-    }
-}
-      </div>
-    </div>
+<select id="selTimeFlow">
+    <option value="1">1天 (24小时)</option>
+    <option value="7" selected>7天 (1周)</option>
+    <option value="30">30天 (4周=1个月)</option>
+</select>
+</div>
 
     <div class="card">
       <h2 class="tg" style="margin-bottom:10px;">🤖 AI 接口设定 (防卡死版)</h2>
@@ -1586,6 +1580,90 @@ window.renderMapCompany = function() {
     oldRenderMapCompany();
     if(document.getElementById("txtMyCoGrade")) {
         document.getElementById("txtMyCoGrade").innerText = (ad.Geffect || 1.0).toFixed(2);
+    }
+};
+// ==================== 1. 修复手机 APP 点击无反应 ====================
+window.openApp = function(appId) {
+    if(appId === 'V') { 
+        document.getElementById('mV').classList.add('open'); 
+    }
+    else if(appId === 'NPC') { 
+        document.getElementById('mCustomNPC').classList.add('open'); 
+    }
+    else if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
+        document.getElementById('mChart').classList.add('open');
+        if(appId === 'Daily') document.getElementById('tabChartDaily').click();
+        else document.getElementById('tabChartTrack').click();
+    }
+    else {
+        document.getElementById('mTextTitle').innerText = appId;
+        document.getElementById('mText').classList.add('open');
+    }
+};
+
+// ==================== 2. 修复历届奖项报错与动态管理功能 ====================
+window.renderAwardRegistry = function() {
+    let box = document.getElementById("awardIntroBox");
+    if(!box) return;
+    if(!awardRegistry || awardRegistry.length === 0) { box.innerHTML = "暂无大奖"; return; }
+    box.innerHTML = awardRegistry.map(function(a, idx) {
+        let cats = a.categories.map(function(c) {
+            return `<span style="display:inline-block;background:#eee;padding:2px 6px;margin:2px;border-radius:4px;font-size:11px;">${c.name}</span>`;
+        }).join('');
+        return `<div style="margin-bottom:10px; border-bottom:1px dashed #ccc; padding-bottom:5px;">
+            <b style="color:#c8a440;">${a.name}</b> <br>
+            <span style="color:#666;">${a.desc}</span><br>
+            <div style="margin-top:5px;">分支类目: ${cats}</div>
+        </div>`;
+    }).join('');
+};
+
+window.createCustomAward = function() {
+    let name = prompt("请输入新创立的颁奖典礼名称 (如：土星音乐大奖)：");
+    if(!name) return;
+    awardRegistry.push({
+        id: "awd_custom_" + Date.now(), name: name, desc: "自定义创立的大奖。", 
+        rules: { weightSpub: 0.3, weightSales: 0.4, weightCatchy: 0.3 },
+        categories: [{ id: "c_aoty_" + Date.now(), name: "年度最佳专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" }]
+    });
+    renderAwardRegistry();
+    saveGame();
+    alert("✅ 创立成功！");
+};
+
+window.addCustomCategory = function() {
+    let awdNames = awardRegistry.map(function(a, i) { return `${i}: ${a.name}`; }).join('\n');
+    let idx = prompt(`请选择要添加分支的大奖编号：\n${awdNames}`);
+    if(!idx || !awardRegistry[idx]) return;
+    let cName = prompt("请输入新奖项名称 (如：最佳外星人合作歌曲)：");
+    if(!cName) return;
+    awardRegistry[idx].categories.push({ id: "c_cust_" + Date.now(), name: cName, targetType: "track", targetGenre: "ALL", targetForm: "ALL" });
+    renderAwardRegistry();
+    saveGame();
+    alert("✅ 分支添加成功！");
+};
+
+window.renameAward = function() {
+    let awdNames = awardRegistry.map(function(a, i) { return `${i}: ${a.name}`; }).join('\n');
+    let idx = prompt(`请选择要重命名的大奖编号：\n${awdNames}`);
+    if(!idx || !awardRegistry[idx]) return;
+    let newName = prompt("请输入新的名称：", awardRegistry[idx].name);
+    if(newName && newName.trim() !== "") {
+        awardRegistry[idx].name = newName.trim();
+        renderAwardRegistry();
+        saveGame();
+    }
+};
+
+// ==================== 3. 确保时间推演逻辑与等式完全对应 ====================
+window.advTimeByFlow = function(){ 
+    let v = parseInt(document.getElementById("selTimeFlow").value) || 7; 
+    if (v === 1) {
+        advHour(24); // 按 1天(24小时) 推演
+    } else if (v === 7) {
+        advTime(1, true); // 按 7天(1周) 推演
+    } else if (v === 30) {
+        advTime(4, true); // 按 30天(4周=1个月) 推演
     }
 };
 
