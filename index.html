@@ -207,7 +207,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     <option value="7" selected>7天 (1周)</option>
     <option value="30">30天 (4周=1个月)</option>
 </select>
-</div>
+      </div>
+    </div>
 
     <div class="card">
       <h2 class="tg" style="margin-bottom:10px;">🤖 AI 接口设定 (防卡死版)</h2>
@@ -266,17 +267,21 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <p style="font-size:12px;color:#888;margin-bottom:10px;">每年2-3月(秋冬装)及9-10月(春夏装)。粉丝>500w且时尚>70将受邀免票，否则需$20w购买门票入场镀金。</p>
         <button onclick="joinFashion()">出席时装大秀 (耗1天/10精)</button>
       </div>
-              <div id="boxSignCompany"><h3 class="tg">🏢 唱片公司</h3>
+                    <div id="mapLabel" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
+        <div id="boxSignCompany"><h3 class="tg">🏢 唱片公司</h3>
           <button class="sec" onclick="createCustomCompany()" style="margin-bottom:10px;font-size:12px;">➕ 注入自定义唱片公司到大盘</button>
           <div id="listLabel" style="margin-top:10px;"></div>
         </div>
         <div id="boxMyCompany" style="display:none;"><h3 class="tg">🏢 你的专属公司</h3>
+
           <p style="font-size:12px;color:#888;margin-bottom:10px;">当前公司宣发资源乘数: <b id="txtMyCoGrade" class="tg">1.00</b></p>
           <button onclick="meetPeople()">🤝 拜访结识人脉 (耗1天/10精)</button>
           <button onclick="upgradeMyCompany()">💰 投资升级公司规模 ($100万，提升宣发乘数)</button>
           <button class="red" onclick="breakContract()" style="margin-top:15px;">🚪 解约恢复自由身 (赔付违约金)</button>
-          <div id="logCompany" class="log" style="display:none;margin-top:10px;"></div>
+                    <div id="logCompany" class="log" style="display:none;margin-top:10px;"></div>
         </div>
+      </div>
+
       <div id="mapShows" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg">🏟️ 巅峰舞台</h3><div id="listShows" style="margin-top:10px;"></div>
       </div>
