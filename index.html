@@ -886,9 +886,20 @@ function genMarket(){
     if(!writers||writers.length===0) writers=[{n:"佚名",sk:50,hot:50,awd:"无"}]; 
     for(let i=0;i<6;i++){ 
         let w = writers[Math.floor(Math.random()*writers.length)]; 
-        marketSongs.push({ n:ts[Math.floor(Math.random()*ts.length)]+" Demo", author:w.n, g:[gs[Math.floor(Math.random()*gs.length)]], price:Math.floor((w.sk+w.hot)*100 + Math.random()*5000) }); 
+        // 价格和歌曲初始质量严重依赖创作者的 sk(创作力) 和 hot(热度)
+        let qualityCore = w.sk > 80 ? "金牌制作人口碑作" : "普通商业流水线";
+        let basePrice = Math.floor((w.sk * 500) + (w.hot * 800) + Math.random()*10000);
+        marketSongs.push({ 
+            n:ts[Math.floor(Math.random()*ts.length)]+" Demo", 
+            author:w.n, 
+            g:[gs[Math.floor(Math.random()*gs.length)]], 
+            price: basePrice,
+            skRef: w.sk, // 继承创作者属性
+            core: qualityCore
+        }); 
     } 
 }
+
 
 // ==================== 属性与地图交互 ====================
 window.getCert = function(sales) {
@@ -1117,11 +1128,14 @@ window.shootMV = function(tid, type){
     if(type===1) advHour(24 * 3); // 拍真人MV耗时3天
     else advHour(24); // 歌词版耗时1天
 
-    let bonus = type === 1 ? (Math.random() * 2.0 + 1.0) : (Math.random() * 0.5 + 0.2); 
-    let finalAdd = Math.floor(t.stmGlobal * bonus * ad.Geffect); // 基于当前流媒按比例暴涨
+     let bonus = type === 1 ? (Math.random() * 2.0 + 1.0) : (Math.random() * 0.5 + 0.2); 
+    let safeStm = t.stmGlobal || t.stm || 10000; // 防错处理：旧歌保底基数
+    let finalAdd = Math.floor(safeStm * bonus * ad.Geffect); 
     
-    t.stmGlobal += finalAdd; 
+    t.stmGlobal = safeStm + finalAdd; 
+    if(!t.stmGlobal_Day) t.stmGlobal_Day = 0;
     t.stmGlobal_Day += Math.floor(finalAdd/7); 
+    t.viralWk = 3; // 触发回春效应，强行获得3周回榜权
     t.slTotal += Math.floor(finalAdd/150); 
     t.mvN = (t.mvN||0) + 1; 
     
@@ -1445,10 +1459,12 @@ window.promoAlbSong = function(id) {
     let t = trackPool.find(x => x.id === id);
     if(!t) return;
     
-    // 无限打单，每次打单有微小的递减效应，模拟现实打单
     let promoCount = t.promoCount || 0;
     advHour(24);
-    let extraStm = Math.floor((t.stmGlobal * 0.15 * ad.Geffect + 30000) * Math.pow(0.9, promoCount));
+    let safeStm = t.stmGlobal || t.stm || 5000; // 糊歌也有保底基数，支持强行打单
+    let extraStm = Math.floor((safeStm * 0.15 * ad.Geffect + 30000) * Math.pow(0.9, promoCount));
+    t.stmGlobal = safeStm + extraStm;
+    t.viralWk = 2; // 触发回春效应
     t.stmGlobal += extraStm;
     t.slTotal += Math.floor(extraStm/150);
     t.promoCount = promoCount + 1; 
@@ -1983,19 +1999,45 @@ window.renderChart = function() {
         }
     });
     
-    // 排序并渲染
+         // 排序并渲染 (分数越高的排越前)
     list.sort((a,b) => b._chartPts - a._chartPts);
     
-    let h = list.slice(0, 50).map((t, i) => {
+    // 遵循榜单规则：如果是 Billboard 的专辑榜，显示前200名；否则显示前100名
+    let maxDisplay = (curChartPlatform === 'BB' && isAlbum) ? 200 : 100;
+    
+    // 直接截取前 100名/200名！只要你打单加的流媒足够多，糊歌立刻空降回榜，绝无时间限制！
+    let h = list.slice(0, maxDisplay).map((t, i) => {
         let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
+        
+        let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
+        let peakStr = peakVal ? ` | 最高: #${peakVal} | 在榜: ${t.weeks}周` : ` | 在榜: ${t.weeks}周`;
+        let certStr = (typeof getCert === 'function') ? getCert(t.slTotal) : '';
+        
         return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
             <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
-            <div style="flex:1;"><b>${escapeHTML(t.n)}</b><br><span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}</span></div>
+            <div style="flex:1;">
+                <b>${escapeHTML(t.n)}</b> ${certStr}<br>
+                <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}${peakStr}</span>
+            </div>
             <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${t._chartStr}</div>
         </div>`;
     }).join('');
     box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
-}
+
+        let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
+        let peakStr = peakVal ? ` | 最高: #${peakVal} | 在榜: ${t.weeks}周` : ` | 在榜: ${t.weeks}周`;
+        let certStr = (typeof getCert === 'function') ? getCert(t.slTotal) : '';
+        
+        return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+            <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
+            <div style="flex:1;">
+                <b>${escapeHTML(t.n)}</b> ${certStr}<br>
+                <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}${peakStr}</span>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${t._chartStr}</div>
+        </div>`;
+    }).join('');
+    box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
 
 </script>
 </body>
