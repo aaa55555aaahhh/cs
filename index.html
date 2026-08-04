@@ -495,6 +495,22 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     }
 });
+// ==================== 权限验证机制 ====================
+window.forceVerifyKey = function() {
+    let keyInput = document.getElementById("inGameKey").value.trim();
+    
+    // 这里可以设置你的游戏密码，比如密码是 "123456"
+    if(keyInput === "123456") {
+        alert("验证成功！欢迎来到星路制作人！");
+        document.getElementById("keyAuthBox").style.display = "none";
+        document.getElementById("gameStartBox").style.display = "block";
+    } else if(keyInput === "") {
+        alert("请输入购买密钥！");
+    } else {
+        alert("密钥错误，请重新输入！");
+    }
+}
+
 // ==================== 全局变量 ====================
 const GAME_VERSION = "4.1.0";
 const $ = function(id) { return document.getElementById(id); };
