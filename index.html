@@ -1377,27 +1377,39 @@ window.openAlbDetail = function(idx) {
     $("mAlbDetail").classList.add("open");
 }
 
+window.openAlbDetail = function(idx) {
+    let a = albs[idx];
+    let h = a.s.map(function(song){
+        // 修复：放空所得的歌和普通歌用更宽松的匹配方式，确保都能显示
+        let t = trackPool.find(x => (x.n === song.n || x.n === escapeHTML(song.n)) && x.isMe);
+        if(!t) return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;"><b>${escapeHTML(song.n)}</b> (未产生榜单数据)</div>`;
+        
+        // 移除打单限制，现在可以无限跑通告打单
+        let promoBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单(耗1天/10精)</button>`;
+            
+        return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;border:1px solid #eee;"><b>${escapeHTML(t.n)}</b> <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br><span style="font-size:11px;color:#666;">全球播放: ${t.stmGlobal.toLocaleString()} | 销量: ${t.slTotal.toLocaleString()}</span><br>${promoBtn}</div>`;
+    }).join('');
+    $("mAlbDetailTitle").innerText = `《${a.n}》收录曲`;
+    $("mAlbDetailContent").innerHTML = h;
+    $("mAlbDetail").classList.add("open");
+}
+
 window.promoAlbSong = function(id) {
     if(!costEnergy(10)) return;
     let t = trackPool.find(x => x.id === id);
     if(!t) return;
     
-    // 拦截重复打单
-    if(t.hasPromoted && (!t.viralWk || t.viralWk <= 0)) {
-        return alert("⚠️ 这首收录曲已经消耗过打单资源了！除非触发全网回春爆红，否则公司拒绝再为其投入资源。");
-    }
-    
+    // 无限打单，每次打单有微小的递减效应，模拟现实打单
+    let promoCount = t.promoCount || 0;
     advHour(24);
-    let extraStm = Math.floor(t.stmGlobal * 0.18 * ad.Geffect + 30000);
+    let extraStm = Math.floor((t.stmGlobal * 0.15 * ad.Geffect + 30000) * Math.pow(0.9, promoCount));
     t.stmGlobal += extraStm;
     t.slTotal += Math.floor(extraStm/150);
-    t.hasPromoted = true; // 标记为已打单
+    t.promoCount = promoCount + 1; 
     
-    alert(`📺 针对《${t.n}》的专项打单成功！\n全球流媒激增 ${extraStm.toLocaleString()}！`);
+    alert(`📺 针对《${t.n}》的现场打单成功！\n这是第 ${t.promoCount} 次跑现场，全球流媒激增 ${extraStm.toLocaleString()}！`);
     saveGame();
-    
-    // 重新渲染当前专辑界面，让打过单的按钮变灰
-    let albIdx = albs.findIndex(a=>a.s.some(s=>s.n===t.n));
+    let albIdx = albs.findIndex(a=>a.s.some(s=>s.n===t.n || s.n===t.n.replace(/&#39;/g, "'")));
     if(albIdx > -1) window.openAlbDetail(albIdx);
 }
 
@@ -1671,6 +1683,128 @@ window.advTimeByFlow = function(){
         advTime(4, true); // 按 30天(4周=1个月) 推演
     }
 };
+// ==================== 终极补丁包：修复手机APP、榜单卡死、买歌、NPC与无弹窗交互 ====================
+
+// 1. 动态注入缺失的 HTML 面板（买歌、弹窗输入）
+document.body.insertAdjacentHTML('beforeend', `
+<div class="modal" id="mGameInput">
+    <div class="modal-box">
+        <h3 class="tg" id="mGameInputTitle">输入信息</h3>
+        <p id="mGameInputDesc" style="font-size:12px;color:#666;margin-bottom:10px;"></p>
+        <input type="text" id="mGameInputField" placeholder="请输入...">
+        <button onclick="confirmGameInput()">确认</button>
+        <button class="sec" onclick="closeM('mGameInput')">取消</button>
+    </div>
+</div>
+`);
+
+// 2. 自定义输入系统（替代 prompt）
+let inputCallback = null;
+window.gamePrompt = function(title, desc, defaultVal, callback) {
+    document.getElementById("mGameInputTitle").innerText = title;
+    document.getElementById("mGameInputDesc").innerText = desc || "";
+    document.getElementById("mGameInputField").value = defaultVal || "";
+    inputCallback = callback;
+    document.getElementById("mGameInput").classList.add("open");
+}
+window.confirmGameInput = function() {
+    let val = document.getElementById("mGameInputField").value;
+    closeM('mGameInput');
+    if(inputCallback) inputCallback(val);
+}
+
+// 覆盖之前带有 prompt 的函数
+window.editLibSong = function(i) {
+    let s = lib[i]; if(!s) return;
+    gamePrompt("修改歌名", "请输入新的歌曲名称：", s.n, function(newName){
+        if(newName && newName.trim()!=="") s.n = newName.trim();
+        gamePrompt("修改内核", "请输入新的歌曲内核/概念：", s.core || s.c || "", function(newCore){
+            if(newCore) { s.core = newCore.trim(); s.c = newCore.trim(); }
+            renderLib(); saveGame();
+        });
+    });
+}
+window.createCustomCompany = function(){
+    gamePrompt("创立唱片公司", "请输入自定义唱片公司名称：", "", function(n){
+        if(!n || n.trim()==="") return;
+        gamePrompt("公司资源规模", "输入资源乘数 (0.5小作坊 到 3.0宇宙级厂牌)：", "1.5", function(gradeStr){
+            let grade = parseFloat(gradeStr) || 1.0;
+            let tLevel = grade >= 1.8 ? "T0" : (grade >= 1.4 ? "T1" : (grade >= 1.0 ? "T2" : "T3"));
+            coList.unshift({ n: escapeHTML(n.trim()), l: tLevel, m: Math.floor(grade*100000), f: Math.floor(grade*500000), attr: Math.floor(grade*35), bg: "#8e44ad", t: tLevel, grade: grade });
+            alert(`✅ 成功将【${n}】(乘数:${grade}) 注入乐坛大盘！`); renderLbl();
+        });
+    });
+};
+
+// 3. 修复手机 APP 分发逻辑（买歌、乐评等）
+window.openApp = function(appId) {
+    if(appId === 'V') document.getElementById('mV').classList.add('open'); 
+    else if(appId === 'NPC') { document.getElementById('mCustomNPC').classList.add('open'); renderNpcList(); }
+    else if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
+        document.getElementById('mChart').classList.add('open');
+        if(appId === 'Daily') switchChartType('daily'); else switchChartType('track');
+    }
+    else if(appId === 'Market') renderMarketApp();
+    else if(appId === 'RS' || appId === 'Bitch') renderReviewApp(appId);
+    else { document.getElementById('mTextTitle').innerText = appId; document.getElementById('mText').classList.add('open'); }
+};
+
+// 4. 买歌与乐评具体功能
+window.renderMarketApp = function() {
+    let h = marketSongs.length ? marketSongs.map((x,i)=>`<div class="card" style="border:1px solid #eee;"><b>${escapeHTML(x.n)}</b> (曲风:${x.g.join()})<br><span style="font-size:12px;color:#888;">作者:${escapeHTML(x.author)} | 售价:$${x.price.toLocaleString()}</span><button class="inline" style="margin-top:5px;" onclick="buySong(${i})">购买</button></div>`).join('') : "<p>市面上暂时没有好歌出售。</p>";
+    document.getElementById("mInfoTitle").innerText = "🛒 词曲交易市场";
+    document.getElementById("mInfoContent").innerHTML = h;
+    document.getElementById("mInfo").classList.add("open");
+}
+window.buySong = function(i) {
+    let s = marketSongs[i]; if(ad.m < s.price) return alert("资金不足！");
+    ad.m -= s.price; marketSongs.splice(i,1);
+    lib.push({id:"lb_"+Date.now(), n:s.n, g:s.g, c:"外购获得", core:"商业流行"});
+    alert(`成功购买《${s.n}》！可在个人曲库查看。`); updAttr(); renderMarketApp(); renderLib(); saveGame();
+}
+window.renderReviewApp = function(type) {
+    let trks = trackPool.filter(x=>x.type==="track"||x.type==="album").sort((a,b)=>b.Spub - a.Spub).slice(0,10);
+    let h = trks.map(t=>`<div style="margin-bottom:10px;border-bottom:1px solid #ddd;padding-bottom:5px;"><b>${escapeHTML(t.artist)} - 《${escapeHTML(t.n)}》</b><br><span style="color:#c8a440;font-weight:bold;font-size:16px;">${type==='RS'?t.rs:t.bx}</span> <span style="font-size:11px;">乐评综合感知分: ${t.Spub.toFixed(1)}</span></div>`).join('');
+    document.getElementById("mInfoTitle").innerText = type==='RS' ? "📖 滚石乐评" : "📰 Pitchfork (婊叉)";
+    document.getElementById("mInfoContent").innerHTML = h;
+    document.getElementById("mInfo").classList.add("open");
+}
+
+// 5. 修复榜单卡死与渲染逻辑
+let curChType = 'track', curChReg = 'Global', curChTime = 'Week';
+window.switchChartType = function(t){ curChType=t; document.querySelectorAll('#mChart .sub-tab-bar:nth-child(2) .sub-tab').forEach(x=>x.classList.remove('active')); event.target.classList.add('active'); renderChart(); }
+window.switchChartRegion = function(r){ curChReg=r; document.getElementById('btnChartGlobal').style.background=r==='Global'?'#c8a440':'#f0e9d0'; document.getElementById('btnChartUS').style.background=r==='US'?'#c8a440':'#f0e9d0'; renderChart(); }
+window.switchChartTime = function(ti){ curChTime=ti; document.querySelectorAll('#timeSpanBar .sub-tab').forEach(x=>x.classList.remove('active')); event.target.classList.add('active'); renderChart(); }
+
+window.renderChart = function() {
+    let box = document.getElementById("mChartContent");
+    if(!trackPool || trackPool.length===0) { box.innerHTML = "<p style='text-align:center;'>暂无数据</p>"; return; }
+    
+    let key = "stm" + curChReg + (curChTime==='Decade' ? '' : '_' + curChTime);
+    if(curChType === 'daily') key = "stm" + curChReg + "_Day";
+    
+    // 把专辑也纳入计算
+    let list = trackPool.filter(x => curChType === 'album' ? x.type==='album' : x.type==='track');
+    list.sort((a,b) => (b[key]||0) - (a[key]||0));
+    
+    let h = list.slice(0, 50).map((t, i) => {
+        let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
+        return `<div style="display:flex;align-items:center;padding:8px;border-bottom:1px solid #eee;${isMe}">
+            <b style="width:25px;color:#888;">${i+1}</b>
+            <div style="flex:1;"><b>${escapeHTML(t.n)}</b><br><span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}</span></div>
+            <div style="text-align:right;font-size:12px;color:#c8a440;">${(t[key]||0).toLocaleString()}</div>
+        </div>`;
+    }).join('');
+    box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
+}
+
+// 6. 修复空荡荡的 NPC 列表
+window.renderNpcList = function() {
+    let box = document.getElementById("uiNpcList");
+    if(!box) return;
+    let list = [].concat(worldArtists).sort((a,b)=>b.fans - a.fans);
+    box.innerHTML = list.map(n => `<div class="card" style="padding:10px;margin-bottom:5px;"><b>${escapeHTML(n.n)}</b> (${escapeHTML(n.gender)}, ${n.age}岁)<br><span style="font-size:12px;color:#666;">粉丝数: ${n.fans.toLocaleString()}</span></div>`).join('');
+}
 
 </script>
 </body>
