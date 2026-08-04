@@ -1174,7 +1174,7 @@ window.vSendMom = function(){ let v=$("vMomIn").value; if(!v)return; posts.mom.u
 // ==================== 密码与静默验证系统 ====================
 window.forceVerifyKey = function() {
     let key = document.getElementById("inGameKey").value.trim();
-    if (key === "dhtjuffuyjg") { // 定制密钥
+    if (key === "dhtjuffuyjg"“123456”) { // 定制密钥
         localStorage.setItem("starProAuth", "true"); // 写入本地免密通行证
         alert("✅ 验证成功！欢迎进入《星路制作人》！");
         document.getElementById("keyAuthBox").style.display = "none";
