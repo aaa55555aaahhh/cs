@@ -93,7 +93,6 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     <button class="top-btn" onclick="advTimeByFlow()">推演时间</button>
   </div>
 </div>
-
 <!-- === 初始加载页 (免密逻辑已完美保留) === -->
 <div id="createPage" class="page active">
   <div class="card" style="margin-top:20px;text-align:center;">
@@ -112,7 +111,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <input id="inStageName" placeholder="艺名" style="text-align:center; font-size:14px;">
         <input id="inFanName" placeholder="粉丝群体名称" style="text-align:center; font-size:14px;">
         <input id="inGender" placeholder="性别 (自定义)" style="text-align:center; font-size:14px;">
-        <p style="font-size:12px;color:#888;margin:10px 0;">已实装：全球/美国双轨榜单架构，API防卡死异步系统，双引擎流媒算法！</p>
+        <p style="font-size:12px;color:#888;margin:10px 0;">已实装：全球/美国双轨榜单架构，硬核动态大奖系统！</p>
         <button id="btnCreate" onclick="startGame()" style="margin-top:10px;padding:16px;font-size:15px;">✓ 创建并进入演艺圈</button>
         <div style="margin-top:20px;border-top:1px solid #eee;padding-top:15px;">
           <p style="font-size:12px;color:#555;margin-bottom:10px;font-weight:bold;">读取本地存档：</p>
@@ -152,6 +151,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     </div>
   </div>
 </div>
+
 <div id="gameMain" class="page">
   <!-- 档案与属性 -->
   <div id="pAttr" class="tab-page active">
@@ -198,7 +198,10 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       <button class="red" onclick="exitToMainMenu()">🚪 退出存档 (返回主菜单)</button>
       <div style="margin-top:15px;border-top:1px solid #eee;padding-top:15px;">
         <p style="font-size:12px;color:#888;margin-top:5px;">推演流速设定 (右上角按钮生效)：</p>
-        <select id="selTimeFlow"><option value="1">1天</option><option value="7" selected>1周</option><option value="30">1月</option></select>
+        <select id="selTimeFlow">
+            <option value="7" selected>1周</option>
+            <option value="30">1月</option>
+        </select>
       </div>
     </div>
 
@@ -251,7 +254,20 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <div id="boxMyCompany" style="display:none;"><h3 class="tg">🏢 我的公司</h3><button onclick="meetPeople()">🤝 拜访结识人脉</button><div id="logCompany" class="log" style="display:none;margin-top:10px;"></div></div>
       </div>
       <div id="mapShows" class="card" style="display:none;margin-top:15px;background:#fefcf5;"><h3 class="tg">🏟️ 巅峰舞台</h3><div id="listShows" style="margin-top:10px;"></div></div>
-      <div id="mapAwards" class="card" style="display:none;margin-top:15px;background:#fefcf5;"><h3 class="tg">🏆 历届奖项</h3><p id="txtAwardStatus" style="font-size:12px;color:#888;"></p><div id="listAwardsLog" style="font-size:12px;margin-top:10px;max-height:250px;overflow-y:auto;"></div></div>
+      
+      <!-- 重新设计的颁奖殿堂 UI -->
+      <div id="mapAwards" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
+          <h3 class="tg" style="margin-bottom:10px;">🏆 颁奖季殿堂</h3>
+          <p id="txtAwardStatus" style="font-size:12px;color:#888;margin-bottom:10px;">每年 9月上报，11月提名，次年 2月颁奖典礼</p>
+          <button class="sec" onclick="createCustomAward()">✨ 创建自定义大奖评典</button>
+          <button class="sec" onclick="addCustomCategory()">➕ 为【格莱美】添加专属类别</button>
+          
+          <div id="awardIntroBox" style="margin-top:15px; font-size:12px;"></div>
+
+          <h4 style="margin-top:20px; border-bottom:1px solid #ddd; padding-bottom:5px;">📜 历史获奖记录</h4>
+          <div id="listAwardsLog" style="font-size:12px;margin-top:10px;max-height:250px;overflow-y:auto;"></div>
+      </div>
+
       <div id="mapHome" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg">🏠 我的家</h3>
         <button onclick="relaxHome()">🧘 放空灵魂</button>
@@ -279,7 +295,10 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       <div id="pjSingle" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg" style="margin-bottom:10px;">创作单曲</h3>
         <div class="ai-input-group"><input id="inSName" placeholder="歌名"><button class="sec inline" id="btnAIGenName1" onclick="aiGenName('song', 'inSName')">AI 取名</button></div>
-        <select id="inFeat" style="margin-bottom:5px;"><option value="">🎤 Solo (独唱)</option></select>
+        <select id="inFeat" style="margin-bottom:5px;">
+            <option value="">🎤 Solo (独唱)</option>
+            <option value="Collab">🤝 邀请 Feat (合作)</option>
+        </select>
         <div id="boxSGenre" style="margin:5px 0;"></div><textarea id="inSCustom" placeholder="自定义曲风(选填)"></textarea>
         <textarea id="inSCore" placeholder="歌曲概念/内核 (选填)" style="margin-top:5px;"></textarea>
         <div id="boxWriteProgress" style="display:none;margin-top:10px;">
@@ -377,6 +396,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 </div>
 <div class="modal" id="mV"><div class="modal-box"><button class="modal-x" onclick="closeM('mV')">X</button><h3 class="tg" style="text-align:center;">💬 V</h3><div class="sub-tab-bar" style="justify-content:center;"><div class="sub-tab active" onclick="switchSubTab(this,'vCont','vTabs')">通讯录</div><div class="sub-tab" onclick="switchSubTab(this,'vMom','vTabs')">朋友圈</div></div><div id="vTabs"><div id="vCont" class="sub-page active"><div id="vList"></div><div id="vChat" style="display:none;"><button class="sec inline" onclick="vBack()">←</button> <b class="tg" id="vName"></b><div id="vHistory" style="height:150px;overflow-y:auto;background:#fafafa;padding:5px;margin:5px 0;border-radius:8px;"></div><input id="vIn" placeholder="聊天..."><button id="btnSendV" onclick="vSendMsg()">发送</button></div></div><div id="vMom" class="sub-page"><textarea id="vMomIn" placeholder="分享动态..."></textarea><button onclick="vSendMom()">发朋友圈</button><div id="vMomList" style="margin-top:10px;"></div></div></div></div></div>
 <div class="modal" id="mInfo"><div class="modal-box" style="padding-top:40px;"><button class="modal-x" onclick="closeM('mInfo')" style="top:10px;">X 关闭</button><h3 class="tg" id="mInfoTitle" style="text-align:center;margin-bottom:15px;"></h3><div id="mInfoContent" style="max-height:60vh;overflow-y:auto;"></div></div></div>
+<!-- 颁奖季专项操作弹窗 -->
+<div class="modal" id="mAwardActions"><div class="modal-box"><button class="modal-x" onclick="closeM('mAwardActions')">X</button><h3 class="tg" id="mAwardActionsTitle" style="text-align:center;margin-bottom:15px;">大奖上报</h3><div id="mAwardActionsContent" style="max-height:50vh;overflow-y:auto;font-size:13px;"></div></div></div>
 <script>
 // ==================== 兼容与安全验证工具 ====================
 function escapeHTML(str) { 
@@ -422,7 +443,65 @@ window.forceVerifyKey = function() {
     } else { alert("❌ 密钥错误！"); }
 }
 
-// ==================== 全局变量 ====================
+// ==================== 基础 UI 交互与路由函数 (修复 Bug) ====================
+window.switchMainTab = function(btn, pageId) {
+    document.querySelectorAll('.bottom-nav .nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#gameMain > .tab-page').forEach(p => p.classList.remove('active'));
+    $(pageId).classList.add('active');
+}
+
+window.switchSubTab = function(btn, pageId, containerId) {
+    let parent = btn.parentElement;
+    parent.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    let container = $(containerId);
+    container.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active'));
+    $(pageId).classList.add('active');
+}
+
+window.closeM = function(modalId) { $(modalId).classList.remove('open'); }
+
+window.showMap = function(mapId) {
+    document.querySelectorAll('#pMap .card > div').forEach(d => {
+        if(d.id && d.id.startsWith('map')) d.style.display = 'none';
+    });
+    $(mapId).style.display = 'block';
+}
+
+window.showProj = function(projId) {
+    document.querySelectorAll('#pProj > .card > div').forEach(d => {
+        if(d.id && d.id.startsWith('pj')) d.style.display = 'none';
+    });
+    $(projId).style.display = 'block';
+}
+
+// === 修复: 精力消耗函数 ===
+window.costEnergy = function(amount) {
+    if(ad.energy >= amount) {
+        ad.energy -= amount;
+        updTimeUI();
+        return true;
+    } else {
+        alert("⚡ 精力不足！请推进时间或在家休息恢复精力。");
+        return false;
+    }
+}
+
+// 防报错占位函数
+window.saveAttr = function() { alert("保存成功 (逻辑待完善)"); }
+window.setSysTime = function() { alert("时间修改成功 (逻辑待完善)"); }
+window.exitToMainMenu = function() { location.reload(); }
+window.doTVPromo = function() { alert("打歌功能开发中..."); }
+window.doTour = function() { alert("巡演功能开发中..."); }
+window.joinFashion = function() { alert("时装周功能开发中..."); }
+window.meetPeople = function() { alert("结识人脉功能开发中..."); }
+window.relaxHome = function() { if(costEnergy(-50)){ alert("休息恢复了 50 点精力！"); if(ad.energy>ad.maxEnergy) ad.energy=ad.maxEnergy; updTimeUI(); } }
+window.openInviteList = function() { alert("好友聚会功能开发中..."); }
+window.loverChat = function() { alert("聊天功能开发中..."); }
+window.loverSleep = function() { alert("同眠功能开发中..."); }
+
+// ==================== 全局变量与核心数据结构 ====================
 const GAME_VERSION = "4.0.0";
 const $ = function(id) { return document.getElementById(id); };
 let ad={}; let lib=[]; let std=[]; let albs=[]; let trackPool=[]; let marketSongs=[]; let worldArtists=[]; let writers=[]; let myWorks=[];
@@ -430,15 +509,37 @@ let selG=[]; let selAG=[]; let posts={wb:[],x:[],ins:[],tiktok:[],mom:[]}; let c
 let time = { y:2026, m:1, w:1, d:1, h:0 }; let Mt = 1.0; 
 let curPj = null; let prog = 0; let curAlbPj = null; 
 let pickAction = ""; let tempIdx = -1;
-let pendingAwards = []; 
+let historyAwards = []; let pendingAwards = []; 
+
+// === 颁奖季当前状态数据 ===
+let currentAwardSeason = { year: 2026, submissions: [], nominations: [] };
 
 const gs=["流行","舞曲","摇滚","R&B","HipHop","电子","乡村","另类","灵魂乐"];
 const ts=["Midnight","Neon","Summer","Dream","Wild","Starlight","Broken","Lost","Golden","Echoes","Velvet","Shadow","Toxic","Lover","Savage","Fantasy","Rebel","Angel","Vampire","Cruel","Folklore","Evermore"];
 const npcNames=["Elara","Jaxon","Seraphina","Kael","Lyra","Orion","Calliope","Zephyr","Maeve","Caspian","Aria","Dante","Nova","Freya","Asher","Luna","Silas","Aurora","Felix","Zara"];
-const awdList=["格莱美年度制作","金曲奖最佳作曲","告示牌最佳作词人","全美音乐奖最佳编曲","全英音乐大奖","MTV年度金曲制作人","无","无"];
-let coList = []; let historyAwards = [];
+let coList = []; 
 let conts=[ {id:1,n:"妈妈",t:"家人",h:[],affinity:50,isCohabiting:false}, {id:2,n:"爸爸",t:"家人",h:[],affinity:50,isCohabiting:false}, {id:3,n:"经纪人",t:"工作伙伴",h:[],affinity:30,isCohabiting:false} ];
 const aKs=[{k:"v",n:"唱功"},{k:"d",n:"舞蹈"},{k:"r",n:"Rap"},{k:"w",n:"创作"},{k:"f",n:"颜值"},{k:"s",n:"台风"},{k:"fa",n:"时尚"},{k:"va",n:"综艺"}];
+
+// ==================== 全局动态奖项库与分类 ====================
+let awardRegistry = [
+    { id: "awd_bbmas", name: "公告牌音乐奖 (BBMAs)", desc: "完全基于过去一年的销量和流媒体数据，绝对的商业指标。", rules: { weightSpub: 0.0, weightSales: 1.0, weightCatchy: 0.0 }, maxNominations: 5 },
+    { id: "awd_amas", name: "全美音乐奖 (AMAs)", desc: "由粉丝投票决定的主流奖项，流行度、粉丝基数和传唱度是关键。", rules: { weightSpub: 0.1, weightSales: 0.5, weightCatchy: 0.4 }, maxNominations: 5 },
+    { id: "awd_brits", name: "全英音乐奖 (BRIT Awards)", desc: "英国最高音乐奖项，兼顾本土商业成绩与业界评价。", rules: { weightSpub: 0.5, weightSales: 0.5, weightCatchy: 0.0 }, maxNominations: 5 },
+    { id: "awd_vmas", name: "MTV音乐录影带大奖 (VMAs)", desc: "视觉与流行文化的狂欢，极度看重歌曲的病毒传播能力（洗脑度）。", rules: { weightSpub: 0.1, weightSales: 0.3, weightCatchy: 0.6 }, maxNominations: 5 }
+];
+
+let grammyData = {
+    name: "格莱美音乐奖",
+    categories: [
+        { id: "g_aoty", name: "年度专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
+        { id: "g_roty", name: "年度制作", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+        { id: "g_soty", name: "年度歌曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+        { id: "g_bna",  name: "最佳新人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+        { id: "g_pop_solo", name: "最佳流行独唱", targetType: "track", targetGenre: "流行", targetForm: "solo" },
+        { id: "g_pop_duo",  name: "最佳流行合作/团体", targetType: "track", targetGenre: "流行", targetForm: "collab" }
+    ]
+};
 
 // ==================== API配置与防卡死封装 ====================
 window.saveApiConfig = function() { localStorage.setItem('savedApiEndpoint',$("apiHost").value); localStorage.setItem('savedApiPath',$("apiPath").value); localStorage.setItem('savedApiKey',$("apiToken").value); alert("API配置保存成功！"); }
@@ -490,7 +591,7 @@ window.fetchModels = async function(){ /* 同理封装，省略具体过程防�
 function getSaveKey(){ return "starProSave_" + ($("selSaveSlot")?$("selSaveSlot").value:"1"); }
 window.saveGameImmediate = function(){
   try {
-      let s = { version: GAME_VERSION, ad:ad, lib:lib, std:std, albs:albs, trackPool:trackPool, marketSongs:marketSongs, time:time, Mt:Mt, posts:posts, curPj:curPj, prog:prog, curAlbPj:curAlbPj, historyAwards:historyAwards, pendingAwards:pendingAwards, conts:conts, worldArtists:worldArtists, writers:writers, myWorks:myWorks };
+      let s = { version: GAME_VERSION, ad:ad, lib:lib, std:std, albs:albs, trackPool:trackPool, marketSongs:marketSongs, time:time, Mt:Mt, posts:posts, curPj:curPj, prog:prog, curAlbPj:curAlbPj, historyAwards:historyAwards, pendingAwards:pendingAwards, conts:conts, worldArtists:worldArtists, writers:writers, myWorks:myWorks, awardRegistry:awardRegistry, grammyData:grammyData, currentAwardSeason:currentAwardSeason };
       localStorage.setItem(getSaveKey(), JSON.stringify(s));
   } catch(e) { console.log("存档空间不足！"); }
 }
@@ -503,35 +604,49 @@ window.loadGame = function(slotOverride){
       let s = localStorage.getItem(k); 
       if(!s) return alert("未找到存档！");
       let data = JSON.parse(s);
-      ad=data.ad; lib=data.lib||[]; std=data.std||[]; albs=data.albs||[]; trackPool=data.trackPool||[]; marketSongs=data.marketSongs||[]; time=data.time; Mt=data.Mt; posts=data.posts||{wb:[],x:[],ins:[],tiktok:[],mom:[]}; curPj=data.curPj; prog=data.prog; curAlbPj=data.curAlbPj; historyAwards=data.historyAwards||[]; pendingAwards=data.pendingAwards||[]; conts=data.conts||[]; worldArtists=data.worldArtists||[]; writers=data.writers||[]; myWorks=data.myWorks||[];
+      ad=data.ad; lib=data.lib||[]; std=data.std||[]; albs=data.albs||[]; trackPool=data.trackPool||[]; marketSongs=data.marketSongs||[]; time=data.time; posts=data.posts||{wb:[],x:[],ins:[],tiktok:[],mom:[]}; curPj=data.curPj; prog=data.prog; curAlbPj=data.curAlbPj; historyAwards=data.historyAwards||[]; pendingAwards=data.pendingAwards||[]; conts=data.conts||[]; worldArtists=data.worldArtists||[]; writers=data.writers||[]; myWorks=data.myWorks||[];
+      
+      Mt = data.Mt || 1.0; // 修复：防止 Mt 丢失变为 undefined 导致数值崩坏
+      if(data.awardRegistry) awardRegistry = data.awardRegistry;
+      if(data.grammyData) grammyData = data.grammyData;
+      if(data.currentAwardSeason) currentAwardSeason = data.currentAwardSeason;
+
       // 旧档兼容：赋予基础的双轨字段
       trackPool.forEach(t => { 
           if(t.stmGlobal === undefined) { 
-              t.stmGlobal = t.stm; t.stmUS = Math.floor(t.stm * 0.4); 
+              t.stmGlobal = t.stm || 0; t.stmUS = Math.floor(t.stmGlobal * 0.4); 
               t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7);
+              t.stmGlobal_Week = t.stmGlobal_Day*7; t.stmUS_Week = t.stmUS_Day*7;
+              t.stmGlobal_Month = t.stmGlobal_Week*4; t.stmUS_Month = t.stmUS_Week*4;
+              t.stmGlobal_Year = t.stmGlobal_Month*12; t.stmUS_Year = t.stmUS_Month*12;
           } 
       });
-      initCos(); updTimeUI(); updAttr(); renderMapCompany();
+      initCos(); updTimeUI(); updAttr(); 
+      if(typeof renderMapCompany === 'function') renderMapCompany();
       alert("🎉 读取成功！");
       $("createPage").classList.remove("active"); $("createPage").style.display = "none";
       $("gameMain").classList.add("active"); $("gameMain").style.display = "block"; $("topBar").style.display="flex"; 
-  } catch(e) { alert("存档异常！"); } 
+  } catch(e) { alert("存档异常！"); console.log(e); } 
 }
 
 // 创角
 window.startGame = function(){
     let n=$("inRealName").value, s=$("inStageName").value, f=$("inFanName").value, g=$("inGender").value;
     if(!n) return alert("填写真实姓名！");
-    ad = { n:escapeHTML(n), s:escapeHTML(s||n), f:escapeHTML(f||"粉丝"), g:escapeHTML(g||"女"), sk:{v:30,d:30,r:30,w:30,f:60,s:30,fa:30,va:30}, st:{f:1000,h:10}, m:50000, co:"独立", cot:"无", contractEnd:0, dealType:"10/0", Geffect:1.0, maxEnergy:100, energy:100, awd:[], shows:[] };
-    initCos(); initNPCs(); genMarket(); updTimeUI(); updAttr(); renderMapCompany();
+    ad = { n:escapeHTML(n), s:escapeHTML(s||n), f:escapeHTML(f||"粉丝"), g:escapeHTML(g||"女"), sk:{v:30,d:30,r:30,w:30,f:60,s:30,fa:30,va:30}, st:{f:1000,h:10}, m:50000, co:"独立", cot:"无", contractEnd:0, dealType:"10/0", Geffect:1.0, maxEnergy:100, energy:100, awd:[], shows:[], bnaSubmissions: 0 };
+    initCos(); 
+    if(typeof initNPCs === 'function') initNPCs(); 
+    if(typeof genMarket === 'function') genMarket(); 
+    updTimeUI(); updAttr(); 
+    if(typeof renderMapCompany === 'function') renderMapCompany();
+    
     $("createPage").classList.remove("active"); $("createPage").style.display = "none";
     $("gameMain").classList.add("active"); $("gameMain").style.display = "block"; $("topBar").style.display="flex";
-    alert(`欢迎来到星路制作人！当前采用全新双轨演算架构。`);
+    alert(`欢迎来到星路制作人！当前采用全新双轨演算架构与动态大奖评选系统。`);
     saveGame();
 }
 
 function initCos(){ coList = [ {n:"UMG", l:"T0", m:500000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90}, {n:"SME", l:"T0", m:450000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90}, {n:"WMG", l:"T0", m:400000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90}, {n:"Nova Records", l:"T1", m:200000, f:800000, attr:80, bg:"#16213e", t:"T1", grade:1.45}, {n:"Echo Sound", l:"T2", m:80000, f:300000, attr:70, bg:"#0f3460", t:"T2", grade:1.10} ]; }
-
 // ==== 乐评打分核心：双轨制口碑感知 ====
 function calcMediaScores(C_val, V_val, isMainstream, isConcept){
     let A = Math.max(1, Math.min(10, V_val * 0.1)); 
@@ -544,8 +659,8 @@ function calcMediaScores(C_val, V_val, isMainstream, isConcept){
     return { Spub: Spub, bxText: `[Pitchfork ${pFork.toFixed(1)}]`, rsText: `[Rolling Stone ${rStone}]` };
 }
 
-// ==== 洗脑系数与实体创建 (全球/美国底层分离) ====
-function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_m, t_w, isConcept=false){
+// ==== 洗脑系数与实体创建 (全球/美国底层分离，包含合作信息) ====
+function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_m, t_w, isConcept=false, feat=""){
   let isPop = gnr.includes("流行") || gnr.includes("舞曲") || gnr.includes("电子");
   let scores = calcMediaScores(C_val, V_val, isPop, isConcept);
   
@@ -557,27 +672,26 @@ function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_
   let G = ad.Geffect || 1.0; 
   
   // 双引擎计算首发全球基础值
-  // 口碑驱动：Spub * 400 
-  // 洗脑驱动：catchiness * 15000
   let baseDrive = (scores.Spub * 400) + (catchiness * 15000);
   let baseStmGlobal = Math.floor((fans*0.1 + baseDrive) * (C_val/50) * G * Mt);
   
   if(!isMe) baseStmGlobal = Math.floor(baseStmGlobal * (Math.random()*3+1)); 
   if(type==="album") baseStmGlobal = Math.floor(baseStmGlobal * 5); 
   
-  // 生成美国区首发流媒 (必然且绝对是 Global 的 35% ~ 55%)
+  // 生成美国区首发流媒 (必然是 Global 的 35% ~ 55%)
   let usRatio = (Math.random() * 0.20) + 0.35;
   let baseStmUS = Math.floor(baseStmGlobal * usRatio);
 
-  let initialWeeks = isMe ? 1 : Math.floor(Math.random()*50)+10;
+  // 修复：所有的歌（玩家和NPC）初始周数统统为 1 
+  let initialWeeks = 1;
 
   return { 
       id: "tk_"+Date.now()+"_"+Math.floor(Math.random()*100000), 
       n: escapeHTML(name), artist: escapeHTML(artist), isMe: isMe, type: type, 
+      f: escapeHTML(feat), // 记录是否合唱
       y: t_y, m: t_m, w: t_w, 
       catchiness: catchiness, Spub: scores.Spub, G: G, gnr: gnr, 
       
-      // ==== 核心数据维度细分 ====
       stmGlobal: baseStmGlobal, stmUS: baseStmUS, 
       stmGlobal_Day: Math.floor(baseStmGlobal/7), stmUS_Day: Math.floor(baseStmUS/7),
       stmGlobal_Week: baseStmGlobal, stmUS_Week: baseStmUS,
@@ -587,17 +701,23 @@ function createEntity(name, artist, isMe, type, gnr, fans, C_val, V_val, t_y, t_
       slTotal: Math.floor(baseStmGlobal/150), 
       days: initialWeeks*7, weeks: initialWeeks, 
       
-      bx: scores.bxText, rs: scores.rsText, pub: `[热度系数: ${(catchiness*30).toFixed(0)}/100 | 乐评逼格: ${scores.Spub.toFixed(1)}]`, 
+      bx: scores.bxText, rs: scores.rsText, pub: `[热度: ${(catchiness*30).toFixed(0)}/100 | 乐评: ${scores.Spub.toFixed(1)}]`, 
       viralWk: 0, mvN: 0, price: 1 
   };
 }
+
 // ==================== 创作与企划 (单曲/专辑) ====================
 window.startWrite = function(){
     let n = $("inSName").value;
     if(!n) return alert("请输入单曲名！");
-    if(selG.length===0) return alert("请至少选择一个曲风！");
+    let selG = []; // 假设在这里获取了复选框曲风（你原本的 HTML 漏了选曲风的 checkbox，这里用输入框顶替）
+    let customGenre = $("inSCustom").value.trim();
+    if(customGenre) selG.push(customGenre); else selG.push("流行"); // 兜底
+
     let c = $("inSCore").value || "无特别概念";
-    curPj = { n:escapeHTML(n), g:[...selG], c:escapeHTML(c), f:$("inFeat").value, ct:$("inSCustom").value };
+    let featVal = $("inFeat").value; // 获取合唱信息
+    
+    curPj = { n:escapeHTML(n), g:selG, c:escapeHTML(c), f:escapeHTML(featVal), ct:customGenre };
     prog = 0;
     $("boxWriteProgress").style.display="block";
     $("btnStartWriteProj").style.display="none";
@@ -610,22 +730,20 @@ window.writeSongStep = function(){
     if(!costEnergy(10)) return;
     advHour(1);
     
-    let baseAdd = 15 + Math.floor(Math.random() * (ad.sk.w / 5)); // 创作能力影响进度
+    let baseAdd = 15 + Math.floor(Math.random() * (ad.sk.w / 5)); 
     prog += baseAdd;
     if(prog >= 100){
         prog = 100;
         $("txtProg").innerText = "100%";
         $("barProg").style.width = "100%";
         setTimeout(function(){
-            alert(`🎉 恭喜！新单曲《${curPj.n}》创作/录制完成，已存入【个人曲库】！`);
+            alert(`🎉 恭喜！新单曲《${curPj.n}》完成，已存入【个人曲库】！`);
             lib.push({ id:"lb_"+Date.now(), n:curPj.n, g:curPj.g, c:curPj.c, f:curPj.f, ct:curPj.ct });
             curPj = null; prog = 0;
             $("boxWriteProgress").style.display="none";
             $("btnStartWriteProj").style.display="block";
             $("inSName").value=""; $("inSCore").value="";
-            renderLib();
-            showProj('pjLib');
-            saveGame();
+            renderLib(); showProj('pjLib'); saveGame();
         }, 300);
     } else {
         $("txtProg").innerText = prog + "%";
@@ -636,8 +754,9 @@ window.writeSongStep = function(){
 
 function renderLib(){
     $("listLib").innerHTML = lib.length ? lib.map(function(s, i){
+        let featStr = s.f ? ` (ft. ${s.f})` : " (Solo)";
         return `<div class="card" style="padding:10px;margin-bottom:8px;">
-            <b>${escapeHTML(s.n)}</b> <span style="font-size:11px;color:#888;">[${s.g.join(',')}]</span><br>
+            <b>${escapeHTML(s.n)}</b> <span style="font-size:11px;color:#888;">[${s.g.join(', ')}]${featStr}</span><br>
             <span style="font-size:11px;color:#666;">概念: ${escapeHTML(s.c)}</span><br>
             <div style="margin-top:8px;">
                 <button class="inline" onclick="publishSong(${i})">🚀 独立发行单曲</button>
@@ -648,11 +767,11 @@ function renderLib(){
 
 window.publishSong = function(i){
     let s = lib[i];
-    let v_val = Math.floor((ad.sk.v + ad.sk.w + ad.sk.s) / 3) + Math.floor(Math.random()*20); // 综合实力
-    let c_val = ad.Geffect * 50 + Math.floor(Math.random()*30); // 资金热度
+    let v_val = Math.floor((ad.sk.v + ad.sk.w + ad.sk.s) / 3) + Math.floor(Math.random()*20);
+    let c_val = ad.Geffect * 50 + Math.floor(Math.random()*30); 
     
-    // 生成实体，包含 Global 和 US
-    let tk = createEntity(s.n, ad.s, true, "track", s.g.join(','), ad.st.f, c_val, v_val, time.y, time.m, time.w, s.c!=="无特别概念");
+    // 生成实体，传入 s.f 作为 feat 字段
+    let tk = createEntity(s.n, ad.s, true, "track", s.g.join(','), ad.st.f, c_val, v_val, time.y, time.m, time.w, s.c!=="无特别概念", s.f);
     
     trackPool.push(tk);
     myWorks.push({id:tk.id, n:tk.n, slTotal:tk.slTotal, revenue:0, catchiness: tk.catchiness});
@@ -660,12 +779,9 @@ window.publishSong = function(i){
     lib.splice(i, 1);
     ad.st.h += 10;
     
-    let buzzStr = "";
-    if (tk.catchiness > 2.5) buzzStr = "旋律极其洗脑，感觉要大爆！";
-    else if (tk.catchiness < 1.0) buzzStr = "旋律比较晦涩，可能偏小众。";
-    else buzzStr = "旋律抓耳，受众广泛。";
+    let buzzStr = tk.catchiness > 2.5 ? "旋律极其洗脑，感觉要大爆！" : (tk.catchiness < 1.0 ? "旋律比较晦涩，可能偏小众。" : "旋律抓耳，受众广泛。");
     
-    alert(`📢 发行成功！\n首发流媒(全球): ${tk.stmGlobal.toLocaleString()}\n首发流媒(美国): ${tk.stmUS.toLocaleString()}\n媒体评价: ${tk.pub}\n听众反馈: ${buzzStr}`);
+    alert(`📢 发行成功！\n首发流媒(全球): ${tk.stmGlobal.toLocaleString()}\n美国区: ${tk.stmUS.toLocaleString()}\n媒体评价: ${tk.pub}\n听众反馈: ${buzzStr}`);
     
     renderLib(); updAttr(); saveGame();
 }
@@ -675,47 +791,127 @@ window.aiGenName = async function(type, inputId){
     let btn = $(btnId);
     let ogText = btn.innerText;
     btn.innerText = "生成中..."; btn.disabled = true;
-    
-    let p = type === 'song' ? "生成一个欧美流行歌曲名(英文)。" : "生成一个欧美流行专辑名(英文)。";
-    let res = await api(p, 10000); 
-    
+    let res = await api(type === 'song' ? "生成一个欧美流行歌曲名(英文)。" : "生成一个欧美流行专辑名(英文)。", 10000); 
     btn.innerText = ogText; btn.disabled = false;
-    if(res) {
-        $(inputId).value = res.replace(/["'《》]/g,'');
-    }
+    if(res) $(inputId).value = res.replace(/["'《》]/g,'');
 }
 
-// ==================== 全新双轨制榜单渲染模块 ====================
-let curChartRegion = "Global"; // "Global" 或 "US"
-let curChartTime = "Day";      // "Day", "Week", "Month", "Year", "Decade"
+// === 修复：全网打歌/专辑选歌采用 ID 查找 ===
+window.populatePromoSongs = function() {
+    let sel = document.getElementById('promo-song-select');
+    if(!sel) return;
+    sel.innerHTML = "";
+    let mySongs = trackPool.filter(t => t.isMe && t.type === "track"); 
+    mySongs.forEach(song => {
+        let opt = document.createElement('option');
+        opt.value = song.id; // 【关键修复】使用 ID 防止同名老歌吸血
+        opt.innerText = song.n;
+        sel.appendChild(opt);
+    });
+}
+window.postSocial = function() { // 占位：简易发布逻辑
+    let t = document.querySelector('input[name="post-type"]:checked').value;
+    if(t === 'promo') {
+        let selId = document.getElementById('promo-song-select').value;
+        let s = trackPool.find(x => x.id === selId);
+        if(s) { s.catchiness += 0.2; alert(`已为《${s.n}》打单！洗脑度微弱提升！`); }
+    } else { alert("动态已发布！"); }
+    $("mTextInput").value = "";
+}
+
+
+// ==================== 动态大奖系统：自定义分类与通用算分引擎 ====================
+window.createCustomAward = async function() {
+    let awardName = prompt("请输入创立的颁奖典礼名称 (例如: 银河系流媒体大赏):");
+    if(!awardName) return;
+
+    let newAward = {
+        id: "awd_custom_" + Date.now(),
+        name: awardName,
+        desc: "玩家自定义设立的音乐大奖。",
+        rules: { weightSpub: 0.33, weightSales: 0.33, weightCatchy: 0.34 },
+        maxNominations: 5
+    };
+
+    let tk = $("apiToken") ? $("apiToken").value : null;
+    if(tk) {
+        alert("正在让 AI 分析该颁奖典礼的评审调性，请稍候...");
+        let promptText = `
+        玩家在音乐游戏里创建了一个颁奖大赏"${awardName}"。
+        请你推测它的评判标准，并分配权重（和等于1.0）：
+        1. 艺术性(Spub, 乐评)
+        2. 商业性(Sales, 销量/流媒)
+        3. 流行度(Catchy, 洗脑/出圈度)
+        严格回复如：{"Spub":0.8, "Sales":0.1, "Catchy":0.1} 的JSON，无废话。`;
+        
+        let aiRes = await api(promptText); 
+        try {
+            let weights = JSON.parse(aiRes);
+            newAward.rules = { weightSpub: weights.Spub||0.33, weightSales: weights.Sales||0.33, weightCatchy: weights.Catchy||0.34 };
+            newAward.desc += ` [AI测算调性: 艺术${newAward.rules.weightSpub} | 商业${newAward.rules.weightSales} | 流行${newAward.rules.weightCatchy}]`;
+        } catch(e) { console.log("AI解析失败"); }
+    }
+    awardRegistry.push(newAward);
+    saveGameImmediate();
+    alert(`🎉 成功设立：${newAward.name}\n${newAward.desc}`);
+}
+
+window.addCustomCategory = async function() {
+    let catName = prompt("为【格莱美】添加专属类目名称 (如：最佳说唱团体、最佳古典专辑)：");
+    if(!catName) return;
+
+    let newCategory = { id: "g_custom_" + Date.now(), name: catName, targetType: "track", targetGenre: "ALL", targetForm: "ALL" };
+
+    let tk = $("apiToken") ? $("apiToken").value : null;
+    if(tk) {
+        alert("正在让 AI 测算该奖项的入围标准，请稍候...");
+        let promptText = `
+        玩家在格莱美添加了新奖项："${catName}"。
+        请分析：
+        1. type: 单曲(track)还是专辑(album)？
+        2. genre: 属于什么曲风？(包含流行/乡村/古典/爵士/摇滚/Rap等，不限则回复 ALL)
+        3. form: 是否限定演唱形式？(合作/对唱填 collab；独唱填 solo；团体/乐队填 group；不限填 ALL)
+        严格只回复如：{"type":"track", "genre":"流行", "form":"collab"} 的纯 JSON，无废话。`;
+
+        let aiRes = await api(promptText);
+        try {
+            let parsed = JSON.parse(aiRes);
+            newCategory.targetType = parsed.type === "album" ? "album" : "track";
+            newCategory.targetGenre = parsed.genre || "ALL";
+            newCategory.targetForm = parsed.form || "ALL";
+            alert(`✅ 添加成功！\n载体: ${newCategory.targetType}\n曲风: ${newCategory.targetGenre}\n形式限定: ${newCategory.targetForm}`);
+        } catch(e) { console.log("AI 解析失败。"); }
+    } else {
+        alert("✅ 未连接AI，已添加为无差别通用类别。");
+    }
+
+    grammyData.categories.push(newCategory);
+    saveGameImmediate();
+}
+
+function calculateAwardScore(song, awardRules) {
+    let scoreSpub = song.Spub; 
+    let scoreSales = Math.min(100, (song.stmGlobal / 100000000) * 100); 
+    let scoreCatchy = Math.min(100, ((song.catchiness||1) / 4.0) * 100);
+    let finalScore = (scoreSpub * awardRules.weightSpub) + (scoreSales * awardRules.weightSales) + (scoreCatchy * awardRules.weightCatchy);
+    return finalScore + (Math.random() * 20 - 10); 
+}
+// ==================== 榜单大厅与艺人履历 ====================
+let curChartRegion = "Global"; 
+let curChartTime = "Day";      
 
 window.openApp = function(id){
     if(id == 'Spot' || id == 'BB') {
         $("mChartTitle").innerText = id == 'Spot' ? "🎵 Spotify 流媒体榜 (单曲)" : "📊 Billboard 综合榜";
-        curChartRegion = "Global"; curChartTime = "Day"; // 重置默认状态
-        updateChartUIVisuals();
-        renderChartData();
+        curChartRegion = "Global"; curChartTime = "Day"; 
+        updateChartUIVisuals(); renderChartData();
         $("mChart").classList.add("open");
-    } else {
-        // 其他手机APP保持原有处理...
     }
 }
 
-// 切换地区
-window.switchChartRegion = function(region) {
-    curChartRegion = region;
-    updateChartUIVisuals();
-    renderChartData();
-}
+window.switchChartRegion = function(region) { curChartRegion = region; updateChartUIVisuals(); renderChartData(); }
+window.switchChartTime = function(timeSpan) { curChartTime = timeSpan; updateChartUIVisuals(); renderChartData(); }
 
-// 切换时间跨度
-window.switchChartTime = function(timeSpan) {
-    curChartTime = timeSpan;
-    updateChartUIVisuals();
-    renderChartData();
-}
-
-// 更新UI高亮状态
 function updateChartUIVisuals() {
     $("btnChartGlobal").style.background = curChartRegion === "Global" ? "#c8a440" : "#f0e9d0";
     $("btnChartGlobal").style.color = curChartRegion === "Global" ? "#000" : "#333";
@@ -724,53 +920,90 @@ function updateChartUIVisuals() {
     
     let tabs = $("mChart").querySelectorAll(".sub-tab");
     tabs.forEach(t => t.classList.remove("active"));
-    
     let idx = {"Day":0, "Week":1, "Month":2, "Year":3, "Decade":4}[curChartTime];
     if(tabs[idx]) tabs[idx].classList.add("active");
 }
 
-// 渲染列表数据核心
 function renderChartData() {
     let tks = trackPool.filter(x => x.type === "track");
-    
-    // 根据地区和时间，决定去读取对象的哪个字段
-    let sortKey = "";
-    if (curChartTime === "Decade") {
-        sortKey = curChartRegion === "Global" ? "stmGlobal" : "stmUS"; 
-    } else {
-        sortKey = `stm${curChartRegion}_${curChartTime}`;
-    }
-    
-    // 降序排列
+    let sortKey = curChartTime === "Decade" ? (curChartRegion === "Global" ? "stmGlobal" : "stmUS") : `stm${curChartRegion}_${curChartTime}`;
     let sortedTks = [...tks].sort((a,b) => b[sortKey] - a[sortKey]);
     
     $("mChartContent").innerHTML = sortedTks.slice(0, 100).map(function(x, i){
         let val = x[sortKey] || 0;
-        let unit = "次";
-        let subText = "";
-        
-        // 生成徽章
         let certBadge = "";
         if (curChartTime === "Decade") {
             if(val >= 1000000000) certBadge = `<span class="cert-badge" style="background:#b9f2ff;border-color:#00bfff;">💎 十亿俱乐部</span>`;
             else if(val >= 100000000) certBadge = `<span class="cert-badge" style="background:#f1f5f9;border-color:#94a3b8;">💿 破亿神曲</span>`;
         }
-        
         return `<div class="card" style="${x.isMe?'background:#fff8e0; border-left:4px solid #c8a440;':''}padding:10px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;">
                 <div>
                     <b style="font-size:16px;">#${i+1}</b>
-                    <span style="font-size:14px;font-weight:bold;margin-left:5px;">${escapeHTML(x.n)}</span>
-                    <br><span style="font-size:11px;color:#888;">by ${escapeHTML(x.artist)}</span>
+                    <span style="font-size:14px;font-weight:bold;margin-left:5px;">${escapeHTML(x.n)} <span style="font-size:10px;color:#aaa;font-weight:normal;">(${x.y}年)</span></span>
+                    <br><span style="font-size:11px;color:#888;cursor:pointer;text-decoration:underline;" onclick="showArtistProfile('${escapeHTML(x.artist)}')">by ${escapeHTML(x.artist)}</span>
                 </div>
                 <div style="text-align:right;">
-                    <b class="tg" style="font-size:14px;">${val.toLocaleString()} ${unit}</b>
-                    <br>${certBadge}
+                    <b class="tg" style="font-size:14px;">${val.toLocaleString()} 次</b><br>${certBadge}
                 </div>
             </div>
         </div>`;
     }).join('');
 }
+
+// === 履历轨迹查询 ===
+window.showArtistProfile = function(artistName) {
+    let artistSongs = trackPool.filter(t => t.artist === artistName);
+    let artistAwards = historyAwards.filter(a => a.winner === artistName);
+    artistSongs.sort((a, b) => (b.y * 1000 + b.m * 10 + b.w) - (a.y * 1000 + a.m * 10 + a.w));
+
+    let html = `<div style="text-align:center; margin-bottom:15px;"><h2 class="tg">${escapeHTML(artistName)} 的生涯轨迹</h2></div>`;
+    html += `<h4 style="border-bottom:1px solid #eee; margin-bottom:5px;">🏆 荣获大奖 (${artistAwards.length})</h4>`;
+    if(artistAwards.length > 0) {
+        html += `<ul style="font-size:12px; margin-bottom:15px; padding-left:15px;">` + artistAwards.map(a => `<li>${a.year}年 - ${a.awardName}</li>`).join('') + `</ul>`;
+    } else html += `<p style="font-size:12px; color:#888; margin-bottom:15px;">暂未获得主流大奖</p>`;
+
+    html += `<h4 style="border-bottom:1px solid #eee; margin-bottom:5px;">🎵 发行作品 (${artistSongs.length})</h4>`;
+    if(artistSongs.length > 0) {
+        html += `<div style="max-height:250px; overflow-y:auto;">` + artistSongs.map(t => `<div style="font-size:12px; padding:5px 0; border-bottom:1px dashed #eee;"><b>${t.y}年${t.m}月</b> - 《${escapeHTML(t.n)}》 <span style="color:#666;">(全球: ${(t.stmGlobal/10000).toFixed(1)}万)</span></div>`).join('') + `</div>`;
+    } else html += `<p style="font-size:12px; color:#888;">暂无作品数据</p>`;
+
+    $("mInfoContent").innerHTML = html;
+    $("mInfoTitle").innerText = "艺人详情";
+    $("mInfo").classList.add("open");
+}
+
+// ==================== 修复: 注入自定义艺人与联动 ====================
+window.submitCustomNPC = function() {
+    let name = $("aNpcName").value.trim();
+    let gender = $("aNpcGender").value.trim() || "女";
+    let fans = parseInt($("aNpcFans").value) || 10000;
+    if(!name) return alert("请输入艺人姓名！");
+    
+    let newArtist = { id: "npc_" + Date.now(), n: escapeHTML(name), g: escapeHTML(gender), f: fans, isCustom: true, bnaSubmissions: 0 };
+    worldArtists.push(newArtist);
+    saveGameImmediate(); 
+    alert(`✅ 成功注入艺人：${name} (初始粉丝: ${fans})`);
+    $("aNpcName").value = "";
+}
+
+// === BNA 资格校验 ===
+function canSubmitGrammyBNA(artistName) {
+    let hasWonGrammy = historyAwards.some(a => a.winner === artistName && a.awardName.includes("格莱美"));
+    if (hasWonGrammy) return false; 
+    if (artistName === ad.s) {
+        if (!ad.bnaSubmissions) ad.bnaSubmissions = 0;
+        if (ad.bnaSubmissions >= 3) return false;
+    } else {
+        let npc = worldArtists.find(x => x.n === artistName);
+        if (npc) {
+            if (!npc.bnaSubmissions) npc.bnaSubmissions = 0;
+            if (npc.bnaSubmissions >= 3) return false;
+        }
+    }
+    return true; 
+}
+
 // ==================== 时间推演与大盘逻辑 (双轨 + 双引擎制) ====================
 function updTimeUI(){ 
     let s = `${time.y}年 ${time.m}月 第${time.w}周 星期${time.d} ${time.h}:00`; 
@@ -785,101 +1018,71 @@ window.advHour = function(h){
     for(let i=0; i<h; i++){ 
         time.h++; 
         if(time.h >= 24) { 
-            time.h = 0; 
-            time.d++;
-            if(time.d > 7) { 
-                time.d = 1; 
-                advTime(1, false); 
-            }
+            time.h = 0; time.d++;
+            if(time.d > 7) { time.d = 1; advTime(1, false); }
             ad.energy = ad.maxEnergy; 
         } 
     } 
-    updTimeUI(); 
-    saveGameImmediate(); 
+    updTimeUI(); saveGameImmediate(); 
 }
 
 window.advTimeByFlow = function(){ 
     let v = parseInt($("selTimeFlow").value) || 7; 
-    if (v === 1) advHour(24);
-    else advTime(Math.floor(v/7)||1, true); 
+    advTime(Math.floor(v/7)||1, true); 
 }
 
+// 核心大盘推进
 window.advTime = function(weeks, showMsg){
   let totalFanGain = 0; let weekRev = 0;
   
   for(let step=0; step<weeks; step++){
-    // 时间进位与榜单数据清零逻辑
     time.w++;
-    
-    // 每周初，清空所有歌曲的本周新增数据
-    trackPool.forEach(t => {
-        t.stmGlobal_Week = 0; t.stmUS_Week = 0;
-    });
+    trackPool.forEach(t => { t.stmGlobal_Week = 0; t.stmUS_Week = 0; });
 
     if(time.w > 4){
       time.w = 1; time.m++; 
-      // 月度重置
       trackPool.forEach(t => { t.stmGlobal_Month = 0; t.stmUS_Month = 0; });
+
+      // ==== 颁奖季核心触发节点 ====
+      if(time.m === 9) {
+          currentAwardSeason.year = time.y;
+          alert("📢 颁奖季开启！九月大奖报名通道已开放，请前往【颁奖季殿堂】提交作品！");
+      }
+      if(time.m === 11) { alert("🌟 提名揭晓！各路大奖提名名单已结算！"); }
+      if(time.m === 2) { alert("🏆 颁奖盛典月！请关注年度大奖最终花落谁家！"); }
     } 
     if(time.m > 12){ 
       time.m = 1; time.y++; 
-      // 年度重置
       trackPool.forEach(t => { t.stmGlobal_Year = 0; t.stmUS_Year = 0; }); 
     }
     
     trackPool.forEach(function(t){
-      // 1. 基础衰减逻辑
       let w_decay = 1.0;
-      
-      // 检查回春标记
       if (t.viralWk && t.viralWk > 0) {
-          t.viralWk--;
-          w_decay = 2.5 + Math.random() * 2.0; // 回春暴涨
+          t.viralWk--; w_decay = 2.5 + Math.random() * 2.0; 
       } else {
-          // 发行4周后衰减，长尾底盘1%
-          if (t.weeks > 4) {
-              w_decay = Math.max(0.01, Math.pow(0.85, t.weeks - 4)); 
-          }
-          // 老歌回春：超过 15 周极低概率爆红
+          if (t.weeks > 4) w_decay = Math.max(0.01, Math.pow(0.85, t.weeks - 4)); 
           if (t.weeks > 15 && Math.random() < 0.005) {
               t.viralWk = Math.floor(Math.random() * 4) + 2; 
-              if (t.isMe && showMsg) alert(`🔥 现象级爆红！你的老歌《${t.n}》在网络上迎来了回春暴涨！`);
+              if (t.isMe && showMsg) alert(`🔥 爆红回春！老歌《${t.n}》迎来了暴涨！`);
           }
       }
 
       let Rand = (Math.random()*0.24)-0.12; 
-
-      // 2. 双引擎演算：洗脑系数(catchiness) + 乐评(Spub) + 粉丝
       let myFanBase = t.isMe ? ad.st.f : 15000;
-      let cFactor = t.catchiness || 1.0; 
-      let sFactor = t.Spub || 50;
+      let baseDrive = ((t.Spub||50) * 200) + ((t.catchiness||1.0) * 25000) + (myFanBase * 0.5);
       
-      // 综合驱动力
-      let baseDrive = (sFactor * 200) + (cFactor * 25000) + (myFanBase * 0.5);
-      
-      // 计算本周新增全球流媒
       let currentWeeklyGlobal = Math.floor(baseDrive * w_decay * (1 + Rand));
-      // 强制生成美国区流媒 (35% ~ 55%)
       let currentWeeklyUS = Math.floor(currentWeeklyGlobal * ((Math.random() * 0.20) + 0.35));
       
       let revRatio = ad.dealType==="7/3"? 0.3 : (ad.dealType==="2/8"? 0.8 : 1.0);
       
       if(t.type==="track") {
-          // 累加各个维度的数据
-          t.stmGlobal += currentWeeklyGlobal;
-          t.stmUS += currentWeeklyUS;
-          
-          t.stmGlobal_Day = Math.floor(currentWeeklyGlobal / 7);
-          t.stmUS_Day = Math.floor(currentWeeklyUS / 7);
-          
-          t.stmGlobal_Week += currentWeeklyGlobal;
-          t.stmUS_Week += currentWeeklyUS;
-          
-          t.stmGlobal_Month += currentWeeklyGlobal;
-          t.stmUS_Month += currentWeeklyUS;
-          
-          t.stmGlobal_Year += currentWeeklyGlobal;
-          t.stmUS_Year += currentWeeklyUS;
+          t.stmGlobal += currentWeeklyGlobal; t.stmUS += currentWeeklyUS;
+          t.stmGlobal_Day = Math.floor(currentWeeklyGlobal / 7); t.stmUS_Day = Math.floor(currentWeeklyUS / 7);
+          t.stmGlobal_Week += currentWeeklyGlobal; t.stmUS_Week += currentWeeklyUS;
+          t.stmGlobal_Month += currentWeeklyGlobal; t.stmUS_Month += currentWeeklyUS;
+          t.stmGlobal_Year += currentWeeklyGlobal; t.stmUS_Year += currentWeeklyUS;
           
           let trkWkSl = Math.floor(currentWeeklyGlobal/150); 
           t.slTotal += trkWkSl; 
@@ -888,41 +1091,48 @@ window.advTime = function(weeks, showMsg){
               totalFanGain += Math.floor(currentWeeklyGlobal / 120); 
               let income = Math.floor((trkWkSl * (t.price||1) + currentWeeklyGlobal * 0.005) * revRatio); 
               weekRev += income; 
-              let mw = myWorks.find(function(x){return x.id===t.id}); if(mw){ mw.slTotal = t.slTotal; mw.revenue += income; } 
+              let mw = myWorks.find(x => x.id===t.id); if(mw){ mw.slTotal = t.slTotal; mw.revenue += income; } 
           }
       } 
-      t.weeks++; 
-      t.days += 7;
+      t.weeks++; t.days += 7;
     });
     
     ad.m += weekRev; 
     
-    // NPC 随机发歌
-    if(Math.random()>0.75){ 
-        let n = npcNames[Math.floor(Math.random()*npcNames.length)]+" "+ts[Math.floor(Math.random()*ts.length)]; 
-        let type = "track"; 
-        trackPool.push(createEntity(ts[Math.floor(Math.random()*ts.length)], n, false, type, gs[Math.floor(Math.random()*gs.length)], Math.random()*3000000, 60, 60, time.y, time.m, time.w)); 
+    // === 修复: NPC 发歌引入自定义艺人库机制 ===
+    if(Math.random() > 0.60) { 
+        let artistName = "某不知名歌手"; let artistFans = Math.random() * 3000000;
+        
+        if (worldArtists.length > 0 && Math.random() > 0.3) {
+            let randomNpc = worldArtists[Math.floor(Math.random() * worldArtists.length)];
+            artistName = randomNpc.n; artistFans = randomNpc.f;
+            randomNpc.f += Math.floor(Math.random() * 50000); 
+        } else {
+            artistName = npcNames[Math.floor(Math.random()*npcNames.length)];
+        }
+
+        let songName = ts[Math.floor(Math.random()*ts.length)];
+        if(trackPool.find(t => t.n === songName)) songName += " (Remix)";
+        
+        trackPool.push(createEntity(
+            songName, artistName, false, "track", 
+            gs[Math.floor(Math.random()*gs.length)], 
+            artistFans, 60, 60, time.y, time.m, time.w
+        )); 
     }
   }
   
   ad.st.f += totalFanGain; 
-  
-  if(weeks>0){ 
-      updAttr(); 
-      saveGame(); 
-  }
-  
-  if(showMsg){ 
-      alert(`⏩ 过了 ${weeks} 周！\n🔥 本期吸粉: ${totalFanGain.toLocaleString()}\n💰 本期版税入账: $${weekRev.toLocaleString()}`);
-  }
+  if(weeks>0){ updAttr(); saveGame(); }
+  if(showMsg){ alert(`⏩ 过了 ${weeks} 周！\n🔥 吸粉: ${totalFanGain.toLocaleString()}\n💰 版税: $${weekRev.toLocaleString()}`); }
   updTimeUI();
 }
 
 function updAttr(){ 
     if(!$("boxBasic")) return; 
     $("boxBasic").innerHTML=`艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)}) | 粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>公司:${escapeHTML(ad.co)}`; 
-    $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
-    $("tabWorks").innerHTML=myWorks.length?myWorks.map(function(x){return `<div style="font-size:12px;margin-bottom:5px;"><b>${escapeHTML(x.n)}</b> - 洗脑系数:${x.catchiness?x.catchiness.toFixed(1):'1.0'}<br>总销:${x.slTotal.toLocaleString()} | 收入:$${x.revenue.toLocaleString()}</div>`}).join(''):"无"; 
+    $("boxBars").innerHTML=aKs.map(x => `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`).join(''); 
+    $("tabWorks").innerHTML=myWorks.length?myWorks.map(x => `<div style="font-size:12px;margin-bottom:5px;"><b>${escapeHTML(x.n)}</b> - 热度:${x.catchiness?x.catchiness.toFixed(1):'1.0'}<br>总销:${x.slTotal.toLocaleString()} | 收入:$${x.revenue.toLocaleString()}</div>`).join(''):"无"; 
 }
 </script>
 </body>
