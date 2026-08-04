@@ -1379,6 +1379,75 @@ window.updatePeakRanks = function() {
         t.peakB = Math.min(t.peakB || 999, i + 1); 
     });
 }
+// ==================== 1. 修复丢失的时间推演系统 ====================
+function updTimeUI(){ 
+    let s = `${time.y}年 ${time.m}月 第${time.w}周 星期${time.d} ${time.h}:00`; 
+    let els=document.querySelectorAll(".uiDateMap"); 
+    for(var i=0;i<els.length;i++) els[i].innerText = s; 
+    if(document.getElementById("sysTimeTxt")) document.getElementById("sysTimeTxt").innerText = s; 
+    if(document.getElementById("uiEnergy")) document.getElementById("uiEnergy").innerText = ad.energy; 
+    if(document.getElementById("topBar").querySelector("#uiDate")) document.getElementById("topBar").querySelector("#uiDate").innerText = s; 
+}
+
+window.advHour = function(h){ 
+    for(let i=0; i<h; i++){ 
+        time.h++; 
+        if(time.h >= 24) { 
+            time.h = 0; time.d++;
+            if(time.d > 7) { time.d = 1; advTime(1, false); }
+            ad.energy = ad.maxEnergy; 
+        } 
+    } 
+    updTimeUI(); saveGameImmediate(); 
+}
+
+window.advTimeByFlow = function(){ 
+    let v = parseInt(document.getElementById("selTimeFlow").value) || 7; 
+    advTime(Math.floor(v/7)||1, true); 
+}
+
+window.advTime = function(weeks, showMsg){
+  let totalFanGain = 0; let weekRev = 0;
+  for(let step=0; step<weeks; step++){
+    time.w++;
+    if(time.w > 4){
+      time.w = 1; time.m++; 
+    } 
+    if(time.m > 12){ time.m = 1; time.y++; }
+    
+    trackPool.forEach(function(t){
+      let Rand = (Math.random()*0.24)-0.12; 
+      let currentWeeklyGlobal = Math.floor(t.stmGlobal * 0.85 * (1 + Rand));
+      let currentWeeklyUS = Math.floor(currentWeeklyGlobal * 0.4);
+      if(t.type==="track") {
+          t.stmGlobal += currentWeeklyGlobal; t.stmUS += currentWeeklyUS;
+          t.slTotal += Math.floor(currentWeeklyGlobal/150);
+          if(t.isMe) { 
+              totalFanGain += Math.floor(currentWeeklyGlobal / 120); 
+              let income = Math.floor((currentWeeklyGlobal/150 + currentWeeklyGlobal*0.005) * 0.3); 
+              weekRev += income; 
+          }
+      } 
+      t.weeks++; t.days += 7;
+    });
+  }
+  ad.st.f += totalFanGain; ad.m += weekRev; 
+  if(weeks>0){ updAttr(); saveGame(); }
+  if(showMsg){ alert(`⏩ 过了 ${weeks} 周！\n🔥 吸粉: ${totalFanGain.toLocaleString()}\n💰 版税: $${weekRev.toLocaleString()}`); }
+  updTimeUI();
+}
+
+// ==================== 2. 修复丢失的免密记忆系统 ====================
+window.addEventListener("DOMContentLoaded", function() {
+    let isUnlocked = localStorage.getItem("isGameUnlocked");
+    let hasSave = localStorage.getItem("starProSave_1") || localStorage.getItem("starProSave_2") || localStorage.getItem("starProSave_3");
+    
+    // 如果已经验证过密码，或者本地有存档，直接跳过密码页面！
+    if(isUnlocked === "true" || hasSave) {
+        document.getElementById("keyAuthBox").style.display = "none";
+        document.getElementById("gameStartBox").style.display = "block";
+    }
+});
 
 </script>
 </body>
