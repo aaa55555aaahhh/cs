@@ -202,10 +202,16 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       <button class="red" onclick="exitToMainMenu()">🚪 退出存档 (返回主菜单)</button>
       <div style="margin-top:15px;border-top:1px solid #eee;padding-top:15px;">
         <p style="font-size:12px;color:#888;margin-top:5px;">推演流速设定 (右上角按钮生效)：</p>
-        <select id="selTimeFlow">
-            <option value="7" selected>1周</option>
-            <option value="30">1个月</option>
-        </select>
+        window.advTimeByFlow = function(){ 
+    let v = parseInt(document.getElementById("selTimeFlow").value) || 7; 
+    if (v === 1) {
+        advHour(24); // 按天推演
+    } else if (v === 7) {
+        advTime(1, true); // 按7天(1周)推演
+    } else if (v === 30) {
+        advTime(4, true); // 按30天(4周)(1个月)推演
+    }
+}
       </div>
     </div>
 
@@ -266,10 +272,17 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <p style="font-size:12px;color:#888;margin-bottom:10px;">每年2-3月(秋冬装)及9-10月(春夏装)。粉丝>500w且时尚>70将受邀免票，否则需$20w购买门票入场镀金。</p>
         <button onclick="joinFashion()">出席时装大秀 (耗1天/10精)</button>
       </div>
-      <div id="mapLabel" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
-        <div id="boxSignCompany"><h3 class="tg">🏢 唱片公司</h3><div id="listLabel" style="margin-top:10px;"></div></div>
-        <div id="boxMyCompany" style="display:none;"><h3 class="tg">🏢 我的公司</h3><button onclick="meetPeople()">🤝 拜访结识人脉 (耗1天/10精)</button><div id="logCompany" class="log" style="display:none;margin-top:10px;"></div></div>
-      </div>
+              <div id="boxSignCompany"><h3 class="tg">🏢 唱片公司</h3>
+          <button class="sec" onclick="createCustomCompany()" style="margin-bottom:10px;font-size:12px;">➕ 注入自定义唱片公司到大盘</button>
+          <div id="listLabel" style="margin-top:10px;"></div>
+        </div>
+        <div id="boxMyCompany" style="display:none;"><h3 class="tg">🏢 你的专属公司</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:10px;">当前公司宣发资源乘数: <b id="txtMyCoGrade" class="tg">1.00</b></p>
+          <button onclick="meetPeople()">🤝 拜访结识人脉 (耗1天/10精)</button>
+          <button onclick="upgradeMyCompany()">💰 投资升级公司规模 ($100万，提升宣发乘数)</button>
+          <button class="red" onclick="breakContract()" style="margin-top:15px;">🚪 解约恢复自由身 (赔付违约金)</button>
+          <div id="logCompany" class="log" style="display:none;margin-top:10px;"></div>
+        </div>
       <div id="mapShows" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg">🏟️ 巅峰舞台</h3><div id="listShows" style="margin-top:10px;"></div>
       </div>
@@ -537,48 +550,51 @@ const aKs=[{k:"v",n:"唱功"},{k:"d",n:"舞蹈"},{k:"r",n:"Rap"},{k:"w",n:"创�
 // ==================== 全局动态奖项库与分类 ====================
 let awardRegistry = [
     {
-        id: "awd_grammy",
-        name: "格莱美音乐大奖",
-        desc: "音乐界最高荣誉，极度看重乐评与艺术性，商业成绩为辅。",
-        rules: { weightSpub: 0.7, weightSales: 0.2, weightCatchy: 0.1 },
+        id: "awd_grammy", name: "格莱美音乐奖", desc: "最高艺术殿堂，极度看重乐评口碑。", rules: { weightSpub: 0.7, weightSales: 0.2, weightCatchy: 0.1 },
         categories: [
             { id: "g_aoty", name: "年度专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
             { id: "g_roty", name: "年度制作", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
             { id: "g_soty", name: "年度歌曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
             { id: "g_bna",  name: "最佳新人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
-            { id: "g_pop_solo", name: "最佳流行独唱", targetType: "track", targetGenre: "流行", targetForm: "solo" },
-            { id: "g_pop_duo",  name: "最佳流行合作/团体", targetType: "track", targetGenre: "流行", targetForm: "collab" }
+            { id: "g_pop_solo", name: "最佳流行独唱", targetType: "track", targetGenre: "流行", targetForm: "solo" }
         ]
     },
     {
-        id: "awd_bbmas",
-        name: "公告牌音乐奖 (BBMAs)",
-        desc: "完全基于过去一年的销量和流媒体数据，绝对的商业指标。",
-        rules: { weightSpub: 0.0, weightSales: 1.0, weightCatchy: 0.0 },
+        id: "awd_brits", name: "全英音乐奖", desc: "英国最高音乐奖项，兼顾本土商业与艺术。", rules: { weightSpub: 0.5, weightSales: 0.4, weightCatchy: 0.1 },
         categories: [
-            { id: "b_t_art", name: "年度最佳艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
-            { id: "b_t_alb", name: "年度最佳专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
-            { id: "b_t_sng", name: "年度流媒体单曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
+            { id: "br_alb", name: "年度英国专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "br_art", name: "年度英国艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "br_sng", name: "年度英国单曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
         ]
     },
     {
-        id: "awd_amas",
-        name: "全美音乐奖 (AMAs)",
-        desc: "由粉丝投票决定的主流奖项，流行度、粉丝基数和传唱度是关键。",
-        rules: { weightSpub: 0.1, weightSales: 0.5, weightCatchy: 0.4 },
+        id: "awd_emas", name: "MTV欧洲音乐奖 (EMAs)", desc: "欧洲流行风向标，粉丝投票影响大。", rules: { weightSpub: 0.2, weightSales: 0.4, weightCatchy: 0.4 },
+        categories: [
+            { id: "e_sng", name: "最佳歌曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "e_art", name: "最佳艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "e_pop", name: "最佳流行", targetType: "track", targetGenre: "流行", targetForm: "ALL" }
+        ]
+    },
+    {
+        id: "awd_vmas", name: "MTV音乐录影带大奖 (VMAs)", desc: "视觉与流行文化的狂欢，极度看重洗脑度。", rules: { weightSpub: 0.1, weightSales: 0.3, weightCatchy: 0.6 },
+        categories: [
+            { id: "v_voty", name: "年度最佳音乐录影带", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "v_soty", name: "年度夏日洗脑神曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
+        ]
+    },
+    {
+        id: "awd_amas", name: "全美音乐奖 (AMAs)", desc: "纯粉丝投票主导的美国流行大奖。", rules: { weightSpub: 0.1, weightSales: 0.5, weightCatchy: 0.4 },
         categories: [
             { id: "a_aoty", name: "年度艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
             { id: "a_pop_sng", name: "最受欢迎流行歌曲", targetType: "track", targetGenre: "流行", targetForm: "ALL" }
         ]
     },
     {
-        id: "awd_vmas",
-        name: "MTV音乐录影带大奖 (VMAs)",
-        desc: "视觉与流行文化的狂欢，极度看重歌曲的病毒传播能力（洗脑度）。",
-        rules: { weightSpub: 0.1, weightSales: 0.3, weightCatchy: 0.6 },
+        id: "awd_bbmas", name: "公告牌音乐奖 (BBMAs)", desc: "唯数据论！完全依靠流媒体和销量说话。", rules: { weightSpub: 0.0, weightSales: 1.0, weightCatchy: 0.0 },
         categories: [
-            { id: "v_voty", name: "年度最佳音乐录影带", targetType: "track", targetGenre: "ALL", targetForm: "ALL" },
-            { id: "v_soty", name: "年度夏日洗脑神曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
+            { id: "b_t_art", name: "年度最佳艺人", targetType: "artist", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "b_t_alb", name: "年度最佳专辑", targetType: "album", targetGenre: "ALL", targetForm: "ALL" },
+            { id: "b_t_sng", name: "年度流媒体单曲", targetType: "track", targetGenre: "ALL", targetForm: "ALL" }
         ]
     }
 ];
@@ -1027,28 +1043,46 @@ window.shootMV = function(tid, type){
     if(!costEnergy(10)) return; 
     let t = trackPool.find(function(x){return x.id===tid}); 
     if(!t) return; 
-    if(t.weeks > 12) return alert("⚠️ 这首歌发行已超过 12 周，错过了拍摄MV宣发的最佳时机，无法再拍MV了！");
-    let cost = type==1 ? 10000 : 2000; 
-    if(ad.m < cost) return alert("资金不足！"); 
-    ad.m -= cost; 
-    if(type==1) advHour(24); 
     
-    let Smv = Math.floor(Math.random()*50)+50; 
-    let loc = type==1 ? (Math.random()*0.4+0.8) : 0; 
-    let bonus = (Smv*0.5 + (cost/1000)*0.22 + type*loc*0.28) * ad.Geffect; 
-    let decay = Math.pow(0.72, t.mvN || 0); 
+    // type 0是歌词版，type 1是真人版
+    let cost = 0;
+    let isCompanyPaying = false;
+
+    if (type === 1) {
+        // 真人版MV价格：100万 到 1亿 之间随机
+        cost = Math.floor(Math.random() * 99000000) + 1000000;
+        
+        // 判定公司是否帮忙付钱（独立音乐人自己掏钱，签了公司且这首歌没拍过真人MV，公司出钱当做主打）
+        if (ad.co !== "独立" && !t.hasRealMV) {
+            isCompanyPaying = true;
+            cost = 0; // 公司全额报销
+            t.hasRealMV = true; // 标记这首歌已经拍过主打真人MV了，不能再白嫖
+        } else if (ad.co !== "独立" && t.hasRealMV) {
+            return alert("公司拒绝了申请：这首歌已经拍过真人主打MV了！非主打不能拍真人版！");
+        }
+    } else {
+        // 歌词版MV固定1万
+        cost = 10000;
+        if (t.hasLyricMV) return alert("这首歌已经出过歌词版MV了！");
+        t.hasLyricMV = true;
+    }
+
+    if(ad.m < cost) return alert(`资金不足！拍摄需要 $${cost.toLocaleString()}`); 
+    ad.m -= cost; 
+    if(type===1) advHour(24 * 3); // 拍真人MV耗时3天
+    else advHour(24); // 歌词版耗时1天
+
+    let bonus = type === 1 ? (Math.random() * 2.0 + 1.0) : (Math.random() * 0.5 + 0.2); 
+    let finalAdd = Math.floor(t.stmGlobal * bonus * ad.Geffect); // 基于当前流媒按比例暴涨
+    
+    t.stmGlobal += finalAdd; 
+    t.stmGlobal_Day += Math.floor(finalAdd/7); 
+    t.slTotal += Math.floor(finalAdd/150); 
     t.mvN = (t.mvN||0) + 1; 
     
-    let finalAdd = Math.floor(bonus * decay * 10000); 
-    t.stm += finalAdd; t.stmDly += Math.floor(finalAdd/7); 
-    let extraSl = Math.floor(finalAdd/150); 
-    t.slTotal += extraSl; t.slWk += extraSl; 
-    t.pts = t.slTotal + Math.floor(t.stm/1500) + Math.floor(t.rad/3000); 
-    t.stmY += finalAdd; t.stmD += finalAdd; 
-    ad.st.h += 5; 
-    
     updAttr(); updatePeakRanks(); renderMVMap(); saveGame(); 
-    alert(`🎬 MV拍摄完成！最终带来 ${finalAdd.toLocaleString()} 流媒爆发！`); 
+    let payStr = isCompanyPaying ? "【公司全额垫资】" : `花费了 $${cost.toLocaleString()}`;
+    alert(`🎬 MV拍摄完成！${payStr}\n最终带来 ${finalAdd.toLocaleString()} 全球流媒大爆发！`); 
 }
 
 window.doTVPromo = function(){ 
@@ -1123,7 +1157,16 @@ window.writeSongStep = function(){
 }
 
 function renderLib(){ 
-    $("listLib").innerHTML=lib.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><span style="color:#aaa;font-size:12px;">未录制</span></div>`}).join(''); 
+    $("listLib").innerHTML = lib.map(function(x, i){
+        let coreText = x.core || x.c || "无";
+        return `<div class="card" style="padding:10px;margin-bottom:8px;background:#fff;border:1px solid #eee;">
+            <b>${escapeHTML(x.n)}</b> <span style="font-size:11px;color:#c8a440;">(未录制)</span><br>
+            <span style="font-size:11px;color:#666;">概念内核: ${escapeHTML(coreText)}</span>
+            <div style="margin-top:6px;">
+                <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="editLibSong(${i})">✏️ 修改歌曲信息</button>
+            </div>
+        </div>`;
+    }).join('') || "<p style='font-size:12px;color:#888;'>曲库空空如也，快去写歌吧！</p>"; 
 }
 function renderStdMap(){ 
     $("listStudio").innerHTML = `<b>一键录制(耗10精)：</b><br>` + lib.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><button class="inline" onclick="startRecord(${i})">录制</button></div>`}).join('') + `<hr style="margin:10px 0;border:#eee 1px solid;"><b>成品库(可发单曲)：</b><br>`+ std.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><button class="sec inline" onclick="openRelSingle('${x.id}')">发单曲</button></div>`}).join(''); 
@@ -1319,7 +1362,16 @@ window.openAlbDetail = function(idx) {
         // 绑定 ID 防止吸血
         let t = trackPool.find(x => x.n === escapeHTML(song.n) && x.artist === ad.s);
         if(!t) return "";
-        return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;border:1px solid #eee;"><b>${escapeHTML(t.n)}</b> <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br><span style="font-size:11px;color:#666;">全球播放: ${t.stmGlobal.toLocaleString()} | 销量: ${t.slTotal.toLocaleString()}</span><br><button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 针对此曲打单(耗1天/10精)</button></div>`;
+        
+        // 判断是否还能打单：没打过单，或者虽然打过单但是目前正在“回春效应”期
+        let canPromo = !t.hasPromoted || (t.viralWk && t.viralWk > 0);
+        
+        // 根据状态渲染不同按钮
+        let promoBtn = canPromo 
+            ? `<button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 针对此曲打单(耗1天/10精)</button>` 
+            : `<button class="sec inline" style="margin-top:5px;font-size:11px;opacity:0.5;" disabled>✅ 已打单</button>`;
+            
+        return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;border:1px solid #eee;"><b>${escapeHTML(t.n)}</b> <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br><span style="font-size:11px;color:#666;">全球播放: ${t.stmGlobal.toLocaleString()} | 销量: ${t.slTotal.toLocaleString()}</span><br>${promoBtn}</div>`;
     }).join('');
     $("mAlbDetailTitle").innerText = `《${a.n}》收录曲`;
     $("mAlbDetailContent").innerHTML = h;
@@ -1330,13 +1382,22 @@ window.promoAlbSong = function(id) {
     if(!costEnergy(10)) return;
     let t = trackPool.find(x => x.id === id);
     if(!t) return;
-    if(t.weeks > 12) return alert("⚠️ 这首收录曲发行已超过 12 周，过了黄金宣发期，公司拒绝再为其投入打单资源！");
+    
+    // 拦截重复打单
+    if(t.hasPromoted && (!t.viralWk || t.viralWk <= 0)) {
+        return alert("⚠️ 这首收录曲已经消耗过打单资源了！除非触发全网回春爆红，否则公司拒绝再为其投入资源。");
+    }
+    
     advHour(24);
     let extraStm = Math.floor(t.stmGlobal * 0.18 * ad.Geffect + 30000);
     t.stmGlobal += extraStm;
     t.slTotal += Math.floor(extraStm/150);
-    alert(`📺 打单成功！《${t.n}》全球流媒激增 ${extraStm.toLocaleString()}！`);
+    t.hasPromoted = true; // 标记为已打单
+    
+    alert(`📺 针对《${t.n}》的专项打单成功！\n全球流媒激增 ${extraStm.toLocaleString()}！`);
     saveGame();
+    
+    // 重新渲染当前专辑界面，让打过单的按钮变灰
     let albIdx = albs.findIndex(a=>a.s.some(s=>s.n===t.n));
     if(albIdx > -1) window.openAlbDetail(albIdx);
 }
@@ -1448,6 +1509,85 @@ window.addEventListener("DOMContentLoaded", function() {
         document.getElementById("gameStartBox").style.display = "block";
     }
 });
+// ==================== 曲库：修改歌曲信息功能 ====================
+window.editLibSong = function(i) {
+    let s = lib[i];
+    if(!s) return;
+    
+    // 弹窗让玩家修改歌名
+    let newName = prompt("✏️ 请输入新的歌曲名称：", s.n);
+    if(newName !== null && newName.trim() !== "") {
+        s.n = newName.trim();
+    }
+    
+    // 弹窗让玩家修改内核概念
+    let currentCore = s.core || s.c || "";
+    let newCore = prompt("✏️ 请输入新的歌曲内核/概念：\n(AI会根据此概念重新打分)", currentCore);
+    if(newCore !== null) {
+        s.core = newCore.trim();
+        s.c = newCore.trim(); // 兼容老字段
+    }
+    
+    // 刷新曲库列表并存档
+    renderLib();
+    saveGame();
+}
+// ==================== 扩展：自定义唱片公司与公司管理功能 ====================
+window.createCustomCompany = function(){
+    let n = prompt("请输入你想注入乐坛的自定义唱片公司名称：");
+    if(!n || n.trim() === "") return;
+    
+    let gradeStr = prompt("请输入该公司的资源乘数规模\n(注：顶级T0大厂是1.9，小作坊是0.8，建议输入 0.5 到 3.0 之间的数字)：", "1.5");
+    let grade = parseFloat(gradeStr) || 1.0;
+    
+    // 根据乘数自动评级
+    let tLevel = grade >= 1.8 ? "T0" : (grade >= 1.4 ? "T1" : (grade >= 1.0 ? "T2" : "T3"));
+    
+    // 把新公司插入到列表最前面
+    coList.unshift({
+        n: escapeHTML(n.trim()), l: tLevel, m: Math.floor(grade * 100000), 
+        f: Math.floor(grade * 500000), attr: Math.floor(grade * 35), 
+        bg: "#8e44ad", t: tLevel, grade: grade
+    });
+    
+    alert(`✅ 成功将【${n}】(乘数:${grade}) 注入乐坛大盘！你可以去尝试签约了。`);
+    renderLbl(); // 刷新公司列表
+};
+
+window.upgradeMyCompany = function(){
+    if(ad.m < 1000000) return alert("资金不足 100万！");
+    ad.m -= 1000000;
+    ad.Geffect += 0.15; // 每次砸钱提升 0.15 宣发乘数
+    updAttr();
+    if(document.getElementById("txtMyCoGrade")) {
+        document.getElementById("txtMyCoGrade").innerText = ad.Geffect.toFixed(2);
+    }
+    alert(`🎉 投资成功！公司规模扩大，你未来的单曲/专辑宣发乘数提升至 ${ad.Geffect.toFixed(2)}！`);
+    saveGame();
+};
+
+window.breakContract = function(){
+    if(confirm("确定要解约吗？违约金为 $500,000。\n解约后将失去当前的资源乘数，变为独立歌手！")){
+        if(ad.m < 500000) return alert("你连违约金都赔不起，老老实实呆着吧！");
+        ad.m -= 500000;
+        ad.co = "独立";
+        ad.cot = "indie";
+        ad.Geffect = 1.0; // 失去公司加成
+        alert("🚪 已支付违约金，恢复独立自由身！资源乘数重置为 1.0。");
+        updAttr();
+        renderMapCompany(); // 刷新界面回到签约大厅
+        saveGame();
+    }
+};
+
+// 修复切换到公司界面时，当前乘数数字不显示的细节
+let oldRenderMapCompany = window.renderMapCompany;
+window.renderMapCompany = function() {
+    oldRenderMapCompany();
+    if(document.getElementById("txtMyCoGrade")) {
+        document.getElementById("txtMyCoGrade").innerText = (ad.Geffect || 1.0).toFixed(2);
+    }
+};
 
 </script>
 </body>
