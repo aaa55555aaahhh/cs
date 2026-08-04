@@ -480,7 +480,28 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 <div class="modal" id="mInfo"><div class="modal-box" style="padding-top:40px;"><button class="modal-x" onclick="closeM('mInfo')" style="top:10px;">X</button><h3 class="tg" id="mInfoTitle" style="text-align:center;margin-bottom:15px;"></h3><div id="mInfoContent" style="max-height:60vh;overflow-y:auto;"></div></div></div>
 
 <script>
+
 // ==================== 兼容与安全验证工具 ====================
+// 注入游戏内自定义防卡死弹窗HTML
+document.addEventListener("DOMContentLoaded", function(){
+    if(!document.getElementById("mGameAlert")) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal" id="mGameAlert" style="z-index:9999;">
+            <div class="modal-box" style="text-align:center; padding:30px 20px;">
+                <h3 class="tg" style="margin-bottom:15px;font-size:18px;">系统提示</h3>
+                <p id="mGameAlertMsg" style="font-size:14px;line-height:1.6;margin-bottom:20px;white-space:pre-wrap;color:#333;"></p>
+                <button onclick="closeM('mGameAlert')" style="width:80%;margin:0 auto;">确认</button>
+            </div>
+        </div>`);
+    }
+    // 强制接管原生的所有 alert，将其转化为游戏内的UI
+    window.gameAlert = function(msg) {
+        document.getElementById("mGameAlertMsg").innerText = msg;
+        document.getElementById("mGameAlert").classList.add("open");
+    };
+    window.alert = window.gameAlert;
+});
+
 function escapeHTML(str) { 
     if(str === null || str === undefined) return '';
     return String(str).replace(/[&<>'"]/g, function(tag){
@@ -870,8 +891,33 @@ function genMarket(){
 }
 
 // ==================== 属性与地图交互 ====================
-function updAttr(){ if(!$("boxBasic")) return; $("boxBasic").innerHTML=`艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)}) | 粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>公司:${escapeHTML(ad.co)}`; $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); $("tabWorks").innerHTML=myWorks.length?myWorks.map(function(x){return `<div style="font-size:12px;margin-bottom:5px;"><b>${escapeHTML(x.n)}</b> - 热度系数:${x.catchiness?x.catchiness.toFixed(1):'1.0'}<br>总销:${x.slTotal.toLocaleString()} | 收入:$${x.revenue.toLocaleString()}</div>`}).join(''):"无"; $("tabAwards").innerHTML=ad.awd.length?ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>'):"无获奖记录"; }
+window.getCert = function(sales) {
+    if (!sales) return "";
+    if (sales >= 10000000) return `<span class="cert-badge" style="background:#b9f2ff;color:#004b5e;border:1px solid #73c2d6;">💎 钻石 (${Math.floor(sales/10000000)}x)</span>`;
+    if (sales >= 1000000) return `<span class="cert-badge" style="background:#e5e4e2;color:#333;border:1px solid #ccc;">💿 白金 (${Math.floor(sales/1000000)}x)</span>`;
+    if (sales >= 500000) return `<span class="cert-badge" style="background:#ffd700;color:#856600;border:1px solid #ccaa00;">📀 金</span>`;
+    return "";
+};
+
+function updAttr(){ 
+    if(!$("boxBasic")) return; 
+    $("boxBasic").innerHTML=`艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)}) | 粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>公司:${escapeHTML(ad.co)}`; 
+    $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
+    $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
+    
+    $("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
+        let t = trackPool.find(tr => tr.id === x.id);
+        let cert = getCert(t ? t.slTotal : x.slTotal);
+        let peakText = t && t.peakS ? `<br><span style="color:#888;font-size:11px;">在榜 ${t.weeks} 周 | 全球最高: #${t.peakS} | 美国最高: #${t.peakB || '--'}</span>` : '';
+        return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
+            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${(t?t.slTotal:x.slTotal).toLocaleString()} 张 | 收入: $${x.revenue.toLocaleString()}${peakText}
+        </div>`;
+    }).join('') : "无"; 
+    
+    $("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
+}
 window.saveAttr = function(){ aKs.forEach(function(x){ let v=parseInt($(`ie_${x.k}`).value)||1; ad.sk[x.k]=Math.min(100,Math.max(1,v)); }); $("boxEditAttr").style.display="none"; $("boxBars").style.display="block"; updAttr(); saveGame(); }
+
 function renderMapCompany(){ if(ad.co === "独立"){ $("boxSignCompany").style.display = "block"; $("boxMyCompany").style.display = "none"; renderLbl(); } else { $("boxSignCompany").style.display = "none"; $("boxMyCompany").style.display = "block"; $("btnMapCompany").innerText = "🏢 我的公司"; } }
 window.meetPeople = function(){ if(!costEnergy(10)) return; advHour(24); let n = npcNames[Math.floor(Math.random()*npcNames.length)]+"(圈内前辈)"; conts.push({id:Date.now(), n:n, t:"工作人脉", h:[], affinity:0, isCohabiting:false}); $("logCompany").style.display="block"; $("logCompany").innerText = `🤝 结识了 ${n}，耗10精力，耗时1天。`; saveGame(); }
 
@@ -1482,21 +1528,30 @@ window.advTime = function(weeks, showMsg){
   let totalFanGain = 0; let weekRev = 0;
   for(let step=0; step<weeks; step++){
     time.w++;
-    if(time.w > 4){
-      time.w = 1; time.m++; 
-    } 
+    if(time.w > 4){ time.w = 1; time.m++; } 
     if(time.m > 12){ time.m = 1; time.y++; }
     
     trackPool.forEach(function(t){
-      let Rand = (Math.random()*0.24)-0.12; 
-      let currentWeeklyGlobal = Math.floor(t.stmGlobal * 0.85 * (1 + Rand));
-      let currentWeeklyUS = Math.floor(currentWeeklyGlobal * 0.4);
-      if(t.type==="track") {
-          t.stmGlobal += currentWeeklyGlobal; t.stmUS += currentWeeklyUS;
-          t.slTotal += Math.floor(currentWeeklyGlobal/150);
+      // 初始化或读取当前的周流媒数据
+      if(!t.stmGlobal_Week) t.stmGlobal_Week = Math.floor(t.stmGlobal / 7) || 0;
+      if(!t.stmUS_Week) t.stmUS_Week = Math.floor(t.stmUS / 7) || 0;
+      
+      // 每周热度自然衰减计算 (约每周掉 5% ~ 15%)
+      let decay = (Math.random() * 0.10) + 0.85; 
+      t.stmGlobal_Week = Math.floor(t.stmGlobal_Week * decay);
+      t.stmUS_Week = Math.floor(t.stmUS_Week * decay);
+      t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+      t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+
+      if(t.type==="track" || t.type==="album") {
+          t.stmGlobal += t.stmGlobal_Week; 
+          t.stmUS += t.stmUS_Week;
+          t.slTotal += Math.floor(t.stmGlobal_Week/150);
+          
           if(t.isMe) { 
-              totalFanGain += Math.floor(currentWeeklyGlobal / 120); 
-              let income = Math.floor((currentWeeklyGlobal/150 + currentWeeklyGlobal*0.005) * 0.3); 
+              // 修复：粉丝和金钱正确结算
+              totalFanGain += Math.floor(t.stmGlobal_Week / 8000); 
+              let income = Math.floor(t.stmGlobal_Week * 0.0035); 
               weekRev += income; 
           }
       } 
@@ -1505,7 +1560,7 @@ window.advTime = function(weeks, showMsg){
   }
   ad.st.f += totalFanGain; ad.m += weekRev; 
   if(weeks>0){ updAttr(); saveGame(); }
-  if(showMsg){ alert(`⏩ 过了 ${weeks} 周！\n🔥 吸粉: ${totalFanGain.toLocaleString()}\n💰 版税: $${weekRev.toLocaleString()}`); }
+  if(showMsg){ window.gameAlert(`⏩ 过了 ${weeks} 周！\n🔥 吸粉: ${totalFanGain.toLocaleString()}\n💰 收益: $${weekRev.toLocaleString()}`); }
   updTimeUI();
 }
 
@@ -1787,12 +1842,19 @@ window.renderChart = function() {
     let list = trackPool.filter(x => curChType === 'album' ? x.type==='album' : x.type==='track');
     list.sort((a,b) => (b[key]||0) - (a[key]||0));
     
-    let h = list.slice(0, 50).map((t, i) => {
+        let h = list.slice(0, 50).map((t, i) => {
         let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
-        return `<div style="display:flex;align-items:center;padding:8px;border-bottom:1px solid #eee;${isMe}">
-            <b style="width:25px;color:#888;">${i+1}</b>
-            <div style="flex:1;"><b>${escapeHTML(t.n)}</b><br><span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}</span></div>
-            <div style="text-align:right;font-size:12px;color:#c8a440;">${(t[key]||0).toLocaleString()}</div>
+        let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
+        let peakStr = peakVal ? ` | 最高: #${peakVal} | 在榜: ${t.weeks}周` : ` | 在榜: ${t.weeks}周`;
+        let certStr = (typeof getCert === 'function') ? getCert(t.slTotal) : '';
+        
+        return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+            <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
+            <div style="flex:1;">
+                <b>${escapeHTML(t.n)}</b> ${certStr}<br>
+                <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}${peakStr}</span>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${(t[key]||0).toLocaleString()} Pts</div>
         </div>`;
     }).join('');
     box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
@@ -1804,6 +1866,135 @@ window.renderNpcList = function() {
     if(!box) return;
     let list = [].concat(worldArtists).sort((a,b)=>b.fans - a.fans);
     box.innerHTML = list.map(n => `<div class="card" style="padding:10px;margin-bottom:5px;"><b>${escapeHTML(n.n)}</b> (${escapeHTML(n.gender)}, ${n.age}岁)<br><span style="font-size:12px;color:#666;">粉丝数: ${n.fans.toLocaleString()}</span></div>`).join('');
+}
+// ==================== 终极补丁：消灭弹窗 & Luminate/Spotify 算法分流 ====================
+
+// 1. 动态注入游戏的专属通知弹窗（彻底屏蔽系统原生 Alert，防卡死）
+document.body.insertAdjacentHTML('beforeend', `
+<div class="modal" id="mGameAlert" style="z-index:9999;">
+    <div class="modal-box" style="text-align:center; padding:30px 20px;">
+        <h3 class="tg" style="margin-bottom:15px;font-size:18px;">系统提示</h3>
+        <p id="mGameAlertMsg" style="font-size:14px;line-height:1.6;margin-bottom:20px;white-space:pre-wrap;color:#333;"></p>
+        <button onclick="closeM('mGameAlert')" style="width:80%;margin:0 auto;">确认</button>
+    </div>
+</div>
+`);
+
+// 接管全局的 alert 函数！
+window.gameAlert = function(msg) {
+    document.getElementById("mGameAlertMsg").innerText = msg;
+    document.getElementById("mGameAlert").classList.add("open");
+};
+window.alert = window.gameAlert; // 强制所有弹窗走游戏内UI！
+
+// 2. 修复手机 APP 分发逻辑，绑定各大榜单
+let curChartPlatform = 'Spot'; 
+window.openApp = function(appId) {
+    if(appId === 'V') document.getElementById('mV').classList.add('open'); 
+    else if(appId === 'NPC') { document.getElementById('mCustomNPC').classList.add('open'); renderNpcList(); }
+    else if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
+        curChartPlatform = appId;
+        
+        // 动态改写榜单标题
+        document.getElementById('mChartTitle').innerText = 
+            appId === 'BB' ? '📊 Billboard 数据打榜' : 
+            appId === 'Spot' ? '🎵 Spotify 纯流媒打榜' : 
+            appId === 'Sale' ? '📈 纯实体/数字销量榜' : '📉 平台日增榜';
+        
+        // 动态注入“专辑日增榜”按钮 (如果没有的话)
+        let tabBar = document.querySelector('#mChart .sub-tab-bar');
+        if(tabBar && !document.getElementById('tabChartAlbumDaily')) {
+            tabBar.insertAdjacentHTML('beforeend', `<div class="sub-tab" id="tabChartAlbumDaily" onclick="switchChartType('album_daily')">专辑日增榜</div>`);
+        }
+        
+        document.getElementById('mChart').classList.add('open');
+        if(appId === 'Daily') switchChartType('daily'); 
+        else switchChartType('track');
+    }
+    else if(appId === 'Market') renderMarketApp();
+    else if(appId === 'RS' || appId === 'Bitch') renderReviewApp(appId);
+    else { document.getElementById('mTextTitle').innerText = appId; document.getElementById('mText').classList.add('open'); }
+};
+
+// 3. 史诗级榜单重构：严格对齐 Billboard 和 Spotify 算法规则
+window.renderChart = function() {
+    let box = document.getElementById("mChartContent");
+    if(!trackPool || trackPool.length === 0) { box.innerHTML = "<p style='text-align:center;'>暂无数据</p>"; return; }
+    
+    let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+    let list = trackPool.filter(x => isAlbum ? x.type === 'album' : x.type === 'track');
+    
+    // 计算每首歌在不同APP里的得分规则
+    list.forEach(t => {
+        // 读取时间跨度数据
+        let stmGlobal = t.stmGlobal_Week || Math.floor(t.stmGlobal/7) || 0;
+        let stmUS = t.stmUS_Week || Math.floor(t.stmUS/7) || 0;
+        
+        if(curChType.includes('daily')) {
+            stmGlobal = t.stmGlobal_Day || Math.floor(stmGlobal/7) || 0;
+            stmUS = t.stmUS_Day || Math.floor(stmUS/7) || 0;
+        } else if (curChTime === 'Decade') {
+            stmGlobal = t.stmGlobal || 0;
+            stmUS = t.stmUS || 0;
+        }
+        
+        let isUS = (curChReg === 'US');
+        let baseStm = isUS ? stmUS : stmGlobal;
+        
+        t._chartPts = 0; t._chartStr = "";
+
+        if (curChartPlatform === 'BB') {
+            // == Billboard 算法体系 (Luminate) ==
+            let paidStream = baseStm * 0.7; // 模拟70%来自付费用户
+            let adStream = baseStm * 0.3;   // 模拟30%来自免费广告
+            let pureSales = Math.floor(baseStm / 150); 
+            
+            if (isAlbum) {
+                // BB200 专辑榜 (EAU 等效专辑算法)
+                let eau = pureSales + (paidStream / 1250) + (adStream / 2500);
+                t._chartPts = Math.floor(eau);
+                t._chartStr = t._chartPts.toLocaleString() + " EAU (等效单位)";
+            } else {
+                if (isUS) {
+                    // Hot 100 计分 (电台 + 销量 + 权重流媒)
+                    let radioAudience = (t.Spub || 50) * 12000; // 模拟美国电台受众
+                    let pts = pureSales + (paidStream / 1250) + (adStream / 3750) + (radioAudience / 6000);
+                    t._chartPts = Math.floor(pts * 100); 
+                    t._chartStr = t._chartPts.toLocaleString() + " Pts";
+                } else {
+                    // Global 200 (无电台，按下载+流媒计算)
+                    let pts = (pureSales * 200) + paidStream + (adStream / 4.5);
+                    t._chartPts = Math.floor(pts);
+                    t._chartStr = t._chartPts.toLocaleString() + " Pts";
+                }
+            }
+        } 
+        else if (curChartPlatform === 'Spot' || curChartPlatform === 'Daily') {
+            // == Spotify 算法体系 ==
+            // 无权重差异，纯有效播放量直接排序
+            t._chartPts = Math.floor(baseStm);
+            t._chartStr = t._chartPts.toLocaleString() + " 次有效播放";
+        } 
+        else if (curChartPlatform === 'Sale') {
+            // == 纯销量榜 ==
+            let sales = Math.floor(baseStm / 150);
+            t._chartPts = sales;
+            t._chartStr = sales.toLocaleString() + " 张";
+        }
+    });
+    
+    // 排序并渲染
+    list.sort((a,b) => b._chartPts - a._chartPts);
+    
+    let h = list.slice(0, 50).map((t, i) => {
+        let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
+        return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+            <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
+            <div style="flex:1;"><b>${escapeHTML(t.n)}</b><br><span style="font-size:11px;color:#666;">${escapeHTML(t.artist)}</span></div>
+            <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${t._chartStr}</div>
+        </div>`;
+    }).join('');
+    box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
 }
 
 </script>
