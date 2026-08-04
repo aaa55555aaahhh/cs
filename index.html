@@ -741,9 +741,14 @@ window.startGame = function(){
       let inNameDom = document.getElementById("inRealName");
       let inStageDom = document.getElementById("inStageName");
       let inGenderDom = document.getElementById("inGender");
-      if(!inNameDom) { alert("错误：未能获取到输入框元素！请刷新页面重试。"); return; }
+      
+      if(!inNameDom || !inStageDom || !inGenderDom) { 
+          alert("错误：未能获取到输入框元素！请确认HTML代码是否完整。"); return; 
+      }
+      
       let rName = escapeHTML(inNameDom.value.trim()); 
-      if(!rName) { alert("⚠️ 必须填真实姓名才能踏入星途！"); return; }
+      if(!rName) { alert("⚠️ 必须填写真实姓名才能踏入星途！"); return; }
+      
       ad={
         r: rName, s: escapeHTML(inStageDom.value.trim()) || rName, g: escapeHTML(inGenderDom.value.trim()) || "保密",
         co:"独立", cot:"indie", m:50000, H:1.0, D:1.0, Elead:1.0, Kalbum:1.0, Geffect: 1.0,
@@ -762,7 +767,8 @@ window.startGame = function(){
       document.getElementById("topBar").style.display="flex"; 
   } catch(e) {
       console.error(e);
-      alert("初始化遇到错误，未成功进入游戏！请重试。");
+      // 增强型报错：如果再出错，会直接把具体的错误代码打印在屏幕上，方便我们定位
+      alert("初始化遇到致命错误：\n" + e.message + "\n\n请截图此弹窗！");
   }
 }
 
@@ -1355,6 +1361,25 @@ window.confirmDeluxe = function(){
   });
   ad.st.f += totalBonusFan; closeM('mDeluxe'); updAttr(); renderAlb(); renderStdMap(); saveGame(); alert(`🎉 豪华版追加成功！总销量爆增 ${extraSl.toLocaleString()} 张！`);
 }
+// ==================== 榜单排名系统 (修复丢失的底层代码) ====================
+window.updatePeakRanks = function() {
+    let trks = trackPool.filter(function(x){ return x.type === "track"; });
+    
+    // 全球榜最高排名更新
+    trks.sort(function(a,b){ return b.stmGlobal - a.stmGlobal; });
+    trks.forEach(function(t, i){ 
+        if (!t.peakS || i + 1 < t.peakS) { t.peakS = i + 1; t.peakW = 0; }
+        if (i + 1 == t.peakS) t.peakW++; 
+        t.lastW = i + 1; 
+    });
+
+    // 美国榜最高排名更新
+    trks.sort(function(a,b){ return b.stmUS - a.stmUS; });
+    trks.forEach(function(t, i){ 
+        t.peakB = Math.min(t.peakB || 999, i + 1); 
+    });
+}
+
 </script>
 </body>
 </html>
