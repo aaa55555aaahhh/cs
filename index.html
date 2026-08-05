@@ -794,8 +794,10 @@ window.startGame = function(){
       trackPool=[]; myWorks=[]; curPj=null; prog=0; curAlbPj=null; historyAwards=[]; lib=[]; std=[]; worldArtists=[]; writers=[]; 
       conts=[{id:1,n:"妈妈",t:"家人",h:[],affinity:50,isCohabiting:false},{id:2,n:"爸爸",t:"家人",h:[],affinity:50,isCohabiting:false},{id:3,n:"经纪人",t:"工作伙伴",h:[],affinity:30,isCohabiting:false}];
       
-      initCos(); initNPCs(); genMarket(); updAttr(); updTimeUI(); updateAlbProjUI(); renderMapCompany();
+            initCos(); initNPCs(); genMarket(); updAttr(); updTimeUI(); updateAlbProjUI(); renderMapCompany();
+      updatePeakRanks(); // 初始化生成完大盘后，立马计算一次排位！
       saveGameImmediate();
+还
       
       document.getElementById("createPage").classList.remove("active"); 
       document.getElementById("createPage").style.display = "none";
@@ -1498,19 +1500,19 @@ window.confirmDeluxe = function(){
 }
 // ==================== 榜单排名系统 (修复丢失的底层代码) ====================
 window.updatePeakRanks = function() {
-    let trks = trackPool.filter(function(x){ return x.type === "track"; });
+    let allItems = trackPool.filter(function(x){ return x.type === "track" || x.type === "album"; });
     
     // 全球榜最高排名更新
-    trks.sort(function(a,b){ return b.stmGlobal - a.stmGlobal; });
-    trks.forEach(function(t, i){ 
+    allItems.sort(function(a,b){ return (b.stmGlobal||0) - (a.stmGlobal||0); });
+    allItems.forEach(function(t, i){ 
         if (!t.peakS || i + 1 < t.peakS) { t.peakS = i + 1; t.peakW = 0; }
         if (i + 1 == t.peakS) t.peakW++; 
         t.lastW = i + 1; 
     });
 
     // 美国榜最高排名更新
-    trks.sort(function(a,b){ return b.stmUS - a.stmUS; });
-    trks.forEach(function(t, i){ 
+    allItems.sort(function(a,b){ return (b.stmUS||0) - (a.stmUS||0); });
+    allItems.forEach(function(t, i){ 
         t.peakB = Math.min(t.peakB || 999, i + 1); 
     });
 }
@@ -1823,7 +1825,7 @@ window.openApp = function(appId) {
 
 // 4. 买歌与乐评具体功能
 window.renderMarketApp = function() {
-    let h = marketSongs.length ? marketSongs.map((x,i)=>`<div class="card" style="border:1px solid #eee;"><b>${escapeHTML(x.n)}</b> (曲风:${x.g.join()})<br><span style="font-size:12px;color:#888;">作者:${escapeHTML(x.author)} | 售价:$${x.price.toLocaleString()}</span><button class="inline" style="margin-top:5px;" onclick="buySong(${i})">购买</button></div>`).join('') : "<p>市面上暂时没有好歌出售。</p>";
+    let h = marketSongs.length ? marketSongs.map((x,i)=>`<div class="card" style="border:1px solid #eee;"><b>${escapeHTML(x.n)}</b> (曲风:${x.g.join()})<br><span style="font-size:12px;color:#888;">作者:${escapeHTML(x.author)} (创作力:${x.skRef||'未知'})<br>质量评级: ${x.core||'商业作'}<br>售价: $${x.price.toLocaleString()}</span><button class="inline" style="margin-top:5px;" onclick="buySong(${i})">购买</button></div>`).join('') : "<p>市面上暂时没有好歌出售。</p>";
     document.getElementById("mInfoTitle").innerText = "🛒 词曲交易市场";
     document.getElementById("mInfoContent").innerHTML = h;
     document.getElementById("mInfo").classList.add("open");
@@ -1992,13 +1994,15 @@ window.renderChart = function() {
             t._chartPts = Math.floor(baseStm);
             t._chartStr = t._chartPts.toLocaleString() + " 次有效播放";
         } 
-        else if (curChartPlatform === 'Sale') {
-            // == 纯销量榜 ==
-            let sales = Math.floor(baseStm / 150);
-            t._chartPts = sales;
-            t._chartStr = sales.toLocaleString() + " 张";
+                 else if (curChartPlatform === 'Sale') {
+            // == 纯销量榜（融合历史总销量与日增绿字） ==
+            let totalSales = Math.floor(t.stmGlobal / 150); // 历史总销量
+            let dailySales = Math.floor((t.stmGlobal_Day || 0) / 150); // 日增销量
+            
+            t._chartPts = totalSales;
+            t._chartStr = `${totalSales.toLocaleString()} 张 <span style="color:#25d366;font-size:11px;font-weight:bold;">+${dailySales.toLocaleString()}</span>`;
         }
-    });
+);
     
       // 排序并渲染 (分数越高的排越前)
     list.sort((a,b) => b._chartPts - a._chartPts);
