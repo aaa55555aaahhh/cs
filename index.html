@@ -2507,6 +2507,92 @@ window.promoAlbSong = function(id) {
     let albIdx = albs.findIndex(a => a.s.some(s => s.n === t.n || s.n === t.n.replace(/&#39;/g, "'")));
     if(albIdx > -1) window.openAlbDetail(albIdx);
 };
+// ==================== 终极补丁：短视频宣发修复 + 400万大盘强制硬底盘 ====================
+
+// 1. 修复短视频打单时，无法读取歌曲列表的Bug
+window.populatePromoSongs = function() {
+    let sel = document.getElementById('promo-song-select');
+    if(!sel) return;
+    let myTrks = trackPool.filter(x => x.isMe && x.type === "track");
+    myTrks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0));
+    
+    if(!myTrks.length) {
+        sel.innerHTML = '<option value="">(你还没有发行过任何单曲)</option>';
+        return;
+    }
+    sel.innerHTML = myTrks.map(t => `<option value="${t.id}">${escapeHTML(t.n)}</option>`).join('');
+};
+
+// 2. 修复点击【发布】按钮完全没反应的Bug
+window.postSocial = function() {
+    let typeInput = document.querySelector('input[name="post-type"]:checked');
+    if(!typeInput) return;
+    
+    if(typeInput.value === 'promo') {
+        let songId = document.getElementById('promo-song-select').value;
+        let t = trackPool.find(x => x.id === songId);
+        if(!t) return alert("⚠️ 请先在下拉框选择一首你要宣发的歌曲！");
+        if(!costEnergy(10)) return;
+        
+        // 短视频病毒营销：爆发式增长 + 抬高保底
+        let extraStm = Math.floor((t.stmGlobal_Week * 0.1) + 150000 + Math.random() * 300000);
+        t.stmGlobal += extraStm;
+        t.stmGlobal_Week += extraStm;
+        t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+        t.slTotal += Math.floor(extraStm / 150);
+        
+        // 触发微型回春
+        t.longViral = (t.longViral || 0) + 3; 
+        t.viralBoost = (t.viralBoost || 1.0) + 0.05; 
+        
+        alert(`📱 短视频病毒营销成功！\n你的 BGM 在 TikTok/短视频平台 被海量跟风使用！\n《${t.n}》全球流媒激增 ${extraStm.toLocaleString()}，并获得微型回春加成！`);
+        updatePeakRanks(); saveGame(); closeM('mText');
+        advHour(2);
+    } else {
+        if(!costEnergy(5)) return;
+        let fanGain = Math.floor(Math.random() * 5000 + 2000);
+        ad.st.f += fanGain;
+        alert(`📱 动态发布成功！\n你的日常分享吸引了 ${fanGain.toLocaleString()} 名新粉丝！`);
+        updAttr(); saveGame(); closeM('mText');
+        advHour(1);
+    }
+};
+
+// 3. 强制核弹级大盘锁定：乐坛Top 1 永远不可以低于 400万日播！
+let oldAdvTimeForMarket = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    // 先走原有的自然推演和衰减
+    oldAdvTimeForMarket(weeks, showMsg);
+    
+    // 🛡️ 强制大盘干预系统
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.sort((a,b) => b.stmGlobal_Week - a.stmGlobal_Week);
+    
+    if(trks.length > 0) {
+        // 乐坛冠军的硬性指标：日均 400万 ~ 600万，即周播 2800万 ~ 4200万
+        let targetTopWeekly = 28000000 + Math.random() * 14000000; 
+        
+        // 如果目前第一名的流媒太寒酸（比如只有几百万周播）
+        if(trks[0].stmGlobal_Week < targetTopWeekly) {
+            // 计算需要放大的倍数
+            let scale = targetTopWeekly / (trks[0].stmGlobal_Week || 1);
+            
+            // 为了防止断层，用平滑曲线把榜单前 50 名整体按比例抬高，模拟真实的繁荣大盘！
+            for(let i=0; i < Math.min(50, trks.length); i++) {
+                let multiplier = 1 + (scale - 1) * Math.pow(0.92, i); // 越靠后，拉升倍数越低，平滑过渡
+                
+                trks[i].stmGlobal_Week = Math.floor(trks[i].stmGlobal_Week * multiplier);
+                trks[i].stmGlobal_Day = Math.floor(trks[i].stmGlobal_Week / 7);
+                
+                trks[i].stmUS_Week = Math.floor(trks[i].stmGlobal_Week * ((Math.random() * 0.20) + 0.30));
+                trks[i].stmUS_Day = Math.floor(trks[i].stmUS_Week / 7);
+                
+                trks[i].stmGlobal += Math.floor(trks[i].stmGlobal_Week / 4); // 追补一点历史数据
+            }
+        }
+    }
+    updatePeakRanks();
+};
 
 // ==================== ⬆️ 补丁结束 ⬆️ ====================
 </script>
