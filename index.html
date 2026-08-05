@@ -1429,8 +1429,26 @@ window.relWipAlb = async function(){
   if(!curAlbPj || !curAlbPj.s.length) return alert("全专没歌！"); 
   let price = parseInt($("albPrice")?$("albPrice").value:10) || 10; 
   let a = {n:curAlbPj.n, g:curAlbPj.g, core:curAlbPj.core, s:curAlbPj.s, st:"已发", deluxeLevel:0}; 
-  let Dleak = 1 - (a.s.filter(function(x){return x.released}).length / a.s.length) * 0.35; 
-  a.s.forEach(function(x){x.released=true});
+  a.s.forEach(function(song, idx){ 
+      if(!song.released){ 
+          let tTrk = createEntity(song.n, ad.s, true, "track", a.g.join(), ad.st.f, ad.sk.w, ad.sk.v, time.y, time.m, time.w, false, song.ff); 
+          tTrk.stmGlobal = Math.floor(tAlb.stmGlobal * 0.2 * Math.pow(0.85, idx) * ad.Geffect); 
+          
+          tTrk.stmGlobal_Day = Math.floor(tTrk.stmGlobal/7);
+          tTrk.stmUS_Day = Math.floor(tTrk.stmUS/7);
+          tTrk.stmGlobal_Week = tTrk.stmGlobal; 
+          tTrk.stmUS_Week = tTrk.stmUS;
+          
+          tTrk.stmUS = Math.floor(tTrk.stmGlobal * 0.4);
+          tTrk.slTotal = Math.floor(tTrk.stmGlobal/150);  
+          trackPool.push(tTrk); 
+          
+          albumFanGain += Math.floor(tTrk.stmGlobal / 120);
+          
+          // ✅ 修复：在这里真正生成完大盘数据后，再把状态改为已发布！
+          song.released = true;
+      } 
+  });
   
   let tAlb = createEntity(a.n, ad.s, true, "album", a.g.join(), ad.st.f, ad.sk.w, ad.sk.v, time.y, time.m, time.w); 
   tAlb.price = price; tAlb.revenue = 0;
