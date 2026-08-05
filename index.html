@@ -1568,6 +1568,7 @@ window.confirmPick = async function(){
     t.price = price; t.revenue = 0;
     
     }
+};
 
 function updateAlbProjUI(){ 
     if(curAlbPj){ 
@@ -2773,19 +2774,7 @@ window.submitCustomNPC = async function() {
 
     worldArtists.push(newNpc);
     
-    // 清空输入框
-    document.getElementById("aNpcName").value = "";
-    document.getElementById("aNpcStageName").value = "";
-    document.getElementById("aNpcGender").value = "";
-    document.getElementById("aNpcFanName").value = "";
-    
-    btn.innerText = "单体注入大盘";
-       btn.disabled = false;
-    
-    renderNpcList();
-    updatePeakRanks();
-    saveGame();
-}
+   }
 
 window.batchGenNpc = function() {
     let count = parseInt(document.getElementById("aNpcCount").value) || 5;
