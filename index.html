@@ -2271,6 +2271,109 @@ window.batchGenNpc = function() {
     updatePeakRanks();
     saveGame();
 };
+// ==================== 修复初始大盘数据与写手榜 ====================
+// 1. 拦截并重写初始化逻辑，给 NPC 强行塞入历史爆款歌曲和数据！
+let oldInitNPCs = window.initNPCs;
+window.initNPCs = function() {
+    worldArtists = []; 
+    let num = Math.floor(Math.random()*11)+10; 
+    for(let i=0;i<num;i++){
+        let art = npcNames[Math.floor(Math.random()*npcNames.length)]+" "+ts[Math.floor(Math.random()*ts.length)];
+        let f = Math.floor(Math.random()*5000000)+50000; 
+        let g = gs[Math.floor(Math.random()*gs.length)];
+        worldArtists.push({id:"npc_"+i, n:art, fans:f, age:20+Math.floor(Math.random()*15), gender:Math.random()>0.5?"女":"男", alb:ts[Math.floor(Math.random()*ts.length)]+" Album", bnaSubmissions:0});
+        
+        // 制造三首歌曲：一张专辑、一首新单曲、一首远古爆款老歌
+        let rNameAlb = ts[Math.floor(Math.random()*ts.length)] + " " + ts[Math.floor(Math.random()*ts.length)];
+        let rNameTk = ts[Math.floor(Math.random()*ts.length)];
+        let oldHit = ts[Math.floor(Math.random()*ts.length)] + " (Classic Hit)";
+        
+        let alb = createEntity(rNameAlb, art, false, "album", g, f, Math.random()*50+40, Math.random()*50+40, time.y, time.m, time.w);
+        let tk1 = createEntity(rNameTk, art, false, "track", g, f, Math.random()*50+40, Math.random()*50+40, time.y, time.m, time.w);
+        let tk2 = createEntity(oldHit, art, false, "track", g, f, Math.random()*50+40, Math.random()*50+40, time.y-1, time.m, time.w);
+        
+        // 强行赋予他们历史周数和累计销量/流媒！(告别0数据)
+        let historyWeeks = Math.floor(Math.random()*40)+10;
+        alb.weeks = historyWeeks; alb.stmGlobal *= historyWeeks; alb.stmUS *= historyWeeks; alb.slTotal *= historyWeeks;
+        tk1.weeks = Math.floor(Math.random()*10)+1; tk1.stmGlobal *= tk1.weeks; tk1.stmUS *= tk1.weeks; tk1.slTotal *= tk1.weeks;
+        tk2.weeks = historyWeeks + 30; tk2.stmGlobal *= (tk2.weeks * 1.5); tk2.stmUS *= (tk2.weeks * 1.5); tk2.slTotal *= (tk2.weeks * 1.5);
+        
+        [alb, tk1, tk2].forEach(function(t){ trackPool.push(t); });
+    }
+    
+    // 生成写手库
+    writers = [];
+    for(let i=0;i<15;i++) {
+        writers.push({
+            n: npcNames[Math.floor(Math.random()*npcNames.length)] + (Math.random()>0.5?" Smith":" Doe"), 
+            sk: Math.floor(Math.random()*60)+40, 
+            hot: Math.floor(Math.random()*100), 
+            awd: Math.random()>0.8 ? "🏆 格莱美最佳制作人" : "无"
+        });
+    }
+    updateFeatList();
+};
+
+// 2. 注入“写手榜”手机 APP 图标与弹窗界面
+document.addEventListener("DOMContentLoaded", function() {
+    // 注入弹窗 HTML
+    if(!document.getElementById("mWriters")) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal" id="mWriters">
+            <div class="modal-box">
+                <button class="modal-x" onclick="closeM('mWriters')">X</button>
+                <h3 class="tg" style="text-align:center;margin-bottom:15px;">✍️ 金牌写手与制作人榜</h3>
+                <div id="writersListContent" style="max-height:60vh;overflow-y:auto;padding-right:5px;"></div>
+            </div>
+        </div>`);
+    }
+
+    // 在手机桌面注入 APP 图标
+    let grid = document.getElementById("phoneGrid");
+    if(grid && !document.getElementById("appWriters")) {
+        grid.insertAdjacentHTML('beforeend', `
+        <div class="app-icon" id="appWriters" style="background:#008080" onclick="openApp('Writers')">
+            <div class="picon">✍️</div>写手榜
+        </div>`);
+    }
+});
+
+// 3. 拦截 APP 打开事件，让写手榜可以被点击渲染
+let oldOpenAppForWriters = window.openApp;
+window.openApp = function(appId) {
+    if(appId === 'Writers') {
+        renderWritersApp();
+        document.getElementById('mWriters').classList.add('open');
+    } else {
+        oldOpenAppForWriters(appId);
+    }
+};
+
+window.renderWritersApp = function() {
+    let box = document.getElementById("writersListContent");
+    if(!writers || writers.length === 0) {
+        box.innerHTML = "<p style='text-align:center;color:#888;'>暂无写手数据</p>";
+        return;
+    }
+    // 按照 创作才华(sk) + 市场热度(hot) 综合排序
+    let sortedWriters = [...writers].sort((a,b) => (b.sk + b.hot) - (a.sk + a.hot));
+    
+    box.innerHTML = sortedWriters.map((w, i) => {
+        let badge = w.awd !== "无" ? `<span class="cert-badge" style="background:#fff8e8;color:#856600;border:1px solid #ccaa00;">${w.awd}</span>` : "";
+        let grade = w.sk >= 90 ? "T0 传说级" : (w.sk >= 75 ? "T1 顶级" : "T2 知名");
+        return `
+        <div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <b style="font-size:14px;">${i+1}. ${escapeHTML(w.n)}</b>
+                <span style="font-size:11px;color:#c8a440;font-weight:bold;">${grade}</span>
+            </div>
+            <div style="margin-top:5px;font-size:12px;color:#666;">
+                创作才华: <b style="color:#111;">${w.sk}</b> | 市场热度: <b style="color:#111;">${w.hot}</b> <br>
+                ${badge}
+            </div>
+        </div>`;
+    }).join('');
+};
 
 // ==================== 代码结束 ====================
 </script>
