@@ -2707,6 +2707,29 @@ window.saveNpcEdit = function() {
     let npc = worldArtists.find(x => x.n === oldName);
     if(!npc) return alert("未找到该艺人！");
     
+    // 补全更新逻辑
+    npc.n = newName || npc.n;
+    npc.age = age;
+    npc.gender = gender;
+    npc.fans = fans;
+    if (tempEditNpcAvatar) {
+        npc.avatar = tempEditNpcAvatar;
+    }
+    
+    alert("✅ 艺人资料修改成功！");
+    // 切换回列表标签页
+    let tabs = document.getElementById('npcBoxTabs').parentElement.querySelectorAll('.sub-tab');
+    if(tabs.length > 1) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById("npcListSec").classList.add("active");
+        document.getElementById("npcEditSec").classList.remove("active");
+        tabs[0].classList.add('active'); // 选中第一个 tab
+    }
+    renderNpcList();
+    updatePeakRanks();
+    saveGame();
+}; // 补全缺失的闭合括号
+
 window.submitCustomNPC = async function() {
     let btn = document.getElementById("btnCustomNPC");
     let name = document.getElementById("aNpcName").value.trim();
@@ -2752,7 +2775,7 @@ window.submitCustomNPC = async function() {
         请提供一段50字左右的生平简介，并为TA创作一首出道单曲的名字。
         返回严格的JSON格式：{"bio": "简介内容...", "debut_song": "歌曲名", "genre": "流行"}`;
         
-               try {
+        try {
             let r = await api(prompt);
             if (r) {
                 let match = r.match(/\{[\s\S]*\}/);
@@ -2775,6 +2798,23 @@ window.submitCustomNPC = async function() {
     }
 
     worldArtists.push(newNpc);
+    
+    // 清空输入框
+    document.getElementById("aNpcName").value = "";
+    document.getElementById("aNpcStageName").value = "";
+    document.getElementById("aNpcGender").value = "";
+    document.getElementById("aNpcFanName").value = "";
+    
+    btn.innerText = "单体注入大盘";
+    btn.disabled = false;
+    
+    renderNpcList();
+    updatePeakRanks();
+    saveGame();
+}; // 补全缺失的闭合括号
+
+window.batchGenNpc = function() {
+    
     
     // 清空输入框
     document.getElementById("aNpcName").value = "";
