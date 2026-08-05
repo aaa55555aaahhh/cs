@@ -600,10 +600,30 @@ function escapeHTML(str) {
     }); 
 }
 
+// ====== 全局致命错误捕获弹窗（抓虫神器） ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.log("捕获到底层报错，已拦截，防止页面卡死: ", msg);
+    let errInfo = `🚨 发现致命代码报错！\n\n【错误信息】: ${msg}\n【报错行数】: 第 ${lineNo} 行\n【报错列数】: 第 ${columnNo} 列\n\n请截图此窗口反馈给修复者！`;
+    
+    // 尝试使用游戏内弹窗，如果游戏UI还没加载完，就用浏览器原生弹窗保底
+    if (document.getElementById("mGameAlertMsg")) {
+        document.getElementById("mGameAlertMsg").innerText = errInfo;
+        document.getElementById("mGameAlert").classList.add("open");
+    } else {
+        alert(errInfo);
+    }
     return false;
 };
+
+// 捕获 Promise 异步报错 (防 AI 接口或存读档卡死)
+window.addEventListener('unhandledrejection', function(event) {
+    let errInfo = `🚨 发现异步/API报错！\n\n【错误原因】: ${event.reason}\n\n请检查代码或网络！`;
+    if (document.getElementById("mGameAlertMsg")) {
+        document.getElementById("mGameAlertMsg").innerText = errInfo;
+        document.getElementById("mGameAlert").classList.add("open");
+    } else {
+        alert(errInfo);
+    }
+});
 
 document.addEventListener("DOMContentLoaded", function(){
     let radios = document.querySelectorAll('input[name="post-type"]');
