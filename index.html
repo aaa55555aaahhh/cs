@@ -994,43 +994,8 @@ function createEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, 
       if (currentDay >= 5) trackDays = 12 - currentDay; 
       else trackDays = 5 - currentDay;  
   }
-  let baseStmWeek = baseStmDaily * trackDays;
-
-  return { 
-      id: "tk_"+Date.now()+"_"+Math.floor(Math.random()*100000), 
-      n: escapeHTML(name), artist: escapeHTML(artist), isMe: isMe, type: type, f: escapeHTML(feat),
-      y: t_y, m: t_m, w: t_w, catchiness: catchiness, Spub: scores.Spub, G: G, gnr: gnr, 
-      stmGlobal: baseStmWeek, stmUS: Math.floor(baseStmWeek * usRatio), 
-      stmGlobal_Day: baseStmDaily, stmUS_Day: Math.floor(baseStmDaily * usRatio),
-      stmGlobal_Week: baseStmWeek, stmUS_Week: Math.floor(baseStmWeek * usRatio),
-      stmGlobal_Month: baseStmWeek, stmUS_Month: Math.floor(baseStmWeek * usRatio),
-      stmGlobal_Year: baseStmWeek, stmUS_Year: Math.floor(baseStmWeek * usRatio),
-      slTotal: Math.floor(baseStmWeek/150), 
-      days: trackDays, weeks: 1, 
-      bx: scores.bxText, rs: scores.rsText, pub: `[热度: ${(catchiness*30).toFixed(0)}/100 | 乐评: ${scores.Spub.toFixed(1)}]`, 
-      viralWk: 0, mvN: 0, price: 1 
-  };
-}
-
-  // 首周的周榜数据严格乘以追踪天数 (没赶上周五发歌，周榜直接吃亏)
-  let baseStmWeek = baseStmDaily * trackDays;
-
-  return { 
-      id: "tk_"+Date.now()+"_"+Math.floor(Math.random()*100000), 
-      n: escapeHTML(name), artist: escapeHTML(artist), isMe: isMe, type: type, f: escapeHTML(feat),
-      y: t_y, m: t_m, w: t_w, catchiness: catchiness, Spub: scores.Spub, G: G, gnr: gnr, 
-      stmGlobal: baseStmWeek, stmUS: Math.floor(baseStmWeek * usRatio), 
-      stmGlobal_Day: baseStmDaily, stmUS_Day: Math.floor(baseStmDaily * usRatio),
-      stmGlobal_Week: baseStmWeek, stmUS_Week: Math.floor(baseStmWeek * usRatio),
-      stmGlobal_Month: baseStmWeek, stmUS_Month: Math.floor(baseStmWeek * usRatio),
-      stmGlobal_Year: baseStmWeek, stmUS_Year: Math.floor(baseStmWeek * usRatio),
-      slTotal: Math.floor(baseStmWeek/150), 
-      days: trackDays, weeks: 1, 
-      bx: scores.bxText, rs: scores.rsText, pub: `[热度: ${(catchiness*30).toFixed(0)}/100 | 乐评: ${scores.Spub.toFixed(1)}]`, 
-      viralWk: 0, mvN: 0, price: 1 
-  };
-}
-
+ 
+ 
 function initNPCs(){
   worldArtists = []; let num = Math.floor(Math.random()*11)+10; 
   for(let i=0;i<num;i++){
@@ -1144,23 +1109,6 @@ function updAttr(){
     <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
     `; 
 
-    $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
-    $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
-    
-    $("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
-        let t = trackPool.find(tr => tr.id === x.id);
-        let cert = getCert(t ? t.slTotal : x.slTotal);
-        let peakText = t && t.peakS ? `<br><span style="color:#888;font-size:11px;">在榜 ${t.weeks} 周 | 全球最高: #${t.peakS} | 美国最高: #${t.peakB || '--'}</span>` : '';
-        return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
-            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${(t?t.slTotal:x.slTotal).toLocaleString()} 张 | 收入: $${x.revenue.toLocaleString()}${peakText}
-        </div>`;
-    }).join('') : "无"; 
-    
-    $("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
-}
-{ 
-    if(!$("boxBasic")) return; 
-    $("boxBasic").innerHTML=`艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)}) | 粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>公司:${escapeHTML(ad.co)}`; 
     $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
     $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
     
@@ -2759,24 +2707,7 @@ window.saveNpcEdit = function() {
     let npc = worldArtists.find(x => x.n === oldName);
     if(!npc) return alert("未找到该艺人！");
     
-    npc.n = newName;
-    npc.age = age;
-    npc.gender = gender;
-    npc.fans = fans;
-    npc.avatar = tempEditNpcAvatar; // 真正保存头像
-    
-    // 同步更新大盘里的歌曲作者名字
-    trackPool.forEach(t => {
-        if(t.artist === oldName) t.artist = newName;
-    });
-    
-    alert("✅ 艺人资料与头像修改成功！");
-    document.getElementById("npcEditSec").classList.remove("active");
-    document.getElementById("npcListSec").classList.add("active");
-    renderNpcList();
-    saveGame();
-};
-    
+        
     npc.n = newName;
     npc.age = age;
     npc.gender = gender;
@@ -2839,10 +2770,12 @@ window.submitCustomNPC = async function() {
         请提供一段50字左右的生平简介，并为TA创作一首出道单曲的名字。
         返回严格的JSON格式：{"bio": "简介内容...", "debut_song": "歌曲名", "genre": "流行"}`;
         
-        try {
+               try {
             let r = await api(prompt);
             if (r) {
-                let j = JSON.parse(r.match(/\{[\s\S]*\}/)[0]);
+                let match = r.match(/\{[\s\S]*\}/);
+                if (!match) throw new Error("AI 返回格式错误");
+                let j = JSON.parse(match[0]);
                 newNpc.bio = escapeHTML(j.bio);
                 let songName = escapeHTML(j.debut_song || "Debut Single");
                 let songGenre = j.genre || "流行";
@@ -3140,9 +3073,18 @@ window.confirmPick = async function(){
     
     let aiAdj = 0; let aiCmt = "";
     let searchCore = s.core || s.c;
-    if(document.getElementById("apiToken") && document.getElementById("apiToken").value && searchCore){ 
+        if(document.getElementById("apiToken") && document.getElementById("apiToken").value && searchCore){ 
         let r = await api(`我写了首【${s.g}】歌，内核是【${searchCore}】。给修正分(-15到+15整数)和15字短评。只返JSON: {"score_adj":5, "comment":"..."}`); 
-        if(r){ try{ let j=JSON.parse(r.match(/\{[\s\S]*\}/)[0]); aiAdj=parseInt(j.score_adj)||0; aiCmt=escapeHTML(j.comment)||""; }catch(e){} } 
+        if(r){ 
+            try{ 
+                let match = r.match(/\{[\s\S]*\}/);
+                if(match) {
+                    let j=JSON.parse(match[0]); 
+                    aiAdj=parseInt(j.score_adj)||0; 
+                    aiCmt=escapeHTML(j.comment)||""; 
+                }
+            }catch(e){} 
+        } 
     } else if (searchCore) {
         aiAdj = Math.floor(Math.random() * 20) - 5; 
         aiCmt = (aiAdj > 5) ? "系统判定：这首歌的内核表达很有深度！" : "系统判定：内核表达中规中矩。";
@@ -3990,9 +3932,3 @@ window.generateAiSchedule = async function() {
 </script>
 </body>
 </html>
-
-// ==================== 代码结束 ====================
-</script>
-</body>
-</html>
-
