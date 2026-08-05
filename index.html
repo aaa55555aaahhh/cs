@@ -991,9 +991,14 @@ function createEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, 
   let trackDays = 7;
   if (typeof time !== 'undefined') {
       let currentDay = time.d || 1;
-      if (currentDay >= 5) trackDays = 12 - currentDay; 
-      else trackDays = 5 - currentDay;  
-  }
+                    if (currentDay >= 5) trackDays = 12 - currentDay; 
+              else trackDays = 5 - currentDay;  
+          }
+          let baseStmWeek = baseStmDaily * trackDays;
+          return { id: "tk_"+Date.now()+"_"+Math.floor(Math.random()*100000), n: name, artist: artist, isMe: isMe, type: type, gnr: gnr, fans: fans, stmGlobal: baseStmDaily, stmUS: Math.floor(baseStmDaily * usRatio), stmGlobal_Day: baseStmDaily, stmUS_Day: Math.floor(baseStmDaily * usRatio), stmGlobal_Week: baseStmWeek, stmUS_Week: Math.floor(baseStmWeek * usRatio), slTotal: Math.floor(baseStmDaily/150), Spub: scores.Spub, bx: scores.bxText, rs: scores.rsText, catchiness: catchiness, weeks: 1, days: 1, type: type, isCollab: feat!=="", ff: feat, singleLabel: "", promoCount: 0, hasLyricMV: false, hasRealMV: false, viralChance: 0.05, viralBoost: 1.0, longViral: 0, mvN: 0, price: 1, _chartPts: 0, _chartStr: "" };
+        }
+
+        function initNPCs(){
  
  
 function initNPCs(){
@@ -1562,24 +1567,7 @@ window.confirmPick = async function(){
     let t = createEntity(song.n, ad.s, true, "track", curAlbPj.g.join(), baseF, ad.sk.w, ad.sk.v, time.y, time.m, time.w, false, song.ff); 
     t.price = price; t.revenue = 0;
     
-    let hypeMult = (1 + 0.5*(curAlbPj.hype-1));
-    t.stmGlobal = Math.floor(t.stmGlobal * ad.H * ad.D * ad.Geffect * hypeMult); 
-    t.stmUS = Math.floor(t.stmGlobal * ((Math.random() * 0.20) + 0.35));
-    
-    t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7);
-    t.slTotal = Math.floor(t.stmGlobal/150); 
-    
-    curAlbPj.hype += (t.stmGlobal / 20000000) * (t.Spub/100); 
-    curAlbPj.preCount++; 
-    ad.st.f += Math.floor(t.stmGlobal/120); 
-    
-    trackPool.push(t); 
-    myWorks.push({id:t.id, n:`《${song.n}》[先行]`, slTotal:t.slTotal, revenue:0}); 
-    
-    updAttr(); updateAlbProjUI(); closeM('mPick'); saveGame(); 
-    alert(`🎵 先行曲发行！全球流媒: ${t.stmGlobal.toLocaleString()}`);
-  }
-}
+    }
 
 function updateAlbProjUI(){ 
     if(curAlbPj){ 
@@ -2704,33 +2692,19 @@ window.saveNpcEdit = function() {
     let gender = document.getElementById("eNpcGender").value.trim() || "保密";
     let fans = parseInt(document.getElementById("eNpcFans").value) || 0;
     
-    let npc = worldArtists.find(x => x.n === oldName);
+               let npc = worldArtists.find(x => x.n === oldName);
     if(!npc) return alert("未找到该艺人！");
-    
-    // 补全更新逻辑
-    npc.n = newName || npc.n;
-    npc.age = age;
-    npc.gender = gender;
-    npc.fans = fans;
-    if (tempEditNpcAvatar) {
-        npc.avatar = tempEditNpcAvatar;
-    }
-    
-    alert("✅ 艺人资料修改成功！");
-    // 切换回列表标签页
+    npc.n = newName; npc.age = age; npc.gender = gender; npc.fans = fans;
+    if(tempEditNpcAvatar) npc.avatar = tempEditNpcAvatar;
+    alert("✅ 修改成功！"); renderNpcList(); saveGame();
     let tabs = document.getElementById('npcBoxTabs').parentElement.querySelectorAll('.sub-tab');
-    if(tabs.length > 1) {
-        tabs.forEach(t => t.classList.remove('active'));
-        document.getElementById("npcListSec").classList.add("active");
-        document.getElementById("npcEditSec").classList.remove("active");
-        tabs[0].classList.add('active'); // 选中第一个 tab
-    }
-    renderNpcList();
-    updatePeakRanks();
-    saveGame();
-}; // 补全缺失的闭合括号
-
+    tabs.forEach(t => t.classList.remove('active')); tabs[0].classList.add('active');
+    document.getElementById("npcEditSec").classList.remove("active");
+    document.getElementById("npcListSec").classList.add("active");
+}
+    
 window.submitCustomNPC = async function() {
+
     let btn = document.getElementById("btnCustomNPC");
     let name = document.getElementById("aNpcName").value.trim();
     let stageName = document.getElementById("aNpcStageName").value.trim() || name;
@@ -2806,28 +2780,12 @@ window.submitCustomNPC = async function() {
     document.getElementById("aNpcFanName").value = "";
     
     btn.innerText = "单体注入大盘";
-    btn.disabled = false;
+       btn.disabled = false;
     
     renderNpcList();
     updatePeakRanks();
     saveGame();
-}; // 补全缺失的闭合括号
-
-window.batchGenNpc = function() {
-    
-    
-    // 清空输入框
-    document.getElementById("aNpcName").value = "";
-    document.getElementById("aNpcStageName").value = "";
-    document.getElementById("aNpcGender").value = "";
-    document.getElementById("aNpcFanName").value = "";
-    
-    btn.innerText = "单体注入大盘";
-    btn.disabled = false;
-    
-    renderNpcList();
-    updatePeakRanks();
-    saveGame();
+}
 
 window.batchGenNpc = function() {
     let count = parseInt(document.getElementById("aNpcCount").value) || 5;
