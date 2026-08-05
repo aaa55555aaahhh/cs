@@ -2010,7 +2010,7 @@ window.renderChart = function() {
     // 遵循榜单规则：如果是 Billboard 的专辑榜，显示前200名；否则显示前100名
     let maxDisplay = (curChartPlatform === 'BB' && isAlbum) ? 200 : 100;
     
-    // 直接截取前 100名/200名！只要你打单加的流媒足够多，糊歌立刻空降回榜，绝无时间限制！
+        // 直接截取前 100名/200名！只要你打单加的流媒足够多，糊歌立刻空降回榜，绝无时间限制！
     let h = list.slice(0, maxDisplay).map((t, i) => {
         let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
         
@@ -2029,7 +2029,6 @@ window.renderChart = function() {
     }).join('');
     box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
 }
-
 </script>
 </body>
 </html>
