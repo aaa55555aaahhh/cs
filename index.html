@@ -2038,6 +2038,112 @@ window.loverSleep = function() {
     alert(`🛏️ 你和伴侣 ${lover.n} 相拥而眠...\n精力已完全恢复！时间来到了第二天。`);
     saveGame();
 }
+// ==================== 终极拯救：免密直通 + 旧档NPC修复 + 手机APP复活 ====================
+
+// 1. 永久免密码！强制显示开始界面
+window.addEventListener("DOMContentLoaded", function() {
+    let box1 = document.getElementById("keyAuthBox");
+    let box2 = document.getElementById("gameStartBox");
+    if(box1) box1.style.display = "none";
+    if(box2) box2.style.display = "block";
+});
+
+// 2. 修复旧档读取后，大盘歌手、榜单数据、买歌市场全部消失的问题
+let oldLoadGameFix = window.loadGame;
+window.loadGame = function(slot) {
+    oldLoadGameFix(slot);
+    let needUpdate = false;
+    // 如果发现世界是空的，强行重新生成乐坛！
+    if(!worldArtists || worldArtists.length === 0) {
+        initNPCs();
+        needUpdate = true;
+    }
+    // 如果发现榜单是空的，强行给大盘NPC发歌霸榜！
+    if(!trackPool || trackPool.length === 0) {
+        worldArtists.forEach(art => {
+            let g = gs[Math.floor(Math.random()*gs.length)];
+            trackPool.push(createEntity(ts[Math.floor(Math.random()*ts.length)], art.n, false, "track", g, art.fans, 60, 60, time.y, time.m, time.w));
+        });
+        needUpdate = true;
+    }
+    // 如果买歌市场空了，重新进货
+    if(!marketSongs || marketSongs.length === 0) {
+        genMarket();
+    }
+    if(needUpdate) {
+        updatePeakRanks();
+        saveGameImmediate();
+        console.log("已成功为旧档修复并注入全新的乐坛大盘数据！");
+    }
+};
+
+// 3. 完美复活 V (聊天/朋友圈) 及各大社交平台功能
+window.refreshFeed = function() {
+    let topics = ["这首新歌太神了吧！", "今天又是单曲循环的一天", "有点期待新专辑", "最近乐坛好无聊", "这榜单刷得太明显了吧..."];
+    let h = "";
+    for(let i=0; i<6; i++) h += `<div class="cmt-box"><b>网友${Math.floor(Math.random()*9000)+1000}</b>: ${topics[Math.floor(Math.random()*topics.length)]}</div>`;
+    document.getElementById("feedList").innerHTML = h;
+};
+
+window.refreshTrend = function() {
+    let trends = ["# 乐坛新星崛起", "# 谁是目前的流媒霸主", "# 某歌手疑似假唱", "# 颁奖季大预测", "# 最新打歌舞台神级现场"];
+    document.getElementById("trendList").innerHTML = trends.map((t,i) => `<div style="padding:8px 0;border-bottom:1px solid #eee;"><span style="color:#e6683c;font-weight:bold;">${i+1}</span> ${t}</div>`).join('');
+};
+
+window.vBack = function() {
+    document.getElementById("vChat").style.display = "none";
+    document.getElementById("vList").style.display = "block";
+};
+
+// 拦截并强化打开 APP 时的界面渲染
+let oldOpenAppForV = window.openApp;
+window.openApp = function(appId) {
+    oldOpenAppForV(appId);
+    if(appId === 'V') {
+        document.getElementById("vList").innerHTML = conts.map((c, i) => `<div class="card" style="padding:10px;margin-bottom:5px;cursor:pointer;background:#fefcf5;" onclick="openVChat(${i})"><b>${escapeHTML(c.n)}</b> <span style="font-size:11px;color:#888;">(${c.t} | 好感:${c.affinity||0})</span></div>`).join('');
+        document.getElementById("vList").style.display = "block";
+        document.getElementById("vChat").style.display = "none";
+    } else if(['Wb', 'X', 'Ins'].includes(appId)) {
+        refreshFeed();
+        refreshTrend();
+    }
+};
+
+window.openVChat = function(i) {
+    window.curVChatIdx = i;
+    document.getElementById("vList").style.display = "none";
+    document.getElementById("vChat").style.display = "block";
+    let c = conts[i];
+    document.getElementById("vName").innerText = c.n;
+    if(!c.h) c.h = [];
+    document.getElementById("vHistory").innerHTML = c.h.map(msg => `<div class="${msg.me ? 'bubble-me' : 'bubble-other'}"><span>${escapeHTML(msg.txt)}</span></div>`).join('');
+};
+
+window.vSendMsg = function() {
+    let txt = document.getElementById("vIn").value.trim();
+    if(!txt) return;
+    let c = conts[window.curVChatIdx];
+    if(!c.h) c.h = [];
+    c.h.push({me: true, txt: txt});
+    document.getElementById("vIn").value = "";
+    openVChat(window.curVChatIdx); // 立即渲染自己的消息
+    
+    // 自动简易回复
+    setTimeout(() => {
+        c.h.push({me: false, txt: "收到啦！"});
+        openVChat(window.curVChatIdx);
+        saveGame();
+    }, 600);
+};
+
+window.vSendMom = function() {
+    let txt = document.getElementById("vMomIn").value.trim();
+    if(!txt) return;
+    let h = `<div class="card" style="padding:10px;margin-bottom:5px;background:#fefcf5;"><b>我</b>: ${escapeHTML(txt)}<br><span style="font-size:10px;color:#888;">刚刚</span></div>` + document.getElementById("vMomList").innerHTML;
+    document.getElementById("vMomList").innerHTML = h;
+    document.getElementById("vMomIn").value = "";
+    alert("朋友圈发送成功！");
+};
 
 // ==================== 代码结束 ====================
 </script>
