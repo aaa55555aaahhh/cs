@@ -1994,7 +1994,7 @@ window.renderChart = function() {
             t._chartPts = Math.floor(baseStm);
             t._chartStr = t._chartPts.toLocaleString() + " 次有效播放";
         } 
-                 else if (curChartPlatform === 'Sale') {
+        else if (curChartPlatform === 'Sale') {
             // == 纯销量榜（融合历史总销量与日增绿字） ==
             let totalSales = Math.floor(t.stmGlobal / 150); // 历史总销量
             let dailySales = Math.floor((t.stmGlobal_Day || 0) / 150); // 日增销量
@@ -2002,7 +2002,7 @@ window.renderChart = function() {
             t._chartPts = totalSales;
             t._chartStr = `${totalSales.toLocaleString()} 张 <span style="color:#25d366;font-size:11px;font-weight:bold;">+${dailySales.toLocaleString()}</span>`;
         }
-);
+    });
     
       // 排序并渲染 (分数越高的排越前)
     list.sort((a,b) => b._chartPts - a._chartPts);
