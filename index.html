@@ -2144,6 +2144,133 @@ window.vSendMom = function() {
     document.getElementById("vMomIn").value = "";
     alert("朋友圈发送成功！");
 };
+// ==================== 修复丢失的NPC与艺人榜显示功能 ====================
+window.renderNpcList = function() {
+    let box = document.getElementById("uiNpcList");
+    if(!box) return;
+    if(!worldArtists || worldArtists.length === 0) {
+        box.innerHTML = "<p style='text-align:center;color:#888;padding:10px;'>暂无艺人数据</p>";
+        return;
+    }
+    // 按照粉丝数从高到低排序
+    worldArtists.sort((a,b) => b.fans - a.fans);
+    
+    box.innerHTML = worldArtists.map((npc, idx) => {
+        let fanStr = npc.fans >= 10000 ? (npc.fans/10000).toFixed(1) + "万" : npc.fans;
+        return `
+        <div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <b style="font-size:14px;">${idx+1}. ${escapeHTML(npc.n)}</b>
+                <span style="font-size:11px;color:#888;margin-left:5px;">${escapeHTML(npc.gender)} | ${npc.age}岁</span>
+                <br><span style="font-size:12px;color:#c8a440;">粉丝: ${fanStr}</span>
+            </div>
+            <button class="sec inline" style="font-size:12px;padding:4px 8px;" onclick="openEditNpc('${npc.id}')">✏️ 编辑</button>
+        </div>`;
+    }).join('');
+};
+
+window.openEditNpc = function(id) {
+    let npc = worldArtists.find(x => x.id === id);
+    if(!npc) return;
+    document.getElementById("eNpcOldName").value = npc.n; // 记录旧名字，方便连同榜单歌曲一起改
+    document.getElementById("eNpcName").value = npc.n;
+    document.getElementById("eNpcAge").value = npc.age;
+    document.getElementById("eNpcGender").value = npc.gender;
+    document.getElementById("eNpcFans").value = npc.fans;
+    
+    // 切换到编辑标签页
+    let tabs = document.getElementById('npcBoxTabs').parentElement.querySelectorAll('.sub-tab');
+    if(tabs.length > 1) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById("npcEditSec").classList.add("active");
+        document.getElementById("npcListSec").classList.remove("active");
+        document.getElementById("npcAddSec").classList.remove("active");
+    }
+};
+
+window.saveNpcEdit = function() {
+    let oldName = document.getElementById("eNpcOldName").value;
+    let newName = document.getElementById("eNpcName").value.trim();
+    let age = parseInt(document.getElementById("eNpcAge").value) || 20;
+    let gender = document.getElementById("eNpcGender").value.trim() || "保密";
+    let fans = parseInt(document.getElementById("eNpcFans").value) || 0;
+    
+    let npc = worldArtists.find(x => x.n === oldName);
+    if(!npc) return alert("未找到该艺人！");
+    
+    npc.n = newName;
+    npc.age = age;
+    npc.gender = gender;
+    npc.fans = fans;
+    
+    // 同步更新大盘里的歌曲作者名字
+    trackPool.forEach(t => {
+        if(t.artist === oldName) t.artist = newName;
+    });
+    
+    alert("✅ 艺人资料修改成功！");
+    document.getElementById("npcEditSec").classList.remove("active");
+    document.getElementById("npcListSec").classList.add("active");
+    renderNpcList();
+    saveGame();
+};
+
+window.submitCustomNPC = function() {
+    let name = document.getElementById("aNpcName").value.trim();
+    let gender = document.getElementById("aNpcGender").value.trim() || "未知";
+    let fans = parseInt(document.getElementById("aNpcFans").value) || 50000;
+    
+    if(!name) return alert("艺人名字不能为空！");
+    
+    let newNpc = {
+        id: "npc_custom_" + Date.now(),
+        n: name,
+        fans: fans,
+        age: 20 + Math.floor(Math.random() * 10),
+        gender: gender,
+        alb: "Debut Album",
+        bnaSubmissions: 0
+    };
+    worldArtists.push(newNpc);
+    
+    // 给新艺人发一首出道单曲
+    let g = gs[Math.floor(Math.random()*gs.length)];
+    let trackName = ts[Math.floor(Math.random()*ts.length)] + " " + ts[Math.floor(Math.random()*ts.length)];
+    let newTrack = createEntity(trackName, name, false, "track", g, fans, 60, 60, time.y, time.m, time.w);
+    trackPool.push(newTrack);
+    
+    alert(`🎉 成功注入艺人【${name}】并发布了出道单曲《${trackName}》！`);
+    document.getElementById("aNpcName").value = "";
+    renderNpcList();
+    updatePeakRanks();
+    saveGame();
+};
+
+window.batchGenNpc = function() {
+    let count = parseInt(document.getElementById("aNpcCount").value) || 5;
+    for(let i=0; i<count; i++) {
+        let artName = npcNames[Math.floor(Math.random()*npcNames.length)] + " " + ts[Math.floor(Math.random()*ts.length)];
+        let fans = Math.floor(Math.random()*2000000) + 10000;
+        let g = gs[Math.floor(Math.random()*gs.length)];
+        
+        worldArtists.push({
+            id: "npc_batch_" + Date.now() + "_" + i, 
+            n: artName, 
+            fans: fans, 
+            age: 18 + Math.floor(Math.random()*15), 
+            gender: Math.random() > 0.5 ? "女" : "男", 
+            alb: "Album", 
+            bnaSubmissions: 0
+        });
+        
+        let trackName = ts[Math.floor(Math.random()*ts.length)];
+        trackPool.push(createEntity(trackName, artName, false, "track", g, fans, Math.random()*40+40, Math.random()*40+40, time.y, time.m, time.w));
+    }
+    alert(`✅ 成功批量生成了 ${count} 名对手并投放了大盘歌曲！`);
+    renderNpcList();
+    updatePeakRanks();
+    saveGame();
+};
 
 // ==================== 代码结束 ====================
 </script>
