@@ -794,20 +794,20 @@ window.startGame = function(){
       trackPool=[]; myWorks=[]; curPj=null; prog=0; curAlbPj=null; historyAwards=[]; lib=[]; std=[]; worldArtists=[]; writers=[]; 
       conts=[{id:1,n:"妈妈",t:"家人",h:[],affinity:50,isCohabiting:false},{id:2,n:"爸爸",t:"家人",h:[],affinity:50,isCohabiting:false},{id:3,n:"经纪人",t:"工作伙伴",h:[],affinity:30,isCohabiting:false}];
       
-            initCos(); initNPCs(); genMarket(); updAttr(); updTimeUI(); updateAlbProjUI(); renderMapCompany();
+                 initCos(); initNPCs(); genMarket(); updAttr(); updTimeUI(); updateAlbProjUI(); renderMapCompany();
       updatePeakRanks(); // 初始化生成完大盘后，立马计算一次排位！
       saveGameImmediate();
-还
       
       document.getElementById("createPage").classList.remove("active"); 
       document.getElementById("createPage").style.display = "none";
+
       document.getElementById("gameMain").classList.add("active"); 
       document.getElementById("gameMain").style.display = "block";
       document.getElementById("topBar").style.display="flex"; 
   } catch(e) {
       console.error(e);
       // 增强型报错：如果再出错，会直接把具体的错误代码打印在屏幕上，方便我们定位
-      alert("初始化遇到致命错误：\n" + e.message + "\n\n请截图此弹窗！");
+      alert("初始化遇到致命错误：\n" + e.message + "\n\n请截图此弹窗！");如果同年发行的专辑概率将再次上升20%，达成100%概率。嗯嗯。我现在正在搞科技拉的计算公式。而且啦那没有登台过之前应该怎么增加？那就根据他的来，比如100万有多少登录的概率，200万有多少登录录的概率300万有多少登录的概率？1000万有多少？还有就是可以把场次分为，还有就是可以分为领衔艺人，还有其他的普通表演艺人或者受邀嘉宾艺人。还有分为主场，还有小场子之类的。反正就是和现实一样。
   }
 }
 
@@ -2029,6 +2029,192 @@ window.renderChart = function() {
     }).join('');
     box.innerHTML = h || "<p style='text-align:center;'>暂无数据</p>";
 }
+// ==================== ⬇️ 补丁开始：直接复制这段插入到最后 ⬇️ ====================
+
+// 1. 注入科切拉舞台弹窗 UI
+document.body.insertAdjacentHTML('beforeend', `
+<div class="modal" id="mCoachella">
+    <div class="modal-box">
+        <h3 class="tg" style="text-align:center;">🌴 Coachella 登台演出</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:10px;">你已成功受邀登台！请筹备你的舞台表现：</p>
+        <label style="font-size:12px;">选择舞美设计:</label>
+        <select id="selCoaStage">
+            <option value="1">顶级斥资 ($50万) - 极高加成</option>
+            <option value="2">普通规格 ($5万) - 正常</option>
+            <option value="3">极简乐队风 (免费) - 考验硬实力</option>
+        </select>
+        <label style="font-size:12px;margin-top:5px;display:block;">选择主打表演曲目:</label>
+        <select id="selCoaSong"></select>
+        <button onclick="confirmCoachella()" style="margin-top:15px;">🎤 开始演出</button>
+    </div>
+</div>
+`);
+
+// 2. 注入热度判定函数 ["扑单","平单","小火单","大火单","小爆单","大爆单","妖单"]
+window.getHeatLabel = function(sl, type) {
+    if(!sl) sl = 0;
+    if(sl >= 10000000) return type==='album'?"🔥 神专":"🔥 妖单";
+    if(sl >= 5000000) return type==='album'?"大爆专":"大爆单";
+    if(sl >= 2000000) return type==='album'?"小爆专":"小爆单";
+    if(sl >= 1000000) return type==='album'?"大热专":"大火单";
+    if(sl >= 500000) return type==='album'?"小热专":"小火单";
+    if(sl >= 100000) return type==='album'?"平专":"平单";
+    return type==='album'?"扑专":"扑单";
+};
+
+// 3. 重写专辑详情与歌曲列表（恢复热度显示）
+window.openAlbDetail = function(idx) {
+    let a = albs[idx];
+    let h = a.s.map(function(song){
+        let t = trackPool.find(x => (x.n === song.n || x.n === escapeHTML(song.n)) && x.isMe);
+        if(!t) return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;"><b>${escapeHTML(song.n)}</b> (未产生榜单数据)</div>`;
+        
+        let heat = getHeatLabel(t.slTotal, 'track');
+        let heatTag = `<span style="background:#fefcf5;border:1px solid #d1c290;padding:2px 6px;border-radius:4px;font-size:10px;color:#c8a440;margin-left:5px;">${heat}</span>`;
+        
+        let promoBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单(耗1天/10精)</button>`;
+            
+        return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;border:1px solid #eee;"><b>${escapeHTML(t.n)}</b> ${heatTag} <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br><span style="font-size:11px;color:#666;">全球播放: ${t.stmGlobal.toLocaleString()} | 销量: ${t.slTotal.toLocaleString()}</span><br>${promoBtn}</div>`;
+    }).join('');
+    $("mAlbDetailTitle").innerText = `《${a.n}》收录曲`;
+    $("mAlbDetailContent").innerHTML = h;
+    $("mAlbDetail").classList.add("open");
+};
+
+window.renderAlb = function(){ 
+    $("listAList").innerHTML = albs.map(function(a,i){ 
+        let heat = getHeatLabel(a.trackRef ? a.trackRef.slTotal : 0, 'album');
+        let heatTag = `<span style="background:#fff8e8;border:1px solid #c8a440;padding:2px 6px;border-radius:4px;font-size:11px;color:#c8a440;margin-left:5px;font-weight:bold;">${heat}</span>`;
+        let dlxBtn = `<button class="sec inline" style="margin-top:5px;" onclick="openDeluxe(${i})">🌟追加豪华版</button>`; 
+        let detailBtn = `<button class="sec inline" style="margin-top:5px;" onclick="openAlbDetail(${i})">📖歌曲一览/打单</button>`; 
+        return `<div class="card"><b>${escapeHTML(a.n)}</b> ${heatTag} (${a.st}) <br><span style="font-size:12px;color:#666;">收录:${a.s.length}首歌曲</span><br>感知分: ${a.trackRef.Spub.toFixed(1)} <br>累计销量: ${a.trackRef.slTotal.toLocaleString()} <br>${dlxBtn} ${detailBtn}</div>`; 
+    }).join(''); 
+};
+
+// 4. 接管 Coachella 舞台与演出评级判定
+let oldDoShow = window.doShow;
+window.doShow = function(id, name, prob) {
+    if(id !== 'c1') {
+        oldDoShow(id, name, prob); // 世界杯和超级碗继续走老逻辑
+        return;
+    }
+    
+    if(!costEnergy(10)) return; 
+    advHour(24 * 7); // 推演1周等结果
+    
+    let roll = Math.random() * 100;
+    if (roll > prob) {
+        alert(`❌ 邀约失败！\n主办方评估后拒绝了你的科切拉登台请求。(当前成功率 ${prob}%)`);
+        return;
+    }
+
+    let f = ad.st.f;
+    let tierName = "";
+    let gain = 0;
+    if (f >= 30000000) { tierName = "Headliner 主舞台领衔压轴"; gain = 3000000; }
+    else if (f >= 10000000) { tierName = "主舞台黄金时段参演"; gain = 1500000; }
+    else if (f >= 3000000) { tierName = "中型帐篷舞台 (Sahara/Mojave)"; gain = 500000; }
+    else { tierName = "小型副舞台 (新兴艺人)"; gain = 100000; }
+
+    ad.tempCoaGain = gain;
+    ad.tempCoaTier = tierName;
+    ad.showsData['c1'] = time.y; 
+    
+    let myTrks = trackPool.filter(x => x.isMe && x.type === "track");
+    $("selCoaSong").innerHTML = myTrks.map(t => `<option value="${t.id}">${escapeHTML(t.n)}</option>`).join('') || '<option value="">无歌曲可唱 (现场随便扭扭)</option>';
+    
+    $("mCoachella").classList.add("open"); // 成功后，打开独立的筹备弹窗
+};
+
+window.confirmCoachella = function() {
+    let stageType = parseInt($("selCoaStage").value);
+    let cost = stageType === 1 ? 500000 : (stageType === 2 ? 50000 : 0);
+    if(ad.m < cost) return alert("资金不足以支付该舞美！");
+    ad.m -= cost;
+    
+    let songId = $("selCoaSong").value;
+    let t = trackPool.find(x => x.id === songId);
+    
+    // 八维能力判定：台风、唱功、舞蹈
+    let attrScore = (ad.sk.s * 0.5 + ad.sk.v * 0.3 + ad.sk.d * 0.2);
+    let bonus = stageType === 1 ? 20 : (stageType === 2 ? 5 : -10);
+    let finalScore = attrScore + bonus + (Math.random() * 40 - 20); // 加入部分随机性
+    
+    closeM("mCoachella");
+    
+    if (!ad.stageBuff) ad.stageBuff = { god: false, bad: false };
+    
+    let resultTitle, resultMsg, streamBoost;
+    if (finalScore >= 85) {
+        resultTitle = "🌟 神级现场！";
+        resultMsg = "舞美与实力的完美结合引发全网轰动！选演单曲获得大幅限时回春，同时你为【下次回归积累了极高的神级期待值】！（注意：双刃剑机制，下次发专/发歌若口碑好则一飞冲天，若口碑烂则遭疯狂反噬）";
+        streamBoost = t ? t.stmGlobal * 0.3 + 500000 : 0;
+        ad.stageBuff.god = true; ad.stageBuff.bad = false;
+    } else if (finalScore < 40) {
+        resultTitle = "💩 车祸灾难！";
+        resultMsg = "破音、划水、舞美廉价被全网群嘲。部分吃瓜路人让这首歌流媒小幅上升，但严重破坏了口碑！【你下一次回归的初始成绩将受损】！";
+        streamBoost = t ? t.stmGlobal * 0.05 + 50000 : 0;
+        ad.stageBuff.god = false; ad.stageBuff.bad = true;
+    } else {
+        resultTitle = "✅ 无功无过";
+        resultMsg = "一次中规中矩的表演。稳住了粉丝基本盘，也给选演歌曲带来了常规的曝光涨幅。";
+        streamBoost = t ? t.stmGlobal * 0.15 + 150000 : 0;
+        ad.stageBuff.god = false; ad.stageBuff.bad = false;
+    }
+    
+    if (t) {
+        t.stmGlobal += streamBoost;
+        t.slTotal += Math.floor(streamBoost/150);
+        // 增加后续触发随机大回春的隐含概率
+        t.viralChance = (t.viralChance || 0.05) + 0.20; 
+    }
+    
+    ad.st.f += ad.tempCoaGain;
+    ad.st.h += 50;
+    ad.awd.unshift(`${time.y}年 - 登顶【科切拉】(${ad.tempCoaTier})，缔造${resultTitle.split(" ")[1]}！`);
+    
+    updAttr(); renderShows(); saveGame();
+    alert(`【${ad.tempCoaTier}】\n\n${resultTitle}\n${resultMsg}\n\n🔥 狂揽 ${ad.tempCoaGain.toLocaleString()} 粉丝！\n🎵 《${t?t.n:'无'}》借由舞台效应，流媒激增 ${Math.floor(streamBoost).toLocaleString()}！`);
+};
+
+// 5. 自动接管系统底层产出，触发【神级期待反噬】的蝴蝶效应
+let originalCreateEntity = window.createEntity;
+window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="") {
+    let t = originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat);
+    if(isMe && ad.stageBuff) {
+        if(ad.stageBuff.god) {
+            // 下次回归口碑验证
+            if(t.Spub >= 70) {
+                t.stmGlobal = Math.floor(t.stmGlobal * 1.6); // 增幅60%
+                t.stmUS = Math.floor(t.stmUS * 1.6);
+                setTimeout(() => alert(`🌟 神级现场红利兑现！\n因为你上次在科切拉的神级表现，大众对新作品期待极高！加上本次作品口碑过硬(乐评≥70)，首发流媒直接暴涨 60%！`), 500);
+            } else {
+                t.stmGlobal = Math.floor(t.stmGlobal * 0.4); // 大扑街
+                t.stmUS = Math.floor(t.stmUS * 0.4);
+                let fanLoss = Math.floor(ad.st.f * 0.1);
+                ad.st.f -= fanLoss;
+                setTimeout(() => alert(`📉 神级期待遭反噬！\n大家本以为你会延续科切拉神级水准，结果新作品口碑平庸(乐评<60)，导致严重的失望反噬！流媒暴跌 60%，脱粉 ${fanLoss.toLocaleString()} 人！`), 500);
+            }
+            ad.stageBuff.god = false; // 清除神级buff
+        } else if(ad.stageBuff.bad) {
+            t.stmGlobal = Math.floor(t.stmGlobal * 0.8);
+            t.stmUS = Math.floor(t.stmUS * 0.8);
+            setTimeout(() => alert(`💩 灾难现场余波！\n由于上次科切拉的车祸表现，路人对你的新歌带有天然偏见，初始流媒被砍了 20%！`), 500);
+            ad.stageBuff.bad = false; // 清除坏buff
+        }
+        
+        // 修正重新推演后的三级榜单数据
+        t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7);
+        t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS;
+        t.slTotal = Math.floor(t.stmGlobal/150); 
+    }
+    return t;
+};
+// ==================== ⬆️ 补丁结束 ⬆️ ====================
+</script>
+</body>
+</html>
+
 </script>
 </body>
 </html>
