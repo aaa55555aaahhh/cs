@@ -2374,6 +2374,91 @@ window.renderWritersApp = function() {
         </div>`;
     }).join('');
 };
+// ==================== 修复丢失的榜单大盘与乐评APP ====================
+
+// 1. 补全榜单的状态变量和切换功能，拯救空白大盘
+let curChType = 'track'; 
+let curChReg = 'Global'; 
+let curChTime = 'Week';
+
+window.switchChartType = function(type) {
+    curChType = type;
+    let tabs = document.querySelectorAll('#mChart .sub-tab-bar')[0].querySelectorAll('.sub-tab');
+    if(tabs) tabs.forEach(t => t.classList.remove('active'));
+    
+    if(type === 'track' && document.getElementById('tabChartTrack')) document.getElementById('tabChartTrack').classList.add('active');
+    if(type === 'album' && document.getElementById('tabChartAlbum')) document.getElementById('tabChartAlbum').classList.add('active');
+    if(type === 'daily' && document.getElementById('tabChartDaily')) document.getElementById('tabChartDaily').classList.add('active');
+    if(type === 'album_daily' && document.getElementById('tabChartAlbumDaily')) document.getElementById('tabChartAlbumDaily').classList.add('active');
+    
+    renderChart();
+};
+
+window.switchChartRegion = function(reg) {
+    curChReg = reg;
+    document.getElementById('btnChartGlobal').style.background = reg === 'Global' ? '#c8a440' : '#f0e9d0';
+    document.getElementById('btnChartGlobal').style.color = reg === 'Global' ? '#000' : '#333';
+    document.getElementById('btnChartUS').style.background = reg === 'US' ? '#c8a440' : '#f0e9d0';
+    document.getElementById('btnChartUS').style.color = reg === 'US' ? '#000' : '#333';
+    renderChart();
+};
+
+window.switchChartTime = function(timeStr) {
+    curChTime = timeStr;
+    let map = {'Day':0, 'Week':1, 'Month':2, 'Year':3, 'Decade':4};
+    let timeBar = document.getElementById('timeSpanBar');
+    if(timeBar) {
+        let tabs = timeBar.querySelectorAll('.sub-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        if(tabs[map[timeStr]]) tabs[map[timeStr]].classList.add('active');
+    }
+    renderChart();
+};
+
+// 2. 补全丢失的乐评 APP 渲染函数
+window.renderReviewApp = function(appId) {
+    let isRS = (appId === 'RS');
+    let title = isRS ? "📖 滚石乐评 (Rolling Stone)" : "📰 Pitchfork / Bitch 乐评";
+    let box = document.getElementById("mInfoContent");
+    
+    // 找出大盘里所有的歌曲和专辑，按最新倒序排列
+    let list = trackPool.filter(x => x.type === "track" || x.type === "album").slice().reverse();
+    
+    if(list.length === 0) {
+        box.innerHTML = "<p style='text-align:center;color:#888;'>大盘里还没有任何发行的作品</p>";
+    } else {
+        // 只展示最近发行的 50 个作品的乐评
+        box.innerHTML = list.slice(0, 50).map(t => {
+            let scoreText = isRS ? t.rs : t.bx;
+            if (!scoreText) scoreText = "[暂无评分]";
+            
+            // 提取分数用来染色
+            let scoreNum = parseFloat(scoreText.match(/[\d.]+/));
+            let color = "#333";
+            if(!isNaN(scoreNum)) {
+                if(isRS) { color = scoreNum >= 80 ? "#25d366" : (scoreNum < 50 ? "#e6683c" : "#333"); }
+                else { color = scoreNum >= 8.0 ? "#25d366" : (scoreNum < 5.0 ? "#e6683c" : "#333"); }
+            }
+            
+            let typeTag = t.type === "album" ? `<span class="tier-badge" style="background:#555;">专辑</span>` : `<span class="tier-badge" style="background:#8e44ad;">单曲</span>`;
+            
+            return `
+            <div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;${t.isMe ? 'border-left:3px solid #c8a440;background:#fff8e8;' : ''}">
+                <b>${escapeHTML(t.n)}</b> ${typeTag}
+                <br><span style="font-size:11px;color:#888;">歌手: ${escapeHTML(t.artist)}</span>
+                <div style="margin-top:8px;font-size:15px;font-weight:bold;color:${color};">
+                    ${scoreText}
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:4px;">
+                    大众综合感知分: <b style="color:#111;">${t.Spub ? t.Spub.toFixed(1) : '--'}</b>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    document.getElementById("mInfoTitle").innerText = title;
+    document.getElementById("mInfo").classList.add("open");
+};
 
 // ==================== 代码结束 ====================
 </script>
