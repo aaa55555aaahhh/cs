@@ -1346,18 +1346,22 @@ window.checkAutoAward = function(){
 }
 
 // ==================== MV与打单 ====================
-// 修复1：完全兼容新流媒数据的 MV 渲染
+// 修复1：完全兼容新流媒数据的 MV 渲染 (加入歌曲详情按钮)
 function renderMVMap(){ 
     let trks = trackPool.filter(function(x){return x.isMe && x.type==="track"}); 
     $("listMV").innerHTML = trks.length ? trks.map(function(t){
-        // 兼容新旧数据，防止读取 undefined 导致崩溃
         let streamCount = t.stmGlobal ? t.stmGlobal : (t.stm ? t.stm : 0);
-        let btnLyric = t.hasLyricMV ? `<button class="sec inline" disabled style="opacity:0.5;">✅ 已拍歌词版</button>` : `<button class="sec inline" onclick="shootMV('${t.id}', 0)">歌词MV($1万, 耗10精)</button>`;
-        let btnReal = t.hasRealMV ? `<button class="inline" disabled style="opacity:0.5;">✅ 已拍真人主打</button>` : `<button class="inline" onclick="shootMV('${t.id}', 1)">真人MV(100万起或公司报销)</button>`;
+        let btnLyric = t.hasLyricMV ? `<button class="sec inline" disabled style="opacity:0.5;">✅ 已拍歌词版</button>` : `<button class="sec inline" onclick="shootMV('${t.id}', 0)">歌词MV</button>`;
+        let btnReal = t.hasRealMV ? `<button class="inline" disabled style="opacity:0.5;">✅ 已拍真人主打</button>` : `<button class="inline" onclick="shootMV('${t.id}', 1)">真人MV</button>`;
+        let btnDetail = `<button class="sec inline" onclick="viewSongStats('${t.id}')">📄 详情</button>`;
         
         return `<div class="card" style="padding:10px;margin-bottom:8px;">
-            <b>${escapeHTML(t.n)}</b> <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br>
-            <span style="font-size:11px;color:#888;">全球流媒: ${streamCount.toLocaleString()} | 历史MV次数: ${t.mvN||0}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <b>${escapeHTML(t.n)}</b> 
+                ${btnDetail}
+            </div>
+            <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br>
+            <span style="font-size:11px;color:#888;">流媒: ${streamCount.toLocaleString()} | MV次数: ${t.mvN||0}</span>
             <div style="margin-top:6px;">${btnLyric}${btnReal}</div>
         </div>`
     }).join('') : "<p style='font-size:12px;color:#888;'>没有可拍MV的单曲 (需先发行单曲或全专)</p>"; 
@@ -1573,8 +1577,40 @@ function renderLib(){
     }).join('') || "<p style='font-size:12px;color:#888;'>曲库空空如也，快去写歌吧！</p>"; 
 }
 function renderStdMap(){ 
-    $("listStudio").innerHTML = `<b>一键录制(耗10精)：</b><br>` + lib.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><button class="inline" onclick="startRecord(${i})">录制</button></div>`}).join('') + `<hr style="margin:10px 0;border:#eee 1px solid;"><b>成品库(可发单曲)：</b><br>`+ std.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><button class="sec inline" onclick="openRelSingle('${x.id}')">发单曲</button></div>`}).join(''); 
+    $("listStudio").innerHTML = `<b>一键录制(耗10精)：</b><br>` + lib.map(function(x,i){return `<div class="row"><span>${escapeHTML(x.n)}</span><button class="inline" onclick="startRecord(${i})">录制</button></div>`}).join('') + `<hr style="margin:10px 0;border:#eee 1px solid;"><b>成品库(未发行)：</b><br>`+ std.map(function(x,i){return `
+        <div style="padding:8px 0;border-bottom:1px solid #eee;display:flex;flex-direction:column;gap:5px;">
+            <b>${escapeHTML(x.n)}</b>
+            <div style="display:flex;gap:5px;">
+                <button class="sec inline" style="flex:1;font-size:11px;" onclick="preheatSong('${escapeHTML(x.n)}')">📢 预热造势</button>
+                <button class="inline" style="flex:1;font-size:11px;" onclick="openRelSingle('${x.id}')">🚀 正式发歌</button>
+            </div>
+        </div>`}).join(''); 
 }
+
+window.preheatSong = function(songName) {
+    if(!costEnergy(5)) return;
+    let fanBase = ad.st.f;
+    let hypeValue = Math.floor(Math.random() * fanBase); // 根据粉丝基数随机产生期待度
+    
+    let isTrend = false;
+    let trendName = "";
+    
+    if(hypeValue > 10000000) {
+        isTrend = true; trendName = `爆！# ${ad.s}新单曲${songName}神级预告`; ad.st.f += 50000;
+    } else if (hypeValue > 3000000) {
+        isTrend = true; trendName = `热！# ${ad.s}即将发行${songName}`; ad.st.f += 10000;
+    } else if (hypeValue > 500000) {
+        isTrend = true; trendName = `新！# 歌手${ad.s}新歌剧透`; ad.st.f += 2000;
+    }
+    
+    advHour(2);
+    if(isTrend) {
+        alert(`📢 预热成功！\n庞大的粉丝基数和期待度让你的新歌冲上了热搜：\n【${trendName}】\n(涨粉加成已发放)`);
+    } else {
+        alert(`📢 你发布了新歌预热。\n但由于目前粉丝基数或观众期待度不够，该消息并未登上全网热搜。继续努力积累人气吧！`);
+    }
+    saveGame();
+};
 window.startRecord = function(i){ 
     if(curPj && curPj.type==="write") return alert("正在写歌，请先完成！"); 
     if(!costEnergy(10)) return; 
@@ -2568,11 +2604,21 @@ window.viewSongStats = function(songId) {
     let statsHtml = `
     <div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:60vh;overflow-y:auto;">
         <h3 class="tg" style="margin-bottom:5px;">${escapeHTML(t.n)}</h3>
+                // 查找这首歌在历史上拿过的奖
+        let songAwards = historyAwards.filter(awd => awd.includes(t.n) && awd.includes(ad.s));
+        let awdHtml = songAwards.length > 0 
+            ? `<div style="margin-top:5px;padding:5px;background:#fff;border:1px solid #c8a440;border-radius:4px;color:#c8a440;"><b>🏆 获奖荣誉：</b><br>${songAwards.map(a => a.replace(/<[^>]+>/g, ' ').substring(0,30)+"...").join('<br>')}</div>` 
+            : `<div style="margin-top:5px;padding:5px;background:#eee;border-radius:4px;color:#888;">暂无重要颁奖典礼获奖记录</div>`;
+
+        let statsHtml = `
+    <div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:60vh;overflow-y:auto;">
+        <h3 class="tg" style="margin-bottom:5px;">${escapeHTML(t.n)}</h3>
         <div style="font-size:12px;color:#666;margin-bottom:10px;">
             专辑定位：<b style="color:#8e44ad;">${singleTag}</b><br>
             成就认证：<b style="color:#e6683c;">${heatLabel}</b> ${certStr}<br>
             在榜周数：<b>${t.weeks || 1} 周</b><br>
             全球峰值：<b>#${t.peakS || '--'}</b> | 美国峰值：<b>#${t.peakB || '--'}</b>
+            ${awdHtml}
         </div>
         <hr style="border:0;border-top:1px dashed #ccc;margin:10px 0;">
         <div style="font-size:12px;line-height:1.8;">
@@ -4181,6 +4227,293 @@ window.quickAction = function(type) {
         }
     }
 }
+window.viewMailDetail = function(idx) {
+    let m = currentMails[idx];
+    if(!m) return;
+    
+    // 生成回复框 (如果不是空邮件提示的话)
+    let replyHtml = "";
+    if(m.id !== "empty") {
+        replyHtml = `
+        <div style="margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">
+            <p style="font-size:12px; color:#666; margin-bottom:5px;">回复信件 (AI将根据内容生成后续反应):</p>
+            <textarea id="inMailReplyText_${idx}" style="height:60px;" placeholder="输入你的回复内容..."></textarea>
+            <button onclick="sendMailReply(${idx})">发送回信</button>
+        </div>
+        `;
+    }
+    
+    // 某些特殊的邀请邮件自带同意/拒绝按钮
+    let customBtn = m.btnHtml ? `<div style="margin-top:15px;">${m.btnHtml}</div>` : "";
+
+    let html = `
+    <div style="background:#fff; padding:10px; border-radius:8px;">
+        <button class="sec inline" style="margin-bottom:10px; font-size:12px; padding:4px 8px;" onclick="renderMailboxUI()">← 返回收件箱</button>
+        <h3 class="tg" style="font-size:16px; margin-bottom:5px;">${escapeHTML(m.title)}</h3>
+        <div style="font-size:11px; color:#888; margin-bottom:15px;">发件人: ${escapeHTML(m.sender)}</div>
+        <div style="font-size:13px; line-height:1.6; color:#333; white-space:pre-wrap;">${escapeHTML(m.content)}</div>
+        ${customBtn}
+        ${replyHtml}
+    </div>
+    `;
+    
+    document.getElementById('mInfoTitle').innerText = "✉️ 阅读信件";
+    document.getElementById('mInfoContent').innerHTML = html;
+};
+// ==================== 补丁：社交平台帖子详情与AI评论互动 ====================
+// 重新渲染热搜，加入点击详情功能
+window.refreshTrend = function() {
+    let trends = [
+        { t: "# 乐坛新星崛起", c: "最近那位新人真的是杀疯了，大家觉得TA的新歌好听吗？" },
+        { t: "# 谁是目前的流媒霸主", c: "现在榜单前十全是神仙打架，究竟谁能笑到最后？" },
+        { t: "# 颁奖季大预测", c: "马上就要到颁奖季了，这届年度最佳你们压谁？" },
+        { t: "# 最新打歌舞台神级现场", c: "刚看完打歌节目，这Live实力也太强了吧，完全是行走的CD机！" }
+    ];
+    document.getElementById("trendList").innerHTML = trends.map((item, i) => 
+        `<div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; background:#f9f9f9; border-radius:6px; margin-bottom:5px;" 
+            onclick="viewPostDetail('${item.t}', '${item.c}', false)">
+            <span style="color:#e6683c;font-weight:bold;margin-right:5px;">${i+1}</span> ${item.t}
+            <div style="font-size:11px; color:#888; margin-top:3px;">点击查看讨论详情...</div>
+        </div>`
+    ).join('');
+};
+
+// 重新渲染自己的发布记录（个人帖子）
+let oldPostSocial = window.postSocial;
+window.postSocial = function() {
+    oldPostSocial();
+    let text = document.getElementById("mTextInput").value || "分享了一条动态";
+    // 把自己的帖子记录下来
+    posts.mom.unshift({ t: "我的动态", c: text });
+    renderMyPosts();
+};
+
+window.renderMyPosts = function() {
+    let list = document.getElementById("mTextList");
+    if(!list) return;
+    list.innerHTML = posts.mom.map((p, i) => 
+        `<div style="padding:8px; border:1px solid #c8a440; background:#fff8e8; border-radius:6px; margin-bottom:5px; cursor:pointer;"
+            onclick="viewPostDetail('${p.t}', '${p.c}', true)">
+            <b>${p.t}</b><br><span style="font-size:12px;color:#333;">${p.c}</span>
+            <div style="font-size:11px; color:#888; margin-top:3px;">点击查看粉丝评论...</div>
+        </div>`
+    ).join('');
+};
+
+// 查看帖子详情的核心UI与AI接入
+window.viewPostDetail = function(title, content, isMine) {
+    let mockComments = isMine 
+        ? ["啊啊啊支持你！", "终于发动态了，期待新作品！", "前排合影留念！"]
+        : ["吃瓜群众路过。", "我觉得一般般吧，没那么夸张。", "楼主说得对，我也这么觉得。"];
+    
+    let html = `
+    <div style="background:#fefcf5; padding:15px; border-radius:8px; border:1px solid #d1c290; max-height:60vh; overflow-y:auto;">
+        <h3 style="color:#e6683c; margin-bottom:10px;">${escapeHTML(title)}</h3>
+        <div style="font-size:13px; line-height:1.6; color:#333; margin-bottom:15px; padding-bottom:10px; border-bottom:1px dashed #ccc;">
+            ${escapeHTML(content)}
+        </div>
+        <b style="font-size:12px;">实时评论区：</b>
+        <div id="postCmtArea" style="margin-top:10px;">
+            <div class="cmt-box">${mockComments[0]}</div>
+            <div class="cmt-box">${mockComments[1]}</div>
+            <div class="cmt-box">${mockComments[2]}</div>
+        </div>
+        
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <input type="text" id="postReplyInput" placeholder="发条评论参与讨论..." style="margin:0; flex:1; font-size:12px;">
+            <button class="sec inline" onclick="sendPostReply('${escapeHTML(title)}')">发送</button>
+        </div>
+    </div>`;
+    
+    document.getElementById("mGameInputTitle").innerText = "帖子详情页";
+    document.getElementById("mGameInputDesc").innerHTML = html;
+    document.getElementById("mGameInputField").style.display = "none";
+    document.getElementById("mGameInput").classList.add("open");
+};
+
+// 发送评论并请求 AI 生成网友跟帖
+window.sendPostReply = async function(topic) {
+    let input = document.getElementById("postReplyInput").value.trim();
+    if(!input) return alert("请写点什么！");
+    let cmtArea = document.getElementById("postCmtArea");
+    let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
+    
+    // 先把自己的评论放上去
+    cmtArea.innerHTML += `<div class="cmt-box" style="border-left-color:#c8a440; background:#fff8e8;"><b>你:</b> ${escapeHTML(input)}</div>`;
+    document.getElementById("postReplyInput").value = "";
+    
+    if(tk) {
+        let btn = event.target; btn.innerText = "生成中..."; btn.disabled = true;
+        let prompt = `在话题“${topic}”下，玩家发表了评论：“${input}”。请用一句简短的话模拟网友对这条评论的跟帖回复（赞同、反驳或吃瓜）。只返回回复内容。`;
+        let res = await api(prompt);
+        btn.innerText = "发送"; btn.disabled = false;
+        if(res) cmtArea.innerHTML += `<div class="cmt-box" style="border-left-color:#8e44ad;"><b>网友跟帖:</b> ${escapeHTML(res)}</div>`;
+    } else {
+        cmtArea.innerHTML += `<div class="cmt-box" style="border-left-color:#888;"><b>网友跟帖:</b> (默默点了个赞，由于未连接API，没有更多回复)</div>`;
+    }
+};
+
+// ==================== 补丁：给排行榜和乐评增加详情入口 ====================
+// 在乐评平台生成详情按钮
+let oldRenderReviewApp = window.renderReviewApp;
+window.renderReviewApp = function(appId) {
+    oldRenderReviewApp(appId);
+    let cards = document.getElementById("mInfoContent").querySelectorAll('.card');
+    cards.forEach(card => {
+        let titleTag = card.querySelector('b');
+        if(titleTag) {
+            let songName = titleTag.innerText;
+            // 查找这首歌是不是玩家的单曲
+            let t = trackPool.find(x => x.isMe && x.n === songName && x.type === "track");
+            if(t) {
+                titleTag.insertAdjacentHTML('afterend', ` <button class="sec inline" style="padding:2px 6px; font-size:10px;" onclick="closeM('mInfo'); viewSongStats('${t.id}')">📊 成就详情</button>`);
+            }
+        }
+    });
+};
+// ==================== 补丁：多专辑并行架构 (Multi-Album Project) ====================
+
+// 初始化多专辑存储列表（兼容存档）
+if(typeof ad !== 'undefined') {
+    ad.multiAlbPjs = ad.multiAlbPjs || [];
+}
+
+// 拦截原版的打开专辑立项界面函数（假设你的界面有独立的面板或者弹窗）
+window.openMultiAlbumPj = function() {
+    if(!ad.multiAlbPjs) ad.multiAlbPjs = [];
+    
+    // 如果原版有 curAlbPj 且未被收录，则迁移过来
+    if(window.curAlbPj && window.curAlbPj.n && ad.multiAlbPjs.length === 0) {
+        ad.multiAlbPjs.push(window.curAlbPj);
+        window.curAlbPj = null;
+    }
+
+    let html = `
+    <div style="background:#fefcf5; padding:15px; border-radius:8px; max-height:70vh; overflow-y:auto;">
+        <h3 style="color:#8e44ad; margin-bottom:10px;">💿 多专辑并行企划中心</h3>
+        <p style="font-size:12px;color:#666;">你可以同时筹备多张专辑，按不同概念收录歌曲。</p>
+        <button class="inline" onclick="createNewAlbumPj()">➕ 新建专辑企划 (耗10精)</button>
+        <hr style="margin:10px 0;border:#eee 1px solid;">
+        <div id="multiAlbList"></div>
+    </div>`;
+    
+    document.getElementById("mGameInputTitle").innerText = "专辑企划中心";
+    document.getElementById("mGameInputDesc").innerHTML = html;
+    document.getElementById("mGameInputField").style.display = "none";
+    document.getElementById("mGameInput").classList.add("open");
+    
+    renderMultiAlbList();
+};
+
+window.createNewAlbumPj = function() {
+    if(!costEnergy(10)) return;
+    let name = prompt("请输入新专辑名称：", "未命名专辑");
+    if(!name) return;
+    
+    ad.multiAlbPjs.push({
+        id: "alb_" + new Date().getTime(),
+        n: name,
+        tracks: [],
+        concept: ["流行", "R&B", "嘻哈", "电子", "摇滚", "独立"][Math.floor(Math.random()*6)],
+        progress: 0
+    });
+    renderMultiAlbList();
+};
+
+window.renderMultiAlbList = function() {
+    let list = document.getElementById("multiAlbList");
+    if(!list) return;
+    
+    // 筛选出录音室里尚未发行的成品（假设 std 数组是成品库）
+    let availTracks = typeof std !== 'undefined' ? std : [];
+    
+    list.innerHTML = ad.multiAlbPjs.length === 0 
+        ? `<div style="color:#888;font-size:12px;">当前没有正在筹备的专辑。</div>`
+        : ad.multiAlbPjs.map((alb, idx) => `
+        <div style="border:1px solid #c8a440; padding:10px; margin-bottom:10px; border-radius:6px; background:#fff;">
+            <b>${escapeHTML(alb.n)}</b> <span style="font-size:11px;color:#8e44ad;">[${alb.concept}概念]</span>
+            <div style="font-size:12px; color:#555; margin:5px 0;">已收录: ${alb.tracks.length} 首</div>
+            
+            <select id="sel_trk_${idx}" style="font-size:12px; width:100%; margin-bottom:5px;">
+                <option value="">-- 选择录音室成品加入这张专辑 --</option>
+                ${availTracks.map(t => `<option value="${t.id}">${escapeHTML(t.n)}</option>`).join('')}
+            </select>
+            
+            <div style="display:flex; gap:5px;">
+                <button class="sec inline" style="flex:1; font-size:11px;" onclick="addTrkToMultiAlb(${idx})">📥 收录歌曲</button>
+                <button class="inline" style="flex:1; font-size:11px;" onclick="releaseMultiAlb(${idx})" ${alb.tracks.length < 3 ? 'disabled' : ''}>🚀 正式发行全专</button>
+            </div>
+        </div>
+    `).join('');
+};
+
+window.addTrkToMultiAlb = function(albIdx) {
+    let sel = document.getElementById("sel_trk_" + albIdx);
+    let trkId = sel.value;
+    if(!trkId) return alert("请先选择一首歌曲！");
+    
+    // 从成品库找到这首歌
+    let trkIndex = std.findIndex(x => x.id === trkId);
+    if(trkIndex === -1) return alert("歌曲不存在！");
+    
+    let trk = std[trkIndex];
+    ad.multiAlbPjs[albIdx].tracks.push(trk);
+    
+    // 把歌从录音室成品中移除，防止重复发给其他专辑
+    std.splice(trkIndex, 1);
+    
+    alert(`歌曲《${trk.n}》已成功收录至专辑《${ad.multiAlbPjs[albIdx].n}》！`);
+    renderMultiAlbList();
+    if(typeof renderStdMap === 'function') renderStdMap(); // 刷新背景的录音室界面
+};
+
+window.releaseMultiAlb = function(albIdx) {
+    let alb = ad.multiAlbPjs[albIdx];
+    if(alb.tracks.length < 3) return alert("一张专辑至少需要3首歌！");
+    
+    if(!confirm(`确认现在发行专辑《${alb.n}》吗？`)) return;
+    
+    // 模拟发行逻辑（将临时企划转化为真实专辑，并把里面的歌压入大池子）
+    let newAlb = {
+        id: alb.id, type: "album", n: alb.n, isMe: true,
+        weeks: 0, stm: 0, stmGlobal: 0, sales: 0, unit: 0,
+        tracksNum: alb.tracks.length
+    };
+    
+    trackPool.unshift(newAlb);
+    
+    // 将专辑内的歌曲也转入已发行流媒池
+    alb.tracks.forEach(t => {
+        t.type = "track";
+        t.isMe = true;
+        t.albId = newAlb.id;
+        t.stm = 0; t.stmGlobal = 0; t.weeks = 0;
+        trackPool.unshift(t);
+    });
+    
+    // 增加粉丝和提示
+    ad.st.f += alb.tracks.length * 5000; 
+    alert(`🎉 恭喜！你的新专辑《${alb.n}》正式全网发行！\n包含了 ${alb.tracks.length} 首歌曲。`);
+    
+    // 从筹备列表中移除
+    ad.multiAlbPjs.splice(albIdx, 1);
+    
+    advHour(4);
+    closeM('mGameInput');
+    saveGame();
+    if(typeof renderList === 'function') renderList();
+};
+
+// 覆盖原版的录音室立项按钮，将入口指向我们新的多专辑中心
+setTimeout(() => {
+    // 寻找是否有包含“专辑”或“立项”字样的按钮，将其 onclick 劫持到 openMultiAlbumPj
+    let btns = document.querySelectorAll('button');
+    btns.forEach(b => {
+        if(b.innerText.includes("专辑立项") || b.innerText.includes("筹备专辑")) {
+            b.setAttribute('onclick', 'openMultiAlbumPj()');
+        }
+    });
+}, 1000);
 
 // ==================== 代码结束 ====================
 </script>
