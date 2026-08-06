@@ -104,8 +104,25 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     <div id="keyAuthBox" style="padding:20px 10px; border-radius:12px; background:#fff8e8; border:1px solid #f0e9d0;">
         <p style="font-size:14px; font-weight:bold; margin-bottom:15px; color:#a67c00;">✨ 游玩权限验证 ✨</p>
         <input type="text" id="inGameKey" style="text-align:center; margin-bottom:15px; border:1px solid #d1c290; border-radius:8px; padding:12px; font-size:14px; background:#fff;" placeholder="请输入购买密钥...">
-        <button id="btnVerifyKey" onclick="forceVerifyKey()" style="background:#c8a440; color:#000; border:none; padding:12px 20px; border-radius:8px; font-weight:bold; font-size:14px; width:100%; box-shadow:0 2px 5px rgba(200,164,64,0.3);">确认解锁游戏</button>
-    </div>
+        // ==================== 权限验证机制 ====================
+window.forceVerifyKey = function() {
+    let keyInput = document.getElementById("inGameKey").value.trim();
+    
+    // 这里可以设置你的游戏密码，比如密码是 "123456"
+    if(keyInput === "123456") {
+        localStorage.setItem("isGameUnlocked", "true"); // 真正记住解锁状态！
+        alert("验证成功！欢迎来到星路制作人！");
+        
+        // 核心修复：确保隐藏验证框，显示开始游戏信息的填写框
+        document.getElementById("keyAuthBox").style.display = "none";
+        document.getElementById("gameStartBox").style.display = "block";
+    } else if(keyInput === "") {
+        alert("请输入购买密钥！");
+    } else {
+        alert("密钥错误，请重新输入！");
+    }
+}
+
 
     <div id="gameStartBox" style="display:none;">
         <input id="inRealName" placeholder="真实姓名 (必填)" style="text-align:center; font-size:14px;">
@@ -2127,12 +2144,18 @@ window.advTimeByFlow = function(){
 
 // ==================== 2. 免密记忆与防卡死弹窗 ====================
 window.addEventListener("DOMContentLoaded", function() {
-    let isUnlocked = localStorage.getItem("isGameUnlocked");
-    let hasSave = localStorage.getItem("starProSave_1") || localStorage.getItem("starProSave_2") || localStorage.getItem("starProSave_3");
-    if(isUnlocked === "true" || hasSave) {
-        document.getElementById("keyAuthBox").style.display = "none";
-        document.getElementById("gameStartBox").style.display = "block";
-    }
+    // 延迟一点执行，防止被其他界面的初始化代码覆盖掉 display 状态
+    setTimeout(function() {
+        let isUnlocked = localStorage.getItem("isGameUnlocked");
+        // 获取存档（兼容旧档和新档）
+        let hasSave = localStorage.getItem("starProSave_1") || localStorage.getItem("starProSave_2") || localStorage.getItem("starProSave_3") || localStorage.getItem("starProSave_");
+        
+        if(isUnlocked === "true" || hasSave) {
+            if(document.getElementById("keyAuthBox")) document.getElementById("keyAuthBox").style.display = "none";
+            if(document.getElementById("gameStartBox")) document.getElementById("gameStartBox").style.display = "block";
+        }
+    }, 100);
+// ...
     
     if(!document.getElementById("mGameAlert")) {
         document.body.insertAdjacentHTML('beforeend', `
