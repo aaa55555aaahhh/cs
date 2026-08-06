@@ -7453,7 +7453,7 @@ window.advTime = function(weeks, showMsg) {
         }
     }
 };
-// ==================== 补丁：社交生态增强、粉圈关系与人缘系统 ====================
+// ==================== 紧急修复：粉圈关系与人缘表报错越界 ====================
 
 // 1. 初始化关系表与常量设定
 const P_REL = ["伴侣", "恋人", "情人", "亲人", "兄弟/闺蜜", "好朋友", "朋友", "陌生", "讨厌", "坏血"];
@@ -7463,6 +7463,7 @@ const F_REL = ["相亲相爱", "陌生", "互撕"];
 if (typeof ad.relations === 'undefined') ad.relations = {};
 
 function initNpcRelations() {
+    if(!worldArtists) return;
     worldArtists.forEach(npc => {
         if (!npc.relations) npc.relations = {};
         // 随机给NPC和玩家生成初始关系（大部分是陌生）
@@ -7477,15 +7478,17 @@ function initNpcRelations() {
     });
 }
 
-// 2. 在艺人详细档案中展示“人缘与粉圈关系”
-let oldOpenNpcDetailForRel = window.openNpcDetail;
+// 2. 在艺人详细档案中安全展示“人缘与粉圈关系”
+let oldOpenNpcDetailForRelFixed = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     initNpcRelations();
-    oldOpenNpcDetailForRel(id);
+    
+    // 执行原版的基础面板渲染
+    oldOpenNpcDetailForRelFixed(id);
     
     let npc = worldArtists.find(x => x.id === id);
     if(npc) {
-        let rel = npc.relations['player'] || { p: "陌生", f: "陌生" };
+        let rel = npc.relations && npc.relations['player'] ? npc.relations['player'] : { p: "陌生", f: "陌生" };
         let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "陌生" ? "#888" : "#25d366");
         let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
         
@@ -7498,9 +7501,18 @@ window.openNpcDetail = function(id) {
             ${rel.p === "好朋友" && rel.f === "互撕" ? '<br><span style="font-size:10px;color:#8e44ad;">(😅 饭圈奇观：正主私下关系极好，但两家粉丝打得不可开交)</span>' : ''}
         </div>`;
         
-        // 动态插入到大奖记录前面
+        // 【核心修复】：使用更安全的 DOM 插入方式，避免 replace 报错找不到元素
         let contentDiv = document.getElementById("mInfoContent");
-        contentDiv.innerHTML = contentDiv.innerHTML.replace('<h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">🏆 获奖记录</h4>', relHtml + '<h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">🏆 获奖记录</h4>');
+        if(contentDiv) {
+            // 找到包含 "获奖记录" 的 h4 标签，插在它前面
+            let headers = contentDiv.querySelectorAll("h4");
+            for(let i = 0; i < headers.length; i++) {
+                if(headers[i].innerText.includes("🏆 获奖记录")) {
+                    headers[i].insertAdjacentHTML('beforebegin', relHtml);
+                    break;
+                }
+            }
+        }
     }
 };
 
