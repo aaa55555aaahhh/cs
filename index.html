@@ -95,6 +95,21 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 .bubble-me span{display:inline-block;background:#c8e6c9;padding:8px 12px;border-radius:12px 12px 2px 12px;max-width:85%;text-align:left;font-size:13px;}
 .bubble-other{text-align:left;margin:6px 0;}
 .bubble-other span{display:inline-block;background:#f1f1f1;padding:8px 12px;border-radius:12px 12px 12px 2px;max-width:85%;font-size:13px;}
+/* --- 紧急粉碎隐形遮罩层补丁 --- */
+#loginPage { 
+    position: fixed !important; 
+    inset: 0 !important; 
+    z-index: 2147483647 !important; /* 浏览器允许的最高层级，神挡杀神 */
+    background: #f5f5f7 !important; 
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+/* 强制让弹窗的透明背景不再阻挡点击 */
+.modal { pointer-events: none !important; }
+.modal-box { pointer-events: auto !important; }
+#mGameAlert { display: none !important; }
+
 </style>
 </head>
 <body>
@@ -110,42 +125,36 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- 登录页面（强制暴力破解版） -->
-<div id="loginPage" class="page active" style="position:relative; z-index:99999;">
-  <div class="card" style="margin-top:20px;text-align:center;">
-    <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人 - 登录验证</h2>
-    <input id="loginPwd" type="password" placeholder="输入密码 (123456)" style="text-align:center;">
+<!-- 登录页面（免疫全盘崩溃的终极纯净版） -->
+<div id="loginPage">
+  <div class="card" style="width: 90%; max-width: 400px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+    <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人</h2>
     
-    <button id="btnLogin" onclick="
+    <input id="loginPwd" type="password" placeholder="请输入密码 (默认 123456)" style="text-align:center; font-size:16px; padding:15px;">
+    
+    <button onclick="
       var pwd = document.getElementById('loginPwd').value;
       if(pwd !== '123456' && pwd !== '') { alert('密码错误！'); return; }
       
-      // 强制清除所有可能卡死屏幕的黑屏/弹窗遮罩
-      document.querySelectorAll('.modal').forEach(function(m){ m.classList.remove('open'); m.style.display='none'; });
+      // 暴力销毁自己，露出下面的游戏界面
+      var lp = document.getElementById('loginPage');
+      if(lp) lp.remove();
       
-      // 隐藏登录页
-      document.getElementById('loginPage').style.display = 'none';
-      document.getElementById('loginPage').classList.remove('active');
+      // 激活游戏主界面，不依赖任何外部容易崩溃的变量
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
       
-      // 尝试自动读档或进入创建页
-      var hasSave = localStorage.getItem('starProSave_1') || localStorage.getItem('starProSave_2');
+      // 判断是否有存档
+      var hasSave = false;
+      try { hasSave = localStorage.getItem('starProSave_1') || localStorage.getItem('starProSave_2'); } catch(e) {}
+      
       if(hasSave && typeof loadGame === 'function') {
-          loadGame(1);
+          try { loadGame(1); } catch(e) { 
+              document.getElementById('createPage').classList.add('active'); 
+          }
       } else {
-          var cp = document.getElementById('createPage');
-          if(cp) { cp.classList.add('active'); cp.style.display = 'block'; }
+          document.getElementById('createPage').classList.add('active');
       }
-    " style="margin-top:20px;padding:16px;">登录进入</button>
-
-    <button onclick="
-      // 紧急逃生按钮：无视一切直接强制进入游戏创建页
-      document.querySelectorAll('.modal').forEach(function(m){ m.classList.remove('open'); m.style.display='none'; });
-      document.getElementById('loginPage').style.display = 'none';
-      document.getElementById('loginPage').classList.remove('active');
-      var cp = document.getElementById('createPage');
-      if(cp) { cp.classList.add('active'); cp.style.display = 'block'; }
-    " style="margin-top:10px;padding:16px;background:#ff4d4f;color:#fff;border:none;">🚨 无法点击？点我强制免密跳过</button>
-
+    " style="margin-top:20px;padding:16px;font-size:16px;">🚀 进入游戏</button>
   </div>
 </div>
 
