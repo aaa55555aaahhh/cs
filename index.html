@@ -7309,6 +7309,239 @@ window.saveGameImmediate = function() {
     
     oldSaveGameImmediateSafe();
 };
+// ==================== 终极修复：修复艺人详情打不开、主页空白与公司消失 ====================
+
+// 1. 彻底修复艺人详细页面打不开与关系表不显示的问题
+window.openNpcDetail = function(id) {
+    if(typeof initNpcRelations === 'function') initNpcRelations();
+    if(typeof checkAndFixNPCs === 'function') checkAndFixNPCs();
+    
+    let npc = worldArtists.find(x => x.id === id);
+    if(!npc) return;
+    
+    // 兼容旧存档：如果没有八维属性，则根据粉丝量动态生成一组
+    if(!npc.sk) {
+        let base = Math.min(85, 30 + Math.floor(npc.fans / 2000000) * 10);
+        npc.sk = {
+            v: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
+            d: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 15)),
+            r: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 20)),
+            w: Math.max(1, Math.min(100, Math.floor(Math.random()*50) + base - 20)),
+            f: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base)),
+            s: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 5)),
+            fa: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
+            va: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 10))
+        };
+    }
+    
+    let npcWorks = trackPool.filter(t => t.artist === npc.n);
+    let albsHtml = npcWorks.filter(t => t.type === 'album').map(a => `<div>💿 《${escapeHTML(a.n)}》 <span style="font-size:11px;color:#888;">(销量: ${(a.slTotal||0).toLocaleString()})</span></div>`).join('');
+    let trksHtml = npcWorks.filter(t => t.type === 'track').map(t => {
+        let p = t.peakS ? `<span style="color:#c8a440;">最高#${t.peakS}</span>` : '';
+        return `<div>🎵 《${escapeHTML(t.n)}》 <span style="font-size:11px;color:#888;">(流媒: ${(t.stmGlobal||0).toLocaleString()})</span> ${p}</div>`;
+    }).join('');
+    
+    let npcAwards = historyAwards.filter(msg => msg.includes(npc.n));
+    let awdHtml = npcAwards.length ? npcAwards.map(msg => `<div style="font-size:11px;padding:4px 0;border-bottom:1px dashed #eee;">${msg}</div>`).join('') : "<p style='font-size:11px;color:#888;'>暂无获奖记录</p>";
+
+    let fanStr = npc.fans >= 10000 ? (npc.fans/10000).toFixed(1) + "万" : npc.fans;
+    let fanNameStr = npc.fanName ? `<span style="font-size:11px;color:#888;margin-left:5px;">粉丝名: ${escapeHTML(npc.fanName)}</span>` : '';
+    let realNameStr = (npc.realName && npc.realName !== npc.n) ? `<span style="font-size:11px;color:#888;margin-left:5px;">本名: ${escapeHTML(npc.realName)}</span>` : '';
+    let bioStr = npc.bio ? `<div style="font-size:11px;color:#555;background:#f0f0f0;padding:5px;border-radius:4px;margin-top:5px;">${npc.bio}</div>` : '';
+    let avatarHtml = npc.avatar ? `<img src="${npc.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #ccc;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;">无图</div>`;
+
+    // 关系与粉圈状态渲染
+    let rel = (npc.relations && npc.relations['player']) ? npc.relations['player'] : { p: "陌生", f: "陌生" };
+    let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "陌生" ? "#888" : "#25d366");
+    let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
+
+    let html = `
+    <div style="display:flex;gap:15px;align-items:center;margin-bottom:15px;background:#fefcf5;padding:10px;border-radius:8px;border:1px solid #eee;">
+        ${avatarHtml}
+        <div style="flex:1;line-height:1.6;">
+            <b>${escapeHTML(npc.n)}</b>${realNameStr} (${escapeHTML(npc.gender)}, ${npc.age}岁)<br>
+            粉丝: <b style="color:#c8a440;">${fanStr}</b> ${fanNameStr}<br>
+            <span style="font-size:11px;color:#888;">厂牌: <b>${escapeHTML(npc.co||'独立音乐人')}</b> | 性格: <b>${escapeHTML(npc.personality||'随机')}</b></span>
+            ${bioStr}
+            <button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;" onclick="closeM('mInfo'); openEditNpc('${npc.id}')">✏️ 手动修改艺人资料</button>
+        </div>
+    </div>
+    
+    <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">🔗 圈内关系 (与你)</h4>
+    <div style="font-size:12px;background:#f9f9f9;padding:10px;border-radius:8px;border:1px solid #eee;margin-bottom:15px;">
+        私下人缘关系：<b style="color:${pColor};">${escapeHTML(rel.p)}</b><br>
+        双方粉圈关系：<b style="color:${fColor};">${escapeHTML(rel.f)}</b>
+        ${rel.p === "坏血" ? '<br><span style="font-size:10px;color:#ff0000;">(⚠️ 警告：坏血关系将导致双方粉圈极度恶化，随时爆发血雨腥风)</span>' : ''}
+        ${rel.p === "好朋友" && rel.f === "互撕" ? '<br><span style="font-size:10px;color:#8e44ad;">(😅 饭圈奇观：正主私下关系极好，但两家粉丝打得不可开交)</span>' : ''}
+    </div>
+
+    <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">📊 八维属性</h4>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:15px;background:#fafafa;padding:10px;border-radius:8px;">
+        <div>唱功 (Vocal): <b>${npc.sk.v}</b></div><div>舞蹈 (Dance): <b>${npc.sk.d}</b></div>
+        <div>创作 (Write): <b>${npc.sk.w}</b></div><div>说唱 (Rap): <b>${npc.sk.r}</b></div>
+        <div>颜值 (Face): <b>${npc.sk.f}</b></div><div>台风 (Stage): <b>${npc.sk.s}</b></div>
+        <div>时尚 (Fashn): <b>${npc.sk.fa}</b></div><div>综艺 (Varity): <b>${npc.sk.va}</b></div>
+    </div>
+
+    <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">🏆 获奖记录</h4>
+    <div style="max-height:120px;overflow-y:auto;background:#fff;padding:8px;border:1px solid #eee;border-radius:6px;margin-bottom:15px;">
+        ${awdHtml}
+    </div>
+
+    <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">💿 发行作品</h4>
+    <div style="font-size:12px;line-height:1.8;max-height:150px;overflow-y:auto;background:#fff;padding:8px;border:1px solid #eee;border-radius:6px;">
+        ${albsHtml || '<span style="color:#888;">无专辑记录</span>'}<br>
+        ${trksHtml || '<span style="color:#888;">无单曲记录</span>'}
+    </div>
+    `;
+
+    document.getElementById("mInfoTitle").innerText = "艺人详细档案";
+    document.getElementById("mInfoContent").innerHTML = html;
+    document.getElementById("mInfo").classList.add("open");
+};
+
+// 2. 彻底重写地图唱片公司和个人档案刷新（修复主页空白和公司消失）
+window.renderMapCompany = function() {
+    if(coList.length === 0) initCos(); // 如果公司被清空，强行重新加载
+    if(ad.co === "独立"){ 
+        document.getElementById("boxSignCompany").style.display = "block"; 
+        document.getElementById("boxMyCompany").style.display = "none"; 
+        renderLbl(); 
+    } else { 
+        document.getElementById("boxSignCompany").style.display = "none"; 
+        document.getElementById("boxMyCompany").style.display = "block"; 
+        document.getElementById("btnMapCompany").innerText = "🏢 我的公司"; 
+        
+        let box = document.getElementById("boxMyCompany");
+        if(box && !document.getElementById("btnRenameCo")) {
+            let btnHtml = `<button id="btnRenameCo" class="sec inline" style="font-size:11px; padding:4px 8px; margin-bottom:10px;width:100%;" onclick="renameMyCompany()">✏️ 修改当前签约公司名称</button>`;
+            box.querySelector("h3").insertAdjacentHTML('afterend', btnHtml);
+        }
+        if(document.getElementById("txtMyCoGrade")) document.getElementById("txtMyCoGrade").innerText = (ad.Geffect || 1.0).toFixed(2);
+    }
+};
+
+window.updAttr = function() {
+    if(!document.getElementById("boxBasic")) return; 
+    let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
+    
+    document.getElementById("boxBasic").innerHTML = `
+    <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
+        <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+            ${avatarHtml}
+            <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
+        </div>
+        <div style="line-height:1.6;">
+            艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)})<br>
+            粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>
+            公司:${escapeHTML(ad.co)}
+        </div>
+    </div>
+    <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
+    `; 
+
+    document.getElementById("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
+    document.getElementById("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
+    
+    document.getElementById("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
+        let t = trackPool.find(tr => tr.id === x.id);
+        let cert = getCert(t ? t.slTotal : x.slTotal);
+        let peakText = t && t.peakS ? `<br><span style="color:#888;font-size:11px;">在榜 ${t.weeks} 周 | 全球最高: #${t.peakS} | 美国最高: #${t.peakB || '--'}</span>` : '';
+        return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
+            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${(t?t.slTotal:x.slTotal).toLocaleString()} 张 | 收入: $${x.revenue.toLocaleString()}${peakText}
+        </div>`;
+    }).join('') : "无"; 
+    
+    document.getElementById("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
+};
+
+
+// 3. 极具攻击性与真实感的“硬核粉圈撕逼帖”
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { n: ad.s, isMe: true }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    let trks = trackPool.filter(t => t.artist === targetArt.n || (targetArt.isMe && t.isMe));
+    
+    // 30% 概率：单人实绩吹水贴
+    if (rand < 0.3 && trks.length > 0) {
+        let bestSong = trks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0];
+        let title = targetArt.isMe ? `📊 【报喜】我家姐姐 ${targetArt.n} 杀疯了！` : `📊 【搬运】${targetArt.n} 粉丝整理的最全实绩图`;
+        let content = `不用多说，代表作《${bestSong.n}》数据一甩，路人都得服！不服的黑子先拿出你们家这种成绩的代表作再来叫叫叫！`;
+        return { type: "data", title: title, desc: content };
+    } 
+    // 20% 概率：饭圈安利帖
+    else if (rand < 0.5 && trks.length > 0) {
+        let rSong = trks[Math.floor(Math.random() * trks.length)];
+        return { type: "promo", title: `💖 【按头安利】入坑 ${targetArt.n} 必听神曲！`, desc: `近期单曲循环《${rSong.n}》出不去了！这绝美的音色和顶级的概念，全网还有谁能打？` };
+    } 
+    // 50% 概率：极度恶劣的血雨腥风撕逼帖
+    else {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        while (artA.n === artB.n && allArtistsList.length > 1) {
+            artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        }
+        
+        let rel = {p:"陌生", f:"陌生"};
+        if (artA.isMe || artB.isMe) {
+            let npcToCheck = artA.isMe ? artB : artA;
+            if(npcToCheck.relations && npcToCheck.relations['player']) rel = npcToCheck.relations['player'];
+        }
+
+        // 相亲相爱的互助贴
+        if (rel.f === "相亲相爱") {
+            return {
+                type: "help",
+                title: `🤝 【两家建交】家人们，去帮隔壁 ${artB.n} 冲冲销量！`,
+                desc: `正主私下关系极好，粉圈也是好姐妹！大家有余力的去把隔壁新歌销量拉一拉，别让那些乱七八糟的对家踩到我们头上了！`
+            };
+        } 
+        
+        // 极度攻击性的撕逼贴 (互撕/坏血/拉踩)
+        let dramaTitles = [
+            `🔥 【嘲】就 ${artA.n} 那点糊逼销量，也敢来碰瓷 ${artB.n} ？？`,
+            `🔥 别来倒贴了！${artB.n} 粉丝看了都觉得恶心！`,
+            `🔥 ${artA.n} 大粉已经破防了，在广场上发疯骂 ${artB.n} 呢！`,
+            `🔥 【科普】${artA.n} 到底有多水？拿不出代表作只能吸血 ${artB.n}！`
+        ];
+        
+        let dramaDescs = [
+            `拜托，你家姐姐/哥哥除了买营销还会干什么？流媒被 ${artB.n} 吊打，奖杯被 ${artB.n} 碾压，天天在热搜上发洗脑包，也不看看大盘认不认你家那种下水道成绩。别来沾边！`,
+            `真是要笑死在广场了，${artA.n} 的粉丝是不是不拉踩 ${artB.n} 就活不下去了？拿着那点野鸡榜单的废纸成绩到处吹，建议先去看看世界级榜单再来叫唤！`,
+            `纯路人都看不下去了，${artA.n} 这两年的作品简直是断崖式下跌，全靠老本撑着。反观 ${artB.n} 步步高升。建议 ${artA.n} 的粉早点认清现实，别再嘴硬了。`,
+            `你们两家能不能消停点？广场全被屠了！不过讲句公道话，${artA.n} 确实比不过 ${artB.n}，这有啥好争的，数据摆在这里，粉丝再怎么做表格也掩盖不了扑街的事实。`
+        ];
+        
+        return {
+            type: "drama",
+            title: dramaTitles[Math.floor(Math.random() * dramaTitles.length)],
+            desc: dramaDescs[Math.floor(Math.random() * dramaDescs.length)]
+        };
+    }
+};
+
+window.refreshFeed = function() {
+    let h = "";
+    // 强制生成 4 条不同类型的动态帖子，确保撕逼帖一定出现
+    for(let i=0; i<4; i++) {
+        let post = generateVarietyPost();
+        if (post) {
+            let borderColor = post.type === "drama" ? "#ff0000" : (post.type === "data" ? "#0055ff" : "#e91e63");
+            let bgColor = post.type === "drama" ? "#fff0f5" : (post.type === "data" ? "#e0f2fe" : "#fce4ec");
+            
+            h += `
+            <div class="cmt-box" style="cursor:pointer; border-left:3px solid ${borderColor}; background:${bgColor}; margin-bottom:8px;" 
+                 onclick="viewPostDetail('${post.title}', \`${post.desc}\`, false)">
+                <b>${post.title}</b><br>
+                <span style="font-size:12px;color:#555;display:block;margin-top:4px;">${post.desc.replace(/\n/g, '<br>')}</span>
+                <div style="font-size:10px;color:${borderColor};margin-top:6px;">👉 点击进入帖子查看实时互动与跟帖...</div>
+            </div>`;
+        }
+    }
+    document.getElementById("feedList").innerHTML = h;
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
