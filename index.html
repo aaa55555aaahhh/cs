@@ -2737,13 +2737,6 @@ window.loverSleep = function() {
 }
 // ==================== 终极拯救：免密直通 + 旧档NPC修复 + 手机APP复活 ====================
 
-// 1. 永久免密码！强制显示开始界面
-window.addEventListener("DOMContentLoaded", function() {
-    let box1 = document.getElementById("keyAuthBox");
-    let box2 = document.getElementById("gameStartBox");
-    if(box1) box1.style.display = "none";
-    if(box2) box2.style.display = "block";
-});
 
 // 2. 修复旧档读取后，大盘歌手、榜单数据、买歌市场全部消失的问题
 let oldLoadGameFix = window.loadGame;
