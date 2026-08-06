@@ -2597,14 +2597,7 @@ window.viewSongStats = function(songId) {
     </div>
     `;
     
-    document.getElementById("mGameInputTitle").innerText = "单曲全面数据";
-    document.getElementById("mGameInputDesc").innerHTML = statsHtml;
-    document.getElementById("mGameInputField").style.display = "none";
-    document.getElementById("mGameInput").querySelector("button").style.display = "none"; 
-    document.getElementById("mGameInput").querySelectorAll("button")[1].style.display = "none"; 
-    document.getElementById("mGameInput").classList.add("open");
-};
-
+ 
 window.replySongCmt = async function(songId) {
     let replyText = document.getElementById(`songReply_${songId}`).value.trim();
     if(!replyText) return alert("请填写回复内容！");
