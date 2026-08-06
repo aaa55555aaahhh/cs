@@ -828,7 +828,6 @@ function processAvatarUpload(file, callback) {
     reader.readAsDataURL(file);
 }
 
-const $ = function(id) { return document.getElementById(id); };
 let ad={}; let lib=[]; let std=[]; let albs=[]; let trackPool=[]; let marketSongs=[]; let worldArtists=[]; let writers=[]; let myWorks=[];
 let selG=[]; let selAG=[]; let posts={wb:[],x:[],ins:[],tiktok:[],mom:[]}; let curApp="";
 let time = { y:2026, m:1, w:1, d:1, h:0 }; let Mt = 1.0; 
@@ -6852,8 +6851,8 @@ window.advTime = function(weeks, showMsg) {
 // ==================== 补丁：社交生态增强、粉圈关系与人缘系统 (防爆档强化版) ====================
 
 // 1. 初始化关系表与常量设定
-const P_REL = ["伴侣", "恋人", "情人", "亲人", "兄弟/闺蜜", "好朋友", "朋友", "陌生", "讨厌", "坏血"];
-const F_REL = ["相亲相爱", "陌生", "互撕"];
+var P_REL = ["伴侣", "恋人", "情人", "亲人", "兄弟/闺蜜", "好朋友", "朋友", "陌生", "讨厌", "坏血"];
+var F_REL = ["相亲相爱", "陌生", "互撕"];
 
 // 确保玩家和NPC都有关系表对象
 if (typeof ad.relations === 'undefined') ad.relations = {};
@@ -6875,7 +6874,7 @@ function initNpcRelations() {
 }
 
 // 2. 在艺人详细档案中安全展示“人缘与粉圈关系”
-let oldOpenNpcDetailForRelFixed = window.openNpcDetail;
+let oldOpenNpcDetailForRelFixed2 = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     initNpcRelations();
     
