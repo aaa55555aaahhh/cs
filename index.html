@@ -4609,6 +4609,290 @@ window.openYouTube = function() {
     document.getElementById('mInfoTitle').innerText = "▶ YouTube Trending MV";
     document.getElementById('mInfo').classList.add('open');
 };
+// ==================== 补丁：修复修改歌名报错与弹窗丢失 ====================
+// 1. 强制检查并补全丢失的输入弹窗 HTML
+if(!document.getElementById("mGameInput")) {
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal" id="mGameInput" style="z-index:9999;">
+        <div class="modal-box">
+            <!-- 强行注入独立的关闭按钮 -->
+            <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0;" onclick="closeM('mGameInput');">✖ 关闭</button>
+            
+            <h3 class="tg" id="mGameInputTitle">输入信息</h3>
+            <p id="mGameInputDesc" style="font-size:12px;color:#666;margin-bottom:10px;"></p>
+            <input type="text" id="mGameInputField" placeholder="请输入...">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmGameInput()" style="flex:1;">确认</button>
+                <button class="sec" onclick="closeM('mGameInput')" style="flex:1;">取消</button>
+            </div>
+        </div>
+    </div>
+    `);
+}
+
+// 2. 修复游戏弹窗函数的调用，防止被之前详情页隐藏的按钮影响
+let originalGamePrompt = window.gamePrompt;
+window.gamePrompt = function(title, desc, defaultVal, callback) {
+    // 每次弹出输入框前，确保输入框和下方的【确认】【取消】按钮恢复可见
+    let inputField = document.getElementById("mGameInputField");
+    if(inputField) inputField.style.display = "block";
+    
+    let box = document.getElementById("mGameInput");
+    if(box) {
+        let btns = box.querySelectorAll("button");
+        // 恢复所有的按钮显示
+        btns.forEach(btn => btn.style.display = "block");
+    }
+    
+    // 调用原始逻辑
+    originalGamePrompt(title, desc, defaultVal, callback);
+};
+// ==================== 补丁：彻底修复弹窗丢失与新增公司改名 ====================
+
+// 1. 绕过原版错误的判定逻辑，强制独立注入丢失的输入弹窗和科切拉弹窗
+if(!document.getElementById("mGameInput")) {
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal" id="mGameInput" style="z-index:9999;">
+        <div class="modal-box">
+            <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0;" onclick="closeM('mGameInput');">✖ 关闭</button>
+            <h3 class="tg" id="mGameInputTitle">输入信息</h3>
+            <p id="mGameInputDesc" style="font-size:12px;color:#666;margin-bottom:10px;"></p>
+            <input type="text" id="mGameInputField" placeholder="请输入...">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button onclick="confirmGameInput()" style="flex:1;">确认</button>
+                <button class="sec" onclick="closeM('mGameInput')" style="flex:1;">取消</button>
+            </div>
+        </div>
+    </div>
+    `);
+}
+
+if(!document.getElementById("mCoachella")) {
+    document.body.insertAdjacentHTML('beforeend', `
+    <div class="modal" id="mCoachella" style="z-index:9999;">
+        <div class="modal-box">
+            <button class="modal-x" onclick="closeM('mCoachella')">X</button>
+            <h3 class="tg" style="text-align:center;">🌴 Coachella 登台演出</h3>
+            <label style="font-size:12px;">选择舞美设计:</label>
+            <select id="selCoaStage">
+                <option value="1">顶级斥资 ($50万) - 极高加成</option>
+                <option value="2">普通规格 ($5万) - 正常</option>
+                <option value="3">极简乐队风 (免费) - 考验硬实力</option>
+            </select>
+            <label style="font-size:12px;margin-top:5px;display:block;">选择主打表演曲目:</label>
+            <select id="selCoaSong"></select>
+            <button onclick="confirmCoachella()" style="margin-top:15px;">🎤 开始演出</button>
+        </div>
+    </div>
+    `);
+}
+
+// 修复输入框被其他页面隐藏后调不出来的问题
+let fixOriginalGamePrompt = window.gamePrompt;
+window.gamePrompt = function(title, desc, defaultVal, callback) {
+    let inputField = document.getElementById("mGameInputField");
+    if(inputField) inputField.style.display = "block";
+    let box = document.getElementById("mGameInput");
+    if(box) {
+        let btns = box.querySelectorAll("button");
+        btns.forEach(btn => btn.style.display = "block");
+    }
+    fixOriginalGamePrompt(title, desc, defaultVal, callback);
+};
+
+// 2. 增加【给当前签约的公司改名】的功能
+let oldRenderMapCompanyForRename = window.renderMapCompany;
+window.renderMapCompany = function() {
+    oldRenderMapCompanyForRename(); // 调回原版渲染
+    
+    let boxMyCompany = document.getElementById("boxMyCompany");
+    // 如果已经签约了（不是“独立”），就强行加一个改名按钮
+    if(boxMyCompany && ad.co !== "独立") {
+        if(!document.getElementById("btnRenameMyCompany")) {
+            let btnHtml = `<button id="btnRenameMyCompany" class="sec inline" style="margin-bottom:10px; font-size:12px; width:100%;" onclick="renameMyCompany()">✏️ 修改当前签约公司名称</button>`;
+            let pTag = boxMyCompany.querySelector("p");
+            if(pTag) pTag.insertAdjacentHTML('beforebegin', btnHtml);
+        }
+    }
+};
+
+window.renameMyCompany = function() {
+    gamePrompt("公司改名", "请输入你想要给公司改的新名字：", ad.co, function(newName) {
+        if(newName && newName.trim() !== "") {
+            ad.co = newName.trim();
+            alert("🏢 公司改名成功！现在的公司名是：" + ad.co);
+            updAttr(); // 更新档案面板里显示的公司名
+            renderMapCompany(); // 刷新地图面板
+            saveGame();
+        }
+    });
+};
+// ==================== 终极修复：弹窗分离、公司改名、已发单曲收录 ====================
+
+(function() {
+    // 1. 给各种弹窗分配独立的外壳，彻底解决互相抢占导致报错的问题
+    let modals = `
+    <div class="modal" id="mGamePrompt" style="z-index:9999;">
+        <div class="modal-box">
+            <h3 class="tg" id="mPromptTitle">输入信息</h3>
+            <p id="mPromptDesc" style="font-size:12px;color:#666;margin-bottom:10px;"></p>
+            <input type="text" id="mPromptInput" placeholder="请输入...">
+            <button onclick="confirmGamePrompt()">确认</button>
+            <button class="sec" onclick="closeM('mGamePrompt')">取消</button>
+        </div>
+    </div>
+    <div class="modal" id="mPostUI" style="z-index:9998;"><div class="modal-box" id="mPostUIContent" style="padding:0; background:transparent;"></div></div>
+    <div class="modal" id="mSongStatsUI" style="z-index:9997;"><div class="modal-box" id="mSongStatsUIContent" style="padding:0; background:transparent;"></div></div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modals);
+})();
+
+// 重写输入弹窗
+let promptCallback = null;
+window.gamePrompt = function(title, desc, defaultVal, callback) {
+    document.getElementById("mPromptTitle").innerText = title;
+    document.getElementById("mPromptDesc").innerText = desc || "";
+    document.getElementById("mPromptInput").value = defaultVal || "";
+    promptCallback = callback;
+    document.getElementById("mGamePrompt").classList.add("open");
+};
+window.confirmGamePrompt = function() {
+    let val = document.getElementById("mPromptInput").value;
+    closeM('mGamePrompt');
+    if(promptCallback) promptCallback(val);
+};
+
+// 重写帖子详情弹窗
+window.viewPostDetail = function(title, content, isMine) {
+    let mockComments = isMine 
+        ? ["啊啊啊支持你！", "终于发动态了，期待新作品！", "前排合影留念！"]
+        : ["吃瓜群众路过。", "我觉得一般般吧，没那么夸张。", "楼主说得对，我也这么觉得。"];
+    
+    let html = `
+    <div style="background:#fefcf5; padding:15px; border-radius:8px; border:1px solid #d1c290; max-height:80vh; overflow-y:auto; position:relative;">
+        <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0; z-index:10;" onclick="closeM('mPostUI');">✖ 关闭</button>
+        <h3 style="color:#e6683c; margin-bottom:10px; padding-right:60px;">${escapeHTML(title)}</h3>
+        <div style="font-size:13px; line-height:1.6; color:#333; margin-bottom:15px; padding-bottom:10px; border-bottom:1px dashed #ccc;">${escapeHTML(content)}</div>
+        <b style="font-size:12px;">实时评论区：</b>
+        <div id="postCmtArea" style="margin-top:10px;">
+            <div class="cmt-box">${mockComments[0]}</div><div class="cmt-box">${mockComments[1]}</div><div class="cmt-box">${mockComments[2]}</div>
+        </div>
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <input type="text" id="postReplyInput" placeholder="发条评论参与讨论..." style="margin:0; flex:1; font-size:12px;">
+            <button class="sec inline" onclick="sendPostReply('${escapeHTML(title)}')">发送</button>
+        </div>
+    </div>`;
+    document.getElementById("mPostUIContent").innerHTML = html;
+    document.getElementById("mPostUI").classList.add("open");
+};
+
+// 重写单曲详情弹窗
+let originalViewSongStats = window.viewSongStats;
+window.viewSongStats = function(songId) {
+    // 拦截旧版的调用，重新生成纯净版HTML
+    let t = trackPool.find(x => x.id === songId);
+    if(!t) return;
+    let certStr = window.getCert ? window.getCert(t.slTotal) : "";
+    let heatLabel = window.getHeatLabel ? window.getHeatLabel(t.slTotal, 'track') : "";
+    let singleTag = t.singleLabel ? `[${t.singleLabel}]` : "[非主打/弃曲]";
+    let songAwards = historyAwards.filter(awd => awd.includes(t.n) && awd.includes(ad.s));
+    let awdHtml = songAwards.length > 0 ? `<div style="margin-top:5px;padding:5px;border:1px solid #c8a440;border-radius:4px;color:#c8a440;"><b>🏆 获奖：</b><br>${songAwards.map(a=>a.replace(/<[^>]+>/g, ' ').substring(0,25)+"...").join('<br>')}</div>` : ``;
+
+    let html = `
+    <div style="background:#fefcf5; padding:15px; border-radius:8px; border:1px solid #d1c290; max-height:80vh; overflow-y:auto; position:relative;">
+        <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0;" onclick="closeM('mSongStatsUI');">✖ 返回</button>
+        <h3 class="tg" style="margin-bottom:5px; padding-right:50px;">${escapeHTML(t.n)}</h3>
+        <div style="font-size:12px;color:#666;margin-bottom:10px;">定位：<b style="color:#8e44ad;">${singleTag}</b><br>认证：<b style="color:#e6683c;">${heatLabel}</b> ${certStr}<br>周数：<b>${t.weeks||1} 周</b> | 最高：<b>#${t.peakS||'--'}</b>${awdHtml}</div>
+        <hr style="border:0;border-top:1px dashed #ccc;margin:10px 0;">
+        <div style="font-size:12px;line-height:1.8;">🌍 全球：<b>${(t.stmGlobal||0).toLocaleString()}</b><br>🇺🇸 美国：<b>${(t.stmUS||0).toLocaleString()}</b><br>💿 销量：<b>${(t.slTotal||0).toLocaleString()}</b> 张</div>
+        <hr style="border:0;border-top:1px dashed #ccc;margin:10px 0;">
+        <div style="font-size:12px;"><b style="color:#111;">粉丝评论：</b><div class="cmt-box" id="songCmtText_${t.id}">这首歌太好听了吧！</div>
+            <div style="display:flex;gap:5px;margin-top:5px;">
+                <input type="text" id="songReply_${t.id}" placeholder="回复..." style="margin:0;flex:1;font-size:12px;padding:6px;">
+                <button class="sec inline" onclick="replySongCmt('${t.id}')">发送</button>
+            </div>
+        </div>
+    </div>`;
+    document.getElementById("mSongStatsUIContent").innerHTML = html;
+    document.getElementById("mSongStatsUI").classList.add("open");
+};
+
+// 2. 公司改名功能
+window.renameMyCompany = function() {
+    let newName = prompt("请输入新的公司名称：", ad.co);
+    if(newName && newName.trim() !== "") {
+        ad.co = newName.trim();
+        renderMapCompany();
+        updAttr();
+        saveGame();
+        alert("✅ 公司名称已修改为：" + ad.co);
+    }
+};
+
+// 注入改名按钮到我的公司面板
+let oldRenderMapCompany = window.renderMapCompany;
+window.renderMapCompany = function() {
+    oldRenderMapCompany();
+    let box = document.getElementById("boxMyCompany");
+    if(box && !document.getElementById("btnRenameCo")) {
+        let btnHtml = `<button id="btnRenameCo" class="sec inline" style="font-size:11px; padding:4px 8px; margin-bottom:10px;" onclick="renameMyCompany()">✏️ 修改公司名称</button>`;
+        box.querySelector("h3").insertAdjacentHTML('afterend', btnHtml);
+    }
+};
+
+// 3. 将已发行的单曲收录进正在筹划的专辑里
+window.addReleasedSongToAlb = function() {
+    if(!curAlbPj) return alert("当前没有正在筹备的专辑！");
+    // 找出大盘里玩家已经发行的单曲
+    let myReleasedTrks = trackPool.filter(x => x.isMe && x.type === "track");
+    if(!myReleasedTrks.length) return alert("你还没有发过任何单曲！");
+    
+    // 过滤掉已经在专辑里的歌，防止重复收录
+    let availableTrks = myReleasedTrks.filter(t => !curAlbPj.s.some(s => s.n === t.n || s.id === t.id));
+    if(!availableTrks.length) return alert("所有已发行的歌曲都已经收录在这张专辑里了！");
+    
+    pickAction = "addReleasedToWip"; 
+    document.getElementById("mPickTitle").innerText = "📥 收录已发单曲"; 
+    document.getElementById("mPickExt").style.display="none"; 
+    document.getElementById("mPickList").innerHTML = availableTrks.map(x => `<div><input type="checkbox" id="pk_r_${x.id}" value="${x.id}"> ${escapeHTML(x.n)} <span style="font-size:10px;color:#888;">(已发)</span></div>`).join(''); 
+    document.getElementById("mPick").classList.add("open"); 
+};
+
+// 拦截 confirmPick 以处理已发单曲收录逻辑
+let oldConfirmPickForRelease = window.confirmPick;
+window.confirmPick = function() {
+    if(pickAction === "addReleasedToWip") {
+        let myReleasedTrks = trackPool.filter(x => x.isMe && x.type === "track");
+        myReleasedTrks.forEach(x => {
+            let cb = document.getElementById(`pk_r_${x.id}`);
+            if(cb && cb.checked) { 
+                // 为了兼容专辑发行逻辑，我们把这首歌复制一份塞进专辑曲目表
+                // 并打上 released: true 标记，这样发全专的时候就不会重复计算首发流媒了
+                let cloneSong = { id: x.id, n: x.n, g: [x.gnr], c: "已发收录", released: true, singleLabel: x.singleLabel || "先行曲" };
+                curAlbPj.s.push(cloneSong); 
+            }
+        }); 
+        updateAlbProjUI(); 
+        closeM('mPick'); 
+        saveGame();
+        alert("✅ 成功将已发单曲收录进专辑企划！");
+    } else {
+        if(typeof oldConfirmPickForRelease === 'function') oldConfirmPickForRelease();
+    }
+};
+
+// 注入“收录已发歌曲”按钮到专辑筹备面板
+let oldUpdateAlbProjUI = window.updateAlbProjUI;
+window.updateAlbProjUI = function() {
+    oldUpdateAlbProjUI();
+    if(curAlbPj) {
+        let btnArea = document.getElementById("boxWipSongs").nextElementSibling;
+        if(btnArea && btnArea.tagName === "BUTTON" && !document.getElementById("btnAddRelToAlb")) {
+            btnArea.insertAdjacentHTML('afterend', `<button id="btnAddRelToAlb" class="sec" style="margin-top:5px; background:#e0f2fe; color:#0369a1;" onclick="addReleasedSongToAlb()">📥 收录已发行的单曲</button>`);
+        }
+    }
+};
+
 
 // ==================== 代码结束 ====================
 </script>
