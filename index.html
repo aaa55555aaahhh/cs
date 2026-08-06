@@ -7609,6 +7609,163 @@ window.refreshFeed = function() {
     }
     document.getElementById("feedList").innerHTML = h;
 };
+// ==================== 补丁：社交生态增强、粉圈关系与人缘系统 (防爆档强化版) ====================
+
+// 1. 初始化关系表与常量设定
+const P_REL = ["伴侣", "恋人", "情人", "亲人", "兄弟/闺蜜", "好朋友", "朋友", "陌生", "讨厌", "坏血"];
+const F_REL = ["相亲相爱", "陌生", "互撕"];
+
+// 确保玩家和NPC都有关系表对象
+if (typeof ad.relations === 'undefined') ad.relations = {};
+
+function initNpcRelations() {
+    if(!worldArtists) return;
+    worldArtists.forEach(npc => {
+        // 强制保障数据结构，防止读档出现 null 或 undefined
+        if (!npc.relations || typeof npc.relations !== 'object') npc.relations = {};
+        if (!npc.relations['player'] || typeof npc.relations['player'] !== 'object') {
+            let roll = Math.random();
+            let pRel = "陌生", fRel = "陌生";
+            if (roll < 0.05) { pRel = "好朋友"; fRel = "相亲相爱"; }
+            else if (roll < 0.1) { pRel = "朋友"; fRel = "陌生"; }
+            else if (roll < 0.15) { pRel = "讨厌"; fRel = "互撕"; }
+            npc.relations['player'] = { p: pRel, f: fRel };
+        }
+    });
+}
+
+// 2. 在艺人详细档案中安全展示“人缘与粉圈关系”
+let oldOpenNpcDetailForRelFixed = window.openNpcDetail;
+window.openNpcDetail = function(id) {
+    initNpcRelations();
+    
+    // 执行原版的基础面板渲染
+    oldOpenNpcDetailForRelFixed(id);
+    
+    let npc = worldArtists.find(x => x.id === id);
+    if(npc) {
+        // 极度安全的默认值赋予，防止一切 .p 或 .f 的报错
+        let rel = (npc.relations && npc.relations['player']) ? npc.relations['player'] : { p: "陌生", f: "陌生" };
+        let p_val = rel.p || "陌生";
+        let f_val = rel.f || "陌生";
+        
+        let pColor = (p_val === "坏血" || p_val === "讨厌") ? "#ff0000" : (p_val === "陌生" ? "#888" : "#25d366");
+        let fColor = f_val === "互撕" ? "#ff0000" : (f_val === "相亲相爱" ? "#25d366" : "#888");
+        
+        let relHtml = `
+        <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;margin-top:15px;">🔗 圈内关系 (与你)</h4>
+        <div style="font-size:12px;background:#f9f9f9;padding:10px;border-radius:8px;border:1px solid #eee;">
+            私下人缘关系：<b style="color:${pColor};">${escapeHTML(p_val)}</b><br>
+            双方粉圈关系：<b style="color:${fColor};">${escapeHTML(f_val)}</b>
+            ${p_val === "坏血" ? '<br><span style="font-size:10px;color:#ff0000;">(⚠️ 警告：坏血关系将导致双方粉圈极度恶化，且无法轻易修复)</span>' : ''}
+            ${p_val === "好朋友" && f_val === "互撕" ? '<br><span style="font-size:10px;color:#8e44ad;">(😅 饭圈奇观：正主私下关系极好，但两家粉丝打得不可开交)</span>' : ''}
+        </div>`;
+        
+        let contentDiv = document.getElementById("mInfoContent");
+        if(contentDiv) {
+            let headers = contentDiv.querySelectorAll("h4");
+            for(let i = 0; i < headers.length; i++) {
+                if(headers[i].innerText.includes("🏆 获奖记录")) {
+                    headers[i].insertAdjacentHTML('beforebegin', relHtml);
+                    break;
+                }
+            }
+        }
+    }
+};
+
+// 3. 社交平台生态大修：加入安利贴、撕逼帖、NPC数据贴
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    
+    // 随机抽取一个大盘歌手 (包括玩家自己)
+    let allArtistsList = [...worldArtists, { n: ad.s, isMe: true }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    let trks = trackPool.filter(t => t.artist === targetArt.n || (targetArt.isMe && t.isMe));
+    
+    // 【30% 概率：数据整理贴】(可以是单人实绩，也可以是全网大盘)
+    if (rand < 0.3 && trks.length > 0) {
+        let bestSong = trks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0];
+        let totalStm = trks.reduce((sum, t) => sum + (t.stmGlobal||0), 0);
+        let title = targetArt.isMe ? `📊 歌手 ${targetArt.n} (你) 个人实绩大盘点！` : `📊 【科普】当前 ${targetArt.n} 实绩速报`;
+        let content = `代表作：《${bestSong.n}》\n生涯总流媒累计突破 ${(totalStm/10000).toFixed(0)}万！\n粉丝们快来团建吹爆！`;
+        return { type: "data", title: title, desc: content };
+    } 
+    // 【30% 概率：粉丝安利贴】
+    else if (rand < 0.6 && trks.length > 0) {
+        let rSong = trks[Math.floor(Math.random() * trks.length)];
+        return { 
+            type: "promo", 
+            title: `💖 【按头安利】千万不要错过 ${targetArt.n} 的这首神曲！`, 
+            desc: `最近单曲循环《${rSong.n}》出不去了，这词曲太绝了！还没听过的路人都给我去听！` 
+        };
+    } 
+    // 【40% 概率：饭圈撕逼帖】(结合关系表)
+    else {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        
+        // 找一个有“互撕”或“坏血”关系的对象，如果没有就随便拉踩一个
+        if (artA.isMe || artB.isMe) {
+            let npcToCheck = artA.isMe ? artB : artA;
+            let rel = (npcToCheck.relations && npcToCheck.relations['player']) ? npcToCheck.relations['player'] : {p:"陌生", f:"陌生"};
+            
+            if (rel.f === "相亲相爱") {
+                // 如果粉圈相亲相爱，变成互助冲销量贴
+                return {
+                    type: "help",
+                    title: `🤝 【团建】家人们，去帮隔壁 ${artB.n} 冲冲销量！`,
+                    desc: `两家关系一直很好，${artB.n} 最近发新歌了，大粉号召大家去给个支持！(互助情谊长存)`
+                };
+            } else if (rel.f === "互撕" || rel.p === "坏血") {
+                return {
+                    type: "drama",
+                    title: `🔥 【血雨腥风】${artA.n} 和 ${artB.n} 两家粉丝又撕起来了！`,
+                    desc: `太可怕了，广场上全是在互屠黑词条！是因为抢了什么代言还是因为榜单打架啊？这简直是世仇了...`
+                };
+            }
+        }
+        
+        // 默认的拉踩贴
+        return {
+            type: "drama",
+            title: `🍉 【吃瓜】理客中：感觉 ${artA.n} 最近的成绩有点水啊...`,
+            desc: `别骂我，纯路人吃瓜。感觉TA的新歌全靠买营销，真实热度完全被 ${artB.n} 吊打了好吗？`
+        };
+    }
+};
+
+window.refreshFeed = function() {
+    let h = "";
+    
+    // 强制生成 3 条不同类型的动态帖子
+    for(let i=0; i<3; i++) {
+        let post = generateVarietyPost();
+        if (post) {
+            let borderColor = post.type === "drama" ? "#ff0000" : (post.type === "data" ? "#0055ff" : "#e91e63");
+            let bgColor = post.type === "drama" ? "#fff0f5" : (post.type === "data" ? "#e0f2fe" : "#fce4ec");
+            
+            h += `
+            <div class="cmt-box" style="cursor:pointer; border-left:3px solid ${borderColor}; background:${bgColor}; margin-bottom:8px;" 
+                 onclick="viewPostDetail('${post.title}', \`${post.desc}\`, false)">
+                <b>${post.title}</b><br>
+                <span style="font-size:12px;color:#555;display:block;margin-top:4px;">${post.desc.replace(/\n/g, '<br>')}</span>
+                <div style="font-size:10px;color:${borderColor};margin-top:6px;">👉 点击进入帖子查看实时互动...</div>
+            </div>`;
+        }
+    }
+    
+    // 再补充2条普通路人闲聊
+    let topics = ["最近真的歌荒了，求推荐", "这榜单排名也太假了吧", "今天又是单曲循环的一天"];
+    for(let i=0; i<2; i++) {
+        let topic = topics[Math.floor(Math.random()*topics.length)];
+        h += `
+        <div class="cmt-box" style="cursor:pointer;" onclick="viewPostDetail('网友闲聊', '${topic}', false)">
+            <b>网友${Math.floor(Math.random()*9000)+1000}</b>: ${topic}
+        </div>`;
+    }
+    document.getElementById("feedList").innerHTML = h;
+};
 
 // ==================== 代码结束 ====================
 </script>
