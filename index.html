@@ -2224,23 +2224,6 @@ window.getHeatLabel = function(sl, type) {
 
 // ==================== 4. 手机APP与打榜宣发 ====================
 let curChartPlatform = 'Spot'; 
-window.openApp = function(appId) {
-    if(appId === 'V') document.getElementById('mV').classList.add('open'); 
-    else if(appId === 'NPC') { document.getElementById('mCustomNPC').classList.add('open'); renderNpcList(); }
-    else if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
-        curChartPlatform = appId;
-        document.getElementById('mChartTitle').innerText = appId === 'BB' ? '📊 Billboard' : appId === 'Spot' ? '🎵 Spotify' : appId === 'Sale' ? '📈 销量榜' : '📉 日增榜';
-        let tabBar = document.querySelector('#mChart .sub-tab-bar');
-        if(tabBar && !document.getElementById('tabChartAlbumDaily')) tabBar.insertAdjacentHTML('beforeend', `<div class="sub-tab" id="tabChartAlbumDaily" onclick="switchChartType('album_daily')">专辑日增榜</div>`);
-        document.getElementById('mChart').classList.add('open');
-        if(appId === 'Daily') switchChartType('daily'); else switchChartType('track');
-    }
-        else if(appId === 'Market') renderMarketApp();
-    else if(appId === 'RS' || appId === 'Bitch') renderReviewApp(appId);
-       else if(appId === 'Mail') window.openMailbox();
-    else if(appId === 'YouTube') window.openYouTube();
-    else { document.getElementById('mTextTitle').innerText = appId; document.getElementById('mText').classList.add('open'); }
-};
 
 window.openYouTube = function() {
     // 提取所有拍过 MV 的歌曲，并按照流媒数据换算 YouTube MV 播放量
@@ -3207,16 +3190,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// 3. 拦截 APP 打开事件，让写手榜可以被点击渲染
-let oldOpenAppForWriters = window.openApp;
-window.openApp = function(appId) {
-    if(appId === 'Writers') {
-        renderWritersApp();
-        document.getElementById('mWriters').classList.add('open');
-    } else {
-        oldOpenAppForWriters(appId);
-    }
-};
 
 window.renderWritersApp = function() {
     let box = document.getElementById("writersListContent");
