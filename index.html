@@ -4511,6 +4511,104 @@ setTimeout(() => {
         }
     });
 }, 1000);
+// ==================== 补丁：无 AI 备用按钮与合作逻辑修复 ====================
+// 1. 补全缺失的“接受合作”按钮逻辑
+window.acceptCollab = function(npcName) {
+    let featInput = document.getElementById("inFeat");
+    if(featInput) {
+        // 将歌手名字自动填入单曲创作的合作栏中
+        if(featInput.value && !featInput.value.includes(npcName)) {
+            featInput.value += ", " + npcName;
+        } else {
+            featInput.value = npcName;
+        }
+    }
+    alert(`✅ 已接受 ${npcName} 的合作邀请！\nTA的名字已自动填入【企划-创作单曲】的合作栏中，快去写歌吧！`);
+    
+    // 自动关闭邮件并跳转到创作界面
+    closeM('mInfo');
+    let navBtns = document.querySelectorAll('.nav-btn');
+    if(navBtns.length > 3) switchMainTab(navBtns[3], 'pProj');
+    showProj('pjSingle');
+};
+
+// 2. 优化邮件详情页：如果没有填 API 密钥，主动隐藏 AI 回复框，避免误导
+let oldViewMailDetail = window.viewMailDetail;
+window.viewMailDetail = function(idx) {
+    oldViewMailDetail(idx);
+    let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
+    let replyBox = document.getElementById(`inMailReplyText_${idx}`);
+    // 如果没有连接 AI API，并且这封信有自带的按钮 (如合作邀请)，就隐藏底部的 AI 对话框
+    if(!tk && replyBox && currentMails[idx].btnHtml) {
+        replyBox.parentElement.innerHTML = `<p style="font-size:12px; color:#888; text-align:center; padding-top:10px;">(当前未连接 AI，请直接点击上方按钮进行操作)</p>`;
+    }
+};
+// ==================== 补丁：MV 点击与帖子详情页关闭修复 ====================
+
+// 1. 修复帖子详情页：为其强行注入一个独立的“关闭”按钮
+window.viewPostDetail = function(title, content, isMine) {
+    let mockComments = isMine 
+        ? ["啊啊啊支持你！", "终于发动态了，期待新作品！", "前排合影留念！"]
+        : ["吃瓜群众路过。", "我觉得一般般吧，没那么夸张。", "楼主说得对，我也这么觉得。"];
+    
+    let html = `
+    <div style="background:#fefcf5; padding:15px; border-radius:8px; border:1px solid #d1c290; max-height:60vh; overflow-y:auto; position:relative;">
+        <!-- 强行注入独立的关闭按钮 -->
+        <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0;" onclick="closeM('mGameInput');">✖ 关闭</button>
+        
+        <h3 style="color:#e6683c; margin-bottom:10px; padding-right:60px;">${escapeHTML(title)}</h3>
+        <div style="font-size:13px; line-height:1.6; color:#333; margin-bottom:15px; padding-bottom:10px; border-bottom:1px dashed #ccc;">
+            ${escapeHTML(content)}
+        </div>
+        <b style="font-size:12px;">实时评论区：</b>
+        <div id="postCmtArea" style="margin-top:10px;">
+            <div class="cmt-box">${mockComments[0]}</div>
+            <div class="cmt-box">${mockComments[1]}</div>
+            <div class="cmt-box">${mockComments[2]}</div>
+        </div>
+        
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <input type="text" id="postReplyInput" placeholder="发条评论参与讨论..." style="margin:0; flex:1; font-size:12px;">
+            <button class="sec inline" onclick="sendPostReply('${escapeHTML(title)}')">发送</button>
+        </div>
+    </div>`;
+    
+    document.getElementById("mGameInputTitle").innerText = "帖子详情页";
+    document.getElementById("mGameInputDesc").innerHTML = html;
+    document.getElementById("mGameInputField").style.display = "none";
+    
+    // 隐藏弹窗原本底部的原生按钮，避免冲突
+    let btns = document.getElementById("mGameInput").querySelectorAll("button");
+    if(btns.length >= 2) { btns[0].style.display = "none"; btns[1].style.display = "none"; }
+    
+    document.getElementById("mGameInput").classList.add("open");
+};
+
+// 2. 修复 YouTube APP：给 MV 卡片加上点击事件，让玩家可以点进去看数据和评论
+window.openYouTube = function() {
+    let list = trackPool.filter(x => x.type === "track" && x.mvN > 0).sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0));
+    if(list.length === 0) {
+        document.getElementById('mInfoContent').innerHTML = "<p style='text-align:center;color:#888;padding:20px;'>全网暂无 MV 数据，快去拍摄你的首支 MV 吧！</p>";
+    } else {
+        let h = list.slice(0, 100).map((t, i) => {
+            let views = Math.floor((t.stmGlobal || 0) * 0.6 + (t.mvN * 2500000)); 
+            let isMeStyle = t.isMe ? 'background:#fff8e8;border-left:3px solid #ff0000;' : 'background:#fff;';
+            
+            // 核心修复：给玩家的 MV 加上点击事件，直达数据与评论详情页
+            let clickAction = t.isMe ? `onclick="closeM('mInfo'); viewSongStats('${t.id}')"` : `onclick="alert('这是 NPC 的 MV，暂无更多详细数据！')"` ;
+            
+            return `<div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;cursor:pointer;${isMeStyle}" ${clickAction}>
+                <b style="font-size:14px;">${i+1}. ${escapeHTML(t.n)} (Official Music Video)</b><br>
+                <span style="font-size:11px;color:#888;">上传者: ${escapeHTML(t.artist)} VEVO</span>
+                <div style="margin-top:5px;font-size:13px;color:#ff0000;font-weight:bold;">▶ ${views.toLocaleString()} 次观看</div>
+                <div style="font-size:11px;color:#666;margin-top:5px;">${t.isMe ? '👉 点击查看MV详细数据与评论互动...' : ''}</div>
+            </div>`;
+        }).join('');
+        document.getElementById('mInfoContent').innerHTML = h;
+    }
+    document.getElementById('mInfoTitle').innerText = "▶ YouTube Trending MV";
+    document.getElementById('mInfo').classList.add('open');
+};
 
 // ==================== 代码结束 ====================
 </script>
