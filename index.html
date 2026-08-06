@@ -7340,8 +7340,7 @@ window.confirmGamePrompt = function() {
     closeM('mGamePrompt');
     if(promptCallback) promptCallback(val);
 };
-<!-- === 需要追加/修改的新代码 === -->
-<script>
+
 // ==================== 终极防崩溃守护补丁 ====================
 
 // 1. 修复原版多次重写 createEntity 造成的无限递归 (Maximum call stack size exceeded)
@@ -7402,13 +7401,12 @@ window.switchChartType = function(type) {
 let oldSaveGameImmediateSafe = window.saveGameImmediate;
 window.saveGameImmediate = function() {
     // 定期清除多余日志防止存档过大
-    if (posts.mom && posts.mom.length > 50) posts.mom = posts.mom.slice(0, 50);
+    if (posts && posts.mom && posts.mom.length > 50) posts.mom = posts.mom.slice(0, 50);
     if (historyAwards && historyAwards.length > 100) historyAwards = historyAwards.slice(0, 100);
     if (currentMails && currentMails.length > 20) currentMails = currentMails.slice(0, 20);
     
     oldSaveGameImmediateSafe();
 };
-
 // ==================== 代码结束 ====================
 </script>
 </body>
