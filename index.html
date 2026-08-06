@@ -2601,16 +2601,13 @@ window.viewSongStats = function(songId) {
     else comments.push("还可以，中规中矩吧。", "越听越好听，属于耐听型！");
     let randomCmt = comments[Math.floor(Math.random()*comments.length)];
     
-    let statsHtml = `
-    <div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:60vh;overflow-y:auto;">
-        <h3 class="tg" style="margin-bottom:5px;">${escapeHTML(t.n)}</h3>
-                // 查找这首歌在历史上拿过的奖
-        let songAwards = historyAwards.filter(awd => awd.includes(t.n) && awd.includes(ad.s));
-        let awdHtml = songAwards.length > 0 
-            ? `<div style="margin-top:5px;padding:5px;background:#fff;border:1px solid #c8a440;border-radius:4px;color:#c8a440;"><b>🏆 获奖荣誉：</b><br>${songAwards.map(a => a.replace(/<[^>]+>/g, ' ').substring(0,30)+"...").join('<br>')}</div>` 
-            : `<div style="margin-top:5px;padding:5px;background:#eee;border-radius:4px;color:#888;">暂无重要颁奖典礼获奖记录</div>`;
+       // 查找这首歌在历史上拿过的奖
+    let songAwards = historyAwards.filter(awd => awd.includes(t.n) && awd.includes(ad.s));
+    let awdHtml = songAwards.length > 0 
+        ? `<div style="margin-top:5px;padding:5px;background:#fff;border:1px solid #c8a440;border-radius:4px;color:#c8a440;"><b>🏆 获奖荣誉：</b><br>${songAwards.map(a => a.replace(/<[^>]+>/g, ' ').substring(0,30)+"...").join('<br>')}</div>` 
+        : `<div style="margin-top:5px;padding:5px;background:#eee;border-radius:4px;color:#888;">暂无重要颁奖典礼获奖记录</div>`;
 
-        let statsHtml = `
+    let statsHtml = `
     <div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:60vh;overflow-y:auto;">
         <h3 class="tg" style="margin-bottom:5px;">${escapeHTML(t.n)}</h3>
         <div style="font-size:12px;color:#666;margin-bottom:10px;">
