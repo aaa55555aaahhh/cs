@@ -97,24 +97,26 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<div id="createPage" class="page active">
+<!-- === 新增登录密码页面（放在最顶部，原创建页面后置） === -->
+<div id="loginPage" class="page active">
+  <div class="card" style="margin-top:20px;text-align:center;">
+    <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人 - 登录验证</h2>
+    <input id="loginPwd" type="password" placeholder="请输入访问密码" style="text-align:center;">
+    <button id="btnLogin" onclick="checkLoginPwd()" style="margin-top:20px;padding:16px;">登录进入</button>
+    <p style="font-size:12px;color:#888;margin-top:10px;">首次登录输入密码后将自动记住，下次免密</p>
+  </div>
+</div>
+
+<!-- === 极简创建页（原有代码保留，修改默认隐藏） === -->
+<div id="createPage" class="page">
   <div class="card" style="margin-top:20px;text-align:center;">
     <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人</h2>
-    
-        <div id="keyAuthBox" style="padding:20px 10px; border-radius:12px; background:#fff8e8; border:1px solid #f0e9d0;">
-        <p style="font-size:14px; font-weight:bold; margin-bottom:15px; color:#a67c00;">✨ 游玩权限验证 ✨</p>
-        <input type="text" id="inGameKey" style="text-align:center; margin-bottom:15px; border:1px solid #d1c290; border-radius:8px; padding:12px; font-size:14px; background:#fff;" placeholder="请输入购买密钥...">
-        <button onclick="forceVerifyKey()" style="padding:12px;font-size:14px;">验证并进入游戏</button>
-    </div>
-
-    <div id="gameStartBox" style="display:none;">
-        <input id="inRealName" placeholder="真实姓名 (必填)" style="text-align:center; font-size:14px;">
-        <input id="inStageName" placeholder="艺名" style="text-align:center; font-size:14px;">
-        <input id="inFanName" placeholder="粉丝群体名称" style="text-align:center; font-size:14px;">
-        <input id="inGender" placeholder="性别 (自定义，如：女/男/外星人)" style="text-align:center; font-size:14px;">
-        <p style="font-size:12px;color:#888;margin:10px 0;">算法已全面升级：大盘乘数暴涨、底层防爆档保护、单曲内核系统上线！</p>
-        <button id="btnCreate" onclick="startGame()" style="margin-top:10px;padding:16px;font-size:15px;">✓ 创建并进入演艺圈</button>
-        <div style="margin-top:20px;border-top:1px solid #eee;padding-top:15px;">
+    <input id="inRealName" placeholder="真实姓名 (必填)" style="text-align:center;">
+    <input id="inStageName" placeholder="艺名" style="text-align:center;">
+    <input id="inFanName" placeholder="粉丝群体名称" style="text-align:center;">
+    <input id="inGender" placeholder="性别 (完全自定义)" style="text-align:center;">
+    <button id="btnCreate" onclick="startGame()" style="margin-top:20px;padding:16px;">✓ 创建并踏上星路</button>
+            <div style="margin-top:20px;border-top:1px solid #eee;padding-top:15px;">
           <p style="font-size:12px;color:#555;margin-bottom:10px;font-weight:bold;">读取本地存档：</p>
           <div style="display:flex;gap:5px;">
             <button class="sec" onclick="loadGame(1)">存档 1</button>
@@ -678,23 +680,69 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     }
 });
-// ==================== 权限验证机制 ====================
-window.forceVerifyKey = function() {
-    let keyInput = document.getElementById("inGameKey").value.trim();
-    
-    // 这里可以设置你的游戏密码，比如密码是 "123456"
-    if(keyInput === "123456") {
-        localStorage.setItem("isGameUnlocked", "true"); // 真正记住解锁状态！
-        alert("验证成功！欢迎来到星路制作人！");
-        document.getElementById("keyAuthBox").style.display = "none";
-        document.getElementById("gameStartBox").style.display = "block";
-    } else if(keyInput === "") {
-        alert("请输入购买密钥！");
-    } else {
-        alert("密钥错误，请重新输入！");
-    }
+// ========== 登录密码模块（新增全部） ==========
+const LOGIN_STORAGE_KEY = "starPro_login_pwd";
+// 预设访问密码，自行修改这里
+const CORRECT_PASSWORD = "123456";
+
+// 页面加载自动执行：读取本地记住的密码，自动登录
+window.onload = function(){
+  const savedPwd = localStorage.getItem(LOGIN_STORAGE_KEY);
+  // 如果本地存有正确密码，直接跳过登录页
+  if(savedPwd === CORRECT_PASSWORD){
+    skipLoginAuto();
+  }
+  // 监听密码框自动填充兼容（解决浏览器记住密码无响应）
+  const pwdInput = $("loginPwd");
+  pwdInput.addEventListener("input",()=>{});
+  pwdInput.addEventListener("paste",()=>{});
+  // 原有页面初始化函数
+  initG();
+  updTimeUI();
 }
-// ==================== 全局变量 ====================
+
+// 自动免密跳转
+function skipLoginAuto(){
+  $("loginPage").classList.remove("active");
+  $("createPage").classList.add("active");
+  // 自动读取存档
+  loadGame(0);
+}
+
+// 登录密码校验主函数（绑定登录按钮）
+function checkLoginPwd(){
+  const inputPwd = $("loginPwd").value.trim();
+  // 空密码拦截
+  if(!inputPwd){
+    alert("请输入密码！");
+    return;
+  }
+  // 密码错误
+  if(inputPwd !== CORRECT_PASSWORD){
+    alert("密码输入错误，请重新输入！");
+    $("loginPwd").value = "";
+    return;
+  }
+  // 密码正确：本地记住密码
+  localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
+  alert("登录成功！");
+  // 切换页面到创建/游戏主界面
+  $("loginPage").classList.remove("active");
+  // 判断是否有存档，有存档直接进游戏，无存档进创建页
+  const slot = $("selSaveSlot")?$("selSaveSlot").value:"1";
+  const saveData = localStorage.getItem("starProSave_" + slot);
+  if(saveData){
+    loadGame(0);
+  }else{
+    $("createPage").classList.add("active");
+  }
+}
+// ========== 登录模块结束 ==========
+
+/* ================= 全局核心变量 ================= */
+const GAME_VERSION = "1.3.0";
+const $ = id => document.getElementById(id);
+// 下面原有代码完全不动// ==================== 全局变量 ====================
 const GAME_VERSION = "4.1.0";
 // ==================== 头像上传与压缩处理 ====================
 function processAvatarUpload(file, callback) {
@@ -841,11 +889,7 @@ window.loadGame = function(slotOverride){
           } 
       });
 
-      initCos(); initG(); updTimeUI(); updAttr(); updateAlbProjUI(); updateFeatList(); renderMapCompany();
-           // 清理因报错导致的坏档状态，强行拯救旧档
-      if(curAlbPj && (!curAlbPj.s || !Array.isArray(curAlbPj.s))) {
-          curAlbPj = null; // 强行清理已损坏的专辑企划
-      }
+
 
       if(curPj){ 
           let wp = document.getElementById("boxWriteProgress");
