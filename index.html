@@ -7791,28 +7791,22 @@ window.refreshFeed = function() {
 };
 // ==================== 终极修复：彻底解决后台粉丝检测引发的疯狂弹窗 ====================
 
-// 1. 给尚未开始游戏的初始空壳 ad 赋予一个默认的 st 属性，阻止后台定时器报错
 if (typeof ad !== 'undefined' && !ad.st) {
     ad.st = { f: 0, h: 0 };
 }
 
-// 2. 拦截并静默处理这个特定的错误，防止它再次干扰游戏画面
 let originalOnError = window.onerror;
 window.onerror = function(msg, url, lineNo, columnNo, error) {
-    // 如果报错信息包含 reading 'f' 或者是 'player' 相关的关系表空指针，直接静默拦截，不弹窗！
     if (msg && (msg.includes("reading 'f'") || msg.includes("reading 'player'"))) {
         console.warn("已静默拦截底层空指针报错：", msg);
-        return true; // 返回 true 代表错误已被处理，不再向上抛出
+        return true; 
     }
-    
-    // 其他真正致命的错误依然走原版的弹窗提示
     if (originalOnError) {
         return originalOnError(msg, url, lineNo, columnNo, error);
     }
     return false;
 };
 
-// 3. 顺手修复大奖系统中给所有歌曲打合唱标签时的笔误 (原本写成了 t.f，实际应为 t.ff)
 let oldCheckAutoAwardForCollabFix = window.checkAutoAward;
 window.checkAutoAward = function() {
     if (trackPool) {
@@ -7824,9 +7818,6 @@ window.checkAutoAward = function() {
         oldCheckAutoAwardForCollabFix();
     }
 };
-
-// ==================== 补丁结束 ====================
-
 // ==================== 代码结束 ====================
 </script>
 </body>
