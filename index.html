@@ -686,8 +686,6 @@ document.addEventListener("DOMContentLoaded", function(){
 // ===================== 登录模块 【最高优先级 - 修复版】 =====================
 const LOGIN_STORAGE_KEY = "starPro_login_pwd";
 const CORRECT_PASSWORD = "123456";
-const $ = id => document.getElementById(id);
-
 document.addEventListener('DOMContentLoaded', function() {
     // 1. 自动免密登录检测
     const savedPwd = localStorage.getItem(LOGIN_STORAGE_KEY);
