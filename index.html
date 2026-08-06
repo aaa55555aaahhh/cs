@@ -110,13 +110,42 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- 登录页面（默认激活） -->
-<div id="loginPage" class="page active">
+<!-- 登录页面（强制暴力破解版） -->
+<div id="loginPage" class="page active" style="position:relative; z-index:99999;">
   <div class="card" style="margin-top:20px;text-align:center;">
     <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人 - 登录验证</h2>
-    <input id="loginPwd" type="password" placeholder="请输入访问密码" style="text-align:center;">
-    <button id="btnLogin" onclick="checkLoginPwd()" style="margin-top:20px;padding:16px;">登录进入</button>
-    <p style="font-size:12px;color:#888;margin-top:10px;">首次登录记住密码，下次免密登录</p>
+    <input id="loginPwd" type="password" placeholder="输入密码 (123456)" style="text-align:center;">
+    
+    <button id="btnLogin" onclick="
+      var pwd = document.getElementById('loginPwd').value;
+      if(pwd !== '123456' && pwd !== '') { alert('密码错误！'); return; }
+      
+      // 强制清除所有可能卡死屏幕的黑屏/弹窗遮罩
+      document.querySelectorAll('.modal').forEach(function(m){ m.classList.remove('open'); m.style.display='none'; });
+      
+      // 隐藏登录页
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('loginPage').classList.remove('active');
+      
+      // 尝试自动读档或进入创建页
+      var hasSave = localStorage.getItem('starProSave_1') || localStorage.getItem('starProSave_2');
+      if(hasSave && typeof loadGame === 'function') {
+          loadGame(1);
+      } else {
+          var cp = document.getElementById('createPage');
+          if(cp) { cp.classList.add('active'); cp.style.display = 'block'; }
+      }
+    " style="margin-top:20px;padding:16px;">登录进入</button>
+
+    <button onclick="
+      // 紧急逃生按钮：无视一切直接强制进入游戏创建页
+      document.querySelectorAll('.modal').forEach(function(m){ m.classList.remove('open'); m.style.display='none'; });
+      document.getElementById('loginPage').style.display = 'none';
+      document.getElementById('loginPage').classList.remove('active');
+      var cp = document.getElementById('createPage');
+      if(cp) { cp.classList.add('active'); cp.style.display = 'block'; }
+    " style="margin-top:10px;padding:16px;background:#ff4d4f;color:#fff;border:none;">🚨 无法点击？点我强制免密跳过</button>
+
   </div>
 </div>
 
