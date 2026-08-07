@@ -8915,45 +8915,306 @@ window.sendProactiveMail = function() {
     updAttr();
     saveGame();
 };
-// ==================== 终极修补：干净的免密与读档控制 ====================
+// ==================== 终极修补：美观网页密码页与手动读档大厅 ====================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 隐藏游戏主界面，只显示创建/读档大厅
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    // 强制先隐藏所有页面，防止重叠
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+    });
     
+    // 检查是否已经免密解锁过
     let isUnlocked = localStorage.getItem("starPro_is_unlocked");
     
-    // 如果没有解锁过，弹出一个极简的原生密码框（只弹这一次！）
-    if (isUnlocked !== "true") {
-        let pwd = prompt("请输入游戏访问密码 (默认: 123456)：");
-        if (pwd === "123456") {
-            localStorage.setItem("starPro_is_unlocked", "true");
-            alert("验证成功！以后进入游戏将永久免密！");
-            document.getElementById('createPage').classList.add('active');
-        } else {
-            alert("密码错误，请刷新页面重试。");
-            document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;'>密码错误，请刷新页面重试</h2>";
-        }
+    if (isUnlocked === "true") {
+        // 已经免密过，直接显示创建/读档大厅，跳过密码页！绝对不自动读档！
+        let cp = document.getElementById('createPage');
+        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
     } else {
-        // 已经验证过，直接显示大厅，绝对不自动读档！
-        document.getElementById('createPage').classList.add('active');
+        // 没免密，显示美观的网页密码页
+        let lp = document.getElementById('loginPage');
+        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
     }
 });
 
-// 手动读取存档逻辑
+// 美观网页密码页的验证逻辑
+window.checkLoginPwd = function() {
+    let pwdInput = document.getElementById("loginPwd");
+    if(!pwdInput) return alert("找不到密码输入框！");
+    
+    if (pwdInput.value !== "123456") {
+        alert("密码错误，请重新输入！");
+        return;
+    }
+    
+    // 验证成功，记录免密，切换到大厅
+    localStorage.setItem("starPro_is_unlocked", "true");
+    
+    // 隐藏密码页
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('loginPage').classList.remove('active');
+    
+    // 显示大厅
+    let cp = document.getElementById('createPage');
+    if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
+    alert("验证成功！以后进入游戏将永久免密！");
+};
+
+// 手动读取存档逻辑（由玩家在大厅点击触发）
 window.mainMenuLoad = function() {
     let slot = document.getElementById('mainMenuSlot').value;
-    // 同步游戏内的槽位选择器
     if(document.getElementById('selSaveSlot')) document.getElementById('selSaveSlot').value = slot;
     
     let saveKey = "starProSave_" + slot;
     if(localStorage.getItem(saveKey)) {
-        // 只有确认有存档且玩家手动点击，才执行读取并切入游戏！
+        // 读取成功后隐藏大厅
+        document.getElementById('createPage').style.display = 'none';
+        document.getElementById('createPage').classList.remove('active');
+        
+        // 呼叫原本的读档逻辑
         loadGame(slot);
+        
+        // 显示游戏主界面
+        let main = document.getElementById("gameMain");
+        if(main) { main.style.display = "block"; main.classList.add("active"); }
+        if(document.getElementById("topBar")) document.getElementById("topBar").style.display = "flex";
     } else {
         alert(`⚠️ 【存档槽位 ${slot}】 为空！\n请在上方填写资料并点击【踏上星路】建立新档！`);
     }
 };
+
+// 修复新建游戏逻辑：确保新建完毕后大厅消失，游戏主界面浮出
+let exOldStartGameFix = window.startGame;
+window.startGame = function() {
+    let inNameDom = document.getElementById("inRealName");
+    if(!inNameDom || !inNameDom.value.trim()) return alert("⚠️ 必须填写真实姓名才能踏入星途！");
+    
+    // 执行原版的创建逻辑
+    exOldStartGameFix();
+    
+    // 切换界面：隐藏大厅，显示主界面
+    document.getElementById("createPage").style.display = "none";
+    document.getElementById("createPage").classList.remove("active");
+    
+    let main = document.getElementById("gameMain");
+    if(main) { main.style.display = "block"; main.classList.add("active"); }
+    if(document.getElementById("topBar")) document.getElementById("topBar").style.display = "flex";
+};
+// ==================== 终极旧档兼容与修复系统 (防爆档/防更新卡死) ====================
+
+// 拦截并强化读取存档的逻辑
+let rawLoadGameForCompat = window.loadGame;
+window.loadGame = function(slotOverride) {
+    // 1. 先执行原本的读取操作
+    rawLoadGameForCompat(slotOverride);
+    
+    // 2. 存档读取完毕后，化身“急救医生”，强行扫描并补全所有缺失的新版本数据！
+    
+    // 【补全玩家基础属性】
+    if (!ad) ad = {};
+    if (!ad.st) ad.st = { f: 50000, h: 10 };
+    if (isNaN(ad.st.f)) ad.st.f = 50000; // 修复粉丝变成 NaN 的恶性Bug
+    if (typeof ad.energy === 'undefined') ad.energy = 100;
+    if (typeof ad.maxEnergy === 'undefined') ad.maxEnergy = 100;
+    if (!ad.awd) ad.awd = [];
+    if (!ad.shows) ad.shows = [];
+    if (!ad.showsRejected) ad.showsRejected = {};
+    if (!ad.multiAlbPjs) ad.multiAlbPjs = [];
+    if (!ad.sk) ad.sk = {v:30,d:30,r:30,w:30,f:60,s:30,fa:30,va:30};
+    
+    // 【补全 NPC 大盘与关系网数据】
+    if (!worldArtists || worldArtists.length === 0) {
+        if (typeof initNPCs === 'function') initNPCs();
+    } else {
+        worldArtists.forEach(npc => {
+            // 补全丢失的八维属性
+            if (!npc.sk) {
+                let base = Math.min(85, 30 + Math.floor((npc.fans || 0) / 2000000) * 10);
+                npc.sk = {
+                    v: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
+                    d: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 15)),
+                    r: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 20)),
+                    w: Math.max(1, Math.min(100, Math.floor(Math.random()*50) + base - 20)),
+                    f: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base)),
+                    s: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 5)),
+                    fa: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
+                    va: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 10))
+                };
+            }
+            // 补全丢失的公司、性格和关系表
+            if (!npc.co) npc.co = "独立";
+            if (!npc.personality) npc.personality = "普通";
+            if (!npc.relations) npc.relations = {};
+        });
+        // 强制初始化一遍人脉网
+        if (typeof initNpcRelations === 'function') initNpcRelations();
+    }
+    
+    // 【补全歌曲流媒、电台等新数据】
+    if (trackPool) {
+        trackPool.forEach(t => {
+            if (t.stmGlobal === undefined) t.stmGlobal = t.stm || 0;
+            if (t.stmUS === undefined) t.stmUS = Math.floor(t.stmGlobal * 0.4);
+            if (t.stmGlobal_Week === undefined) t.stmGlobal_Week = Math.floor(t.stmGlobal / Math.max(1, t.weeks || 1));
+            if (t.stmUS_Week === undefined) t.stmUS_Week = Math.floor(t.stmUS / Math.max(1, t.weeks || 1));
+            if (t.stmGlobal_Day === undefined) t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+            if (t.slTotal === undefined) t.slTotal = Math.floor(t.stmGlobal / 150);
+            if (t.weeks === undefined) t.weeks = 1;
+            if (t.Spub === undefined) t.Spub = 50;
+            // 补全电台听众
+            if (t.type === 'track' && t.radioAud === undefined) {
+                t.radioAud = ((t.stmUS_Week || 100000) / 400000) * ((t.Spub || 50) / 50);
+                if (t.radioAud < 0) t.radioAud = 0;
+            }
+        });
+    }
+    
+    // 【补全买歌市场】
+    if (!marketSongs || marketSongs.length === 0) {
+        if (typeof genMarket === 'function') genMarket();
+    }
+    
+    // 强制刷新所有界面，使其加载新数据
+    if (typeof updAttr === 'function') updAttr();
+    if (typeof updatePeakRanks === 'function') updatePeakRanks();
+    
+    console.log("🔧 旧档修复完毕：已成功为你适配所有新版本功能！");
+};
+// ==================== 终极诊断：乐评修正与多功能修复系统 ====================
+
+// 1. 动态注入三个新的修复按钮到系统面板
+document.addEventListener("DOMContentLoaded", function() {
+    let apiCard = document.getElementById("pApi").querySelector(".card");
+    if(apiCard && !document.getElementById("btnFixReview")) {
+        apiCard.insertAdjacentHTML('afterend', `
+        <div class="card" style="border:2px solid #e6683c; background:#fffcfc;">
+            <h2 class="tg" style="margin-bottom:10px; color:#e6683c;">🛠️ 深度异常修复终端</h2>
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">如果遇到评分离谱、邮箱卡死或地图打不开，请点击对应的诊断按钮。</p>
+            
+            <button class="sec" style="margin-bottom:8px; border-color:#8e44ad; color:#8e44ad;" onclick="fixReviewAndSocial()">
+                🔧 修复 乐评错乱 / 邮箱 / 社交动态
+            </button>
+            
+            <button class="sec" style="margin-bottom:8px; border-color:#0055ff; color:#0055ff;" onclick="fixMapAndShows()">
+                🔧 修复 地图卡死 / 巡演冷却 / 舞台通告
+            </button>
+            
+            <button class="sec" style="border-color:#25d366; color:#25d366;" onclick="fixChartDataSuper()">
+                🔧 深度洗榜 (彻底重置修复 Peak 排名)
+            </button>
+        </div>`);
+    }
+});
+
+// 2. 彻底修复：榜单 Peak 洗榜逻辑
+window.fixChartDataSuper = function() {
+    let fixCount = 0;
+    trackPool.forEach(t => {
+        // 清理 NaN 异常
+        if(isNaN(t.stmGlobal) || t.stmGlobal == null) t.stmGlobal = 10000;
+        if(isNaN(t.stmGlobal_Week) || t.stmGlobal_Week == null) t.stmGlobal_Week = Math.floor(t.stmGlobal / Math.max(1, t.weeks||1));
+        
+        // 彻底擦除错乱的 Peak 记录
+        if(isNaN(t.peakS) || t.peakS <= 0 || t.peakS > 1000) t.peakS = 99;
+        if(isNaN(t.peakB) || t.peakB <= 0 || t.peakB > 1000) t.peakB = 99;
+        fixCount++;
+    });
+
+    // 强行根据当前周数据重新赋予名次
+    let trks = trackPool.filter(x => x.type === "track" || x.type === "album");
+    
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    trks.forEach((t, i) => { if (!t.peakS || i + 1 < t.peakS) t.peakS = i + 1; });
+    
+    trks.sort((a,b) => (b.stmUS_Week || 0) - (a.stmUS_Week || 0));
+    trks.forEach((t, i) => { if (!t.peakB || i + 1 < t.peakB) t.peakB = i + 1; });
+    
+    updatePeakRanks();
+    saveGameImmediate();
+    alert(`✅ 深度洗榜完毕！共矫正了 ${fixCount} 处数据。Peak 排名已根据现存数据彻底重置！`);
+    if(document.getElementById("mChart").classList.contains("open")) renderChart();
+};
+
+// 用新的替换掉旧的按钮逻辑
+window.fixChartData = window.fixChartDataSuper; 
+
+// 3. 修复一：乐评、社交与邮箱
+window.fixReviewAndSocial = function() {
+    let fixCount = 0;
+    
+    // 【核心修复】强制扫描大盘，如果你的属性明明很高 (>70)，但乐评却低得离谱 (<50)，强行矫正回 75~95 分！
+    trackPool.forEach(t => {
+        if (t.isMe && (t.Spub < 50) && (ad.sk.w >= 70 || ad.sk.v >= 70)) {
+            t.Spub = 75 + Math.floor(Math.random() * 20); // 随机给 75-95 分
+            fixCount++;
+        }
+    });
+    
+    albs.forEach(a => {
+        if (a.trackRef && a.trackRef.Spub < 50 && (ad.sk.w >= 70 || ad.sk.v >= 70)) {
+            a.trackRef.Spub = 75 + Math.floor(Math.random() * 20);
+            fixCount++;
+        }
+    });
+    
+    // 强制清理卡死的邮箱
+    currentMails = [];
+    
+    // 强制修复社交媒体帖子对象
+    if (!posts || !posts.mom) {
+        posts = {mom:[], wb:[], x:[], ins:[], tiktok:[]};
+    }
+    
+    alert(`✅ 乐评与社交生态修复完毕！\n共为你强行矫正了 ${fixCount} 个因为 Bug 导致的不合理低分(2.5分等异常已清除)！`);
+    updAttr();
+    saveGame();
+};
+
+// 4. 修复二：地图、演出、巡演
+window.fixMapAndShows = function() {
+    // 解除巡演冷却卡死
+    ad.tourCooldownEnd = 0; 
+    
+    // 解除巅峰舞台卡死
+    if (ad.showsRejected) ad.showsRejected = {};
+    ad.tempShowId = null;
+    
+    // 强制关闭所有地图页面，重置到“我的家”防黑屏
+    let maps = ["mapStudio","mapLabel","mapHome","mapShows","mapAwards","mapMV","mapFashion","mapTV","mapTour"];
+    maps.forEach(id => { if(document.getElementById(id)) document.getElementById(id).style.display = "none"; });
+    if(document.getElementById("mapHome")) document.getElementById("mapHome").style.display = "block";
+    
+    alert("✅ 地图卡死与行程异常修复完毕！\n巡演冷却已强制清零，大舞台通告已解除锁定。");
+    saveGame();
+};
+
+// 5. 【底层断根】彻底修复发歌/发专辑时，读取属性变成 NaN 的严重 Bug
+let oldReleaseAlbumFixReview = window.releaseAlbum;
+if (oldReleaseAlbumFixReview) {
+    window.releaseAlbum = async function() {
+        // 在发专辑算分时，之前错误地读取了不存在的 s.v 和 s.w，导致变成了 2.5 分
+        // 我们强制在这个阶段，给它们赋上你玩家真实的属性！
+        if(curAlbPj && curAlbPj.s) {
+            curAlbPj.s.forEach(s => {
+                s.v = ad.sk.v || 50; 
+                s.w = ad.sk.w || 50; 
+            });
+        }
+        await oldReleaseAlbumFixReview();
+    }
+}
+let oldFinishWriteFixReview = window.finishWrite;
+if (oldFinishWriteFixReview) {
+    window.finishWrite = async function() {
+        // 在写单曲算分时，同理补充玩家真实属性
+        if(curPj) {
+            curPj.v = ad.sk.v || 50;
+            curPj.w = ad.sk.w || 50;
+        }
+        await oldFinishWriteFixReview();
+    }
+}
 
 // ==================== 代码结束 ====================
 </script>
