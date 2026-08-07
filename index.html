@@ -7541,6 +7541,739 @@ window.refreshFeed = function() {
     }
     document.getElementById("feedList").innerHTML = h;
 };
+// ==================== 终极修复：免密直通与新建存档剥夺问题 ====================
+
+// 1. 拦截并重写错误的自动登录逻辑，把选择权还给玩家
+document.addEventListener('DOMContentLoaded', function() {
+    // 关掉所有强制遮罩
+    let lp = document.getElementById('loginPage');
+    if(lp) lp.style.display = 'none'; 
+    
+    let isUnlocked = localStorage.getItem("isGameUnlocked");
+    if (isUnlocked === "true") {
+        // 如果已经解锁过，只隐藏密码框，显示“创建/读取”的选择面板
+        if(document.getElementById("keyAuthBox")) document.getElementById("keyAuthBox").style.display = "none";
+        if(document.getElementById("gameStartBox")) document.getElementById("gameStartBox").style.display = "block";
+    }
+});
+
+// 2. 重写密码验证函数，成功后停留在创建/读取界面，绝不强行替玩家读档
+window.forceVerifyKey = function() {
+    let keyInput = document.getElementById("inGameKey") ? document.getElementById("inGameKey").value.trim() : "";
+    if(keyInput === "123456" || keyInput === "") { // 只要点了或者输入123456都放行
+        localStorage.setItem("isGameUnlocked", "true");
+        alert("验证成功！欢迎来到星路制作人！\n请在下方填写资料新建艺人，或点击最下方的【读取】进入旧档。");
+        document.getElementById("keyAuthBox").style.display = "none";
+        document.getElementById("gameStartBox").style.display = "block";
+    } else {
+        alert("密码错误，请重新输入！(直接点击确认也可进入)");
+    }
+};
+
+// ==================== 史诗升级：全网真实人际关系与粉圈网 ====================
+
+// 1. 彻底重构关系初始化，让 NPC 互相之间产生关系！
+window.initNpcRelations = function() {
+    if(!worldArtists) return;
+    
+    // 把玩家也当做一个实体加入社交网比对名单
+    let allEntities = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+
+    worldArtists.forEach(npc => {
+        if (!npc.relations || typeof npc.relations !== 'object') npc.relations = {};
+        
+        allEntities.forEach(target => {
+            // 不自己跟自己建立关系
+            if (npc.id === target.id) return; 
+            
+            if (!npc.relations[target.id]) {
+                // 随机判定这两人/两家粉圈的关系
+                let roll = Math.random();
+                let pRel = "陌生", fRel = "陌生";
+                
+                // 现实感极强的娱乐圈关系分布率
+                if (roll < 0.03)      { pRel = "好朋友"; fRel = "相亲相爱"; } // 真闺蜜真兄弟
+                else if (roll < 0.06) { pRel = "朋友";   fRel = "陌生"; }     // 普通圈内熟人
+                else if (roll < 0.09) { pRel = "讨厌";   fRel = "互撕"; }     // 资源竞争对手
+                else if (roll < 0.11) { pRel = "坏血";   fRel = "互撕"; }     // 惊天大仇，不死不休
+                else if (roll < 0.13) { pRel = "好朋友"; fRel = "互撕"; }     // 饭圈奇观：正主天天发合照，粉丝天天屠广场
+                else if (roll < 0.15) { pRel = "恋人";   fRel = "互撕"; }     // 地下恋情被扒，粉丝互相嫌弃对方配不上
+                else if (roll < 0.16) { pRel = "陌生";   fRel = "互撕"; }     // 正主根本不熟，但粉丝因为榜单打得头破血流
+                
+                // 写入当前 NPC 对 Target 的关系
+                npc.relations[target.id] = { p: pRel, f: fRel };
+                
+                // 【双向奔赴】：如果是NPC对NPC，确保对方的关系表里也有同样的状态
+                if (!target.isMe) {
+                    let targetNpc = worldArtists.find(x => x.id === target.id);
+                    if (targetNpc) {
+                        if (!targetNpc.relations) targetNpc.relations = {};
+                        targetNpc.relations[npc.id] = { p: pRel, f: fRel };
+                    }
+                }
+            }
+        });
+    });
+};
+
+// 2. 升级艺人详情：展示TA在这个圈子里的所有非陌生关系！
+let superOldOpenNpcDetail = window.openNpcDetail;
+window.openNpcDetail = function(id) {
+    if(typeof checkAndFixNPCs === 'function') checkAndFixNPCs();
+    initNpcRelations(); // 每次打开强制刷新和修补人际网
+    
+    // 执行底层的基本UI构建
+    superOldOpenNpcDetail(id);
+    
+    let npc = worldArtists.find(x => x.id === id);
+    if(npc && npc.relations) {
+        let allEntities = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+        let relListHtml = "";
+        
+        // 遍历TA的关系网，挑出那些“有故事”的人
+        allEntities.forEach(target => {
+            if(npc.id === target.id) return;
+            let rel = npc.relations[target.id];
+            if(rel && (rel.p !== "陌生" || rel.f !== "陌生")) {
+                let tName = target.isMe ? `<span style="color:#c8a440;font-weight:bold;">你 (${ad.s})</span>` : escapeHTML(target.n);
+                let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "好朋友" || rel.p === "恋人" ? "#e91e63" : "#25d366");
+                let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
+                
+                relListHtml += `
+                <div style="padding:6px 0; border-bottom:1px dashed #e0e0e0; display:flex; justify-content:space-between; align-items:center;">
+                    <div>${tName}</div>
+                    <div style="text-align:right;font-size:11px;">
+                        私下: <b style="color:${pColor};">${rel.p}</b> | 粉圈: <b style="color:${fColor};">${rel.f}</b>
+                    </div>
+                </div>`;
+            }
+        });
+
+        if(relListHtml === "") {
+            relListHtml = `<div style="color:#888;font-size:11px;padding:5px;">圈内孤狼，暂未发现任何错综复杂的关系。</div>`;
+        }
+
+        let totalHtml = `
+        <h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;margin-top:15px;">🕸️ 圈内社交关系网</h4>
+        <div style="font-size:12px;background:#f9f9f9;padding:10px;border-radius:8px;border:1px solid #eee;max-height:180px;overflow-y:auto;margin-bottom:15px;">
+            ${relListHtml}
+        </div>`;
+        
+        // 强行把新的全局关系网注入到大奖记录的前面
+        let contentDiv = document.getElementById("mInfoContent");
+        if(contentDiv) {
+            // 如果原本已经注入了旧版的关系，先清掉
+            contentDiv.innerHTML = contentDiv.innerHTML.replace(/<h4.*?>🔗 圈内关系 \(与你\)<\/h4>[\s\S]*?(?=<h4)/, "");
+            contentDiv.innerHTML = contentDiv.innerHTML.replace('<h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">📊 八维属性</h4>', totalHtml + '<h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">📊 八维属性</h4>');
+        }
+    }
+};
+
+// 3. 极度真实的饭圈撕逼系统（完全基于新的复杂关系网）
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    let trks = trackPool.filter(t => t.artist === targetArt.n || (targetArt.isMe && t.isMe));
+    
+    // 30% 数据贴，20% 安利贴
+    if (rand < 0.3 && trks.length > 0) {
+        let bestSong = trks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0];
+        let title = targetArt.isMe ? `📊 【战报】势如破竹！${targetArt.n} 封神时刻！` : `📊 【搬运】${targetArt.n} 粉丝整理的最全实绩图`;
+        let content = `不用多说，代表作《${bestSong.n}》数据一甩，路人都得服！不服的黑子先拿出你们家这种成绩的代表作再来叫！`;
+        return { type: "data", title: title, desc: content };
+    } 
+    else if (rand < 0.5 && trks.length > 0) {
+        let rSong = trks[Math.floor(Math.random() * trks.length)];
+        return { type: "promo", title: `💖 【按头安利】入坑 ${targetArt.n} 必听神曲！`, desc: `近期单曲循环《${rSong.n}》出不去了！这绝美的音色和顶级的概念，全网还有谁能打？` };
+    } 
+    // 50% 极其恶劣的撕逼帖（提取他们真实的关系！）
+    else {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        while (artA.n === artB.n && allArtistsList.length > 1) {
+            artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        }
+        
+        let rel = {p:"陌生", f:"陌生"};
+        // 查找 A 对 B 的关系
+        if(!artA.isMe) {
+            let realNpcA = worldArtists.find(x => x.id === artA.id);
+            if(realNpcA && realNpcA.relations && realNpcA.relations[artB.id]) rel = realNpcA.relations[artB.id];
+        } else {
+            let realNpcB = worldArtists.find(x => x.id === artB.id);
+            if(realNpcB && realNpcB.relations && realNpcB.relations['player_self']) rel = realNpcB.relations['player_self'];
+        }
+
+        // 如果两家粉圈【相亲相爱】
+        if (rel.f === "相亲相爱") {
+            return {
+                type: "help",
+                title: `🤝 【两家建交】家人们，去帮隔壁 ${artB.n} 冲冲销量！`,
+                desc: `正主私下关系极好，粉圈也是好姐妹！大家有余力的去把隔壁新歌销量拉一拉，别让那些乱七八糟的野鸡对家踩到我们头上了！`
+            };
+        } 
+        
+        // 如果是【地下恋情但粉圈互撕】
+        if (rel.p === "恋人" && rel.f === "互撕") {
+            return {
+                type: "drama",
+                title: `🔥 【塌房预警】有人拍到 ${artA.n} 和 ${artB.n} 疑似深夜牵手？！`,
+                desc: `大粉已经疯了全面脱粉回踩！这两家粉丝平时撕得亲妈都不认识了，结果正主背着粉丝在谈恋爱？笑死我了，今年最大的乐子！`
+            };
+        }
+        
+        // 常规【血雨腥风撕逼】
+        let dramaTitles = [
+            `🔥 【嘲】就 ${artA.n} 那点糊逼销量，也敢来碰瓷 ${artB.n} ？？`,
+            `🔥 别来倒贴了！${artB.n} 粉丝看了都觉得恶心！`,
+            `🔥 ${artA.n} 大粉已经破防了，在广场上发疯骂 ${artB.n} 呢！`,
+            `🔥 【科普】${artA.n} 到底有多水？拿不出代表作只能吸血 ${artB.n}！`
+        ];
+        
+        let dramaDescs = [
+            `拜托，你们家哥哥/姐姐除了买营销还会干什么？流媒被 ${artB.n} 吊打，奖杯被 ${artB.n} 碾压，别来沾边！`,
+            `真是要笑死在广场了，${artA.n} 的粉丝是不是不拉踩 ${artB.n} 就活不下去了？拿着那点野鸡榜单的废纸成绩到处吹！`,
+            `路人都看不下去了，${artA.n} 这两年的作品简直是断崖式下跌，全靠老本撑着。反观 ${artB.n} 步步高升。粉丝别再嘴硬了。`,
+            `你们两家能不能消停点？广场全被屠了！不过讲句公道话，${artA.n} 确实比不过 ${artB.n}，数据摆在这里，再怎么做假表格也没用。`
+        ];
+        
+        // 如果他俩是真正的“坏血”，加上极度严重的恶臭文案
+        if(rel.p === "坏血") {
+            dramaTitles.push(`💀 【彻底决裂】${artA.n} 和 ${artB.n} 这是老死不相往来了吧？`);
+            dramaDescs.push(`业内人士爆料，这两位私底下已经结下死仇了。粉圈现在完全是黑社会打架，造黄谣、P遗照什么都干得出来，真是乌烟瘴气。`);
+        }
+        
+        return {
+            type: "drama",
+            title: dramaTitles[Math.floor(Math.random() * dramaTitles.length)],
+            desc: dramaDescs[Math.floor(Math.random() * dramaDescs.length)]
+        };
+    }
+};
+
+window.refreshFeed = function() {
+    let h = "";
+    initNpcRelations(); // 每次刷微博前强制维系关系网
+    
+    // 强制生成 4 条不同类型的动态帖子，确保高强度撕逼帖一定出现
+    for(let i=0; i<4; i++) {
+        let post = generateVarietyPost();
+        if (post) {
+            let borderColor = post.type === "drama" ? "#ff0000" : (post.type === "data" ? "#0055ff" : (post.type === "help" ? "#25d366" : "#e91e63"));
+            let bgColor = post.type === "drama" ? "#fff0f5" : (post.type === "data" ? "#e0f2fe" : (post.type === "help" ? "#dcfce7" : "#fce4ec"));
+            
+            h += `
+            <div class="cmt-box" style="cursor:pointer; border-left:3px solid ${borderColor}; background:${bgColor}; margin-bottom:8px;" 
+                 onclick="viewPostDetail('${post.title}', \`${post.desc}\`, false)">
+                <b>${post.title}</b><br>
+                <span style="font-size:12px;color:#555;display:block;margin-top:4px;">${post.desc.replace(/\n/g, '<br>')}</span>
+                <div style="font-size:10px;color:${borderColor};margin-top:6px;">👉 点击进入帖子查看实时互动...</div>
+            </div>`;
+        }
+    }
+    document.getElementById("feedList").innerHTML = h;
+};
+// ==================== 终极修补程序：解决所有按键失效、大盘畸形与格莱美重复问题 ====================
+
+// 1. 修复：系统界面增加“自定义大盘水准”输入框
+document.addEventListener("DOMContentLoaded", function() {
+    let apiCard = document.getElementById("pApi").querySelector(".card");
+    if(apiCard && !document.getElementById("customMarketBase")) {
+        apiCard.insertAdjacentHTML('beforebegin', `
+        <div class="card">
+            <h2 class="tg" style="margin-bottom:10px;">🌍 全球大盘水准控制</h2>
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">调节此数值，可避免冠军几千万流媒，亚军只有几十万的割裂感。数值越高，整个榜单(包括糊咖)的基础流媒就越高。</p>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <label style="font-size:12px;">大盘平均底盘(万):</label>
+                <input type="number" id="customMarketBase" value="300" style="margin:0; width:100px;">
+                <button class="sec inline" onclick="alert('✅ 大盘底盘已更新！下周生效。')">保存大盘</button>
+            </div>
+        </div>`);
+    }
+});
+
+// 2. 修复：严格限制大奖参与年份 (一首歌/专辑只能参加发布当年或次年的颁奖)
+let superOldCheckAutoAward = window.checkAutoAward;
+window.checkAutoAward = function() {
+    // 给实体打上参赛年份标记
+    trackPool.forEach(t => { 
+        if(t.t_y === undefined) t.t_y = time.y; // 兜底年份
+    });
+
+    // 拦截并在算分前过滤：发歌年份距离当前颁奖年份不能超过1年！
+    let originalFilter = Array.prototype.filter;
+    Array.prototype.filter = function(callback) {
+        return originalFilter.call(this, function(item) {
+            // 如果是实体(单曲/专辑)，检测年份
+            if(item && item.t_y !== undefined) {
+                if (time.y - item.t_y > 1) return false; // 超过1年直接淘汰，不能再拿奖！
+            }
+            return callback(item);
+        });
+    };
+
+    try {
+        superOldCheckAutoAward();
+    } finally {
+        Array.prototype.filter = originalFilter; // 恢复原生 filter
+    }
+};
+
+// 3. 修复：NPC 详情里的获奖记录，不再显示玩家自己赢的奖
+let oldOpenNpcDetailForAward = window.openNpcDetail;
+window.openNpcDetail = function(id) {
+    oldOpenNpcDetailForAward(id);
+    let npc = worldArtists.find(x => x.id === id);
+    if(npc) {
+        // 严格匹配：获奖记录必须是 "：NPC名" 或 "NPC名《" 才算他赢的，而不是仅仅包含他的名字(比如拉踩他赢的)
+        let realAwards = historyAwards.filter(msg => {
+            return msg.includes("：" + npc.n) || msg.includes(npc.n + "《") || msg.includes(npc.n + " (");
+        });
+        let awdHtml = realAwards.length ? realAwards.map(msg => `<div style="font-size:11px;padding:4px 0;border-bottom:1px dashed #eee;">${msg}</div>`).join('') : "<p style='font-size:11px;color:#888;'>暂无获奖记录</p>";
+        
+        let contentDiv = document.getElementById("mInfoContent");
+        if(contentDiv) {
+            contentDiv.innerHTML = contentDiv.innerHTML.replace(/<h4.*?>🏆 获奖记录<\/h4>[\s\S]*?(?=<h4)/, 
+            `<h4 style="border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:10px;">🏆 获奖记录</h4>
+            <div style="max-height:120px;overflow-y:auto;background:#fff;padding:8px;border:1px solid #eee;border-radius:6px;margin-bottom:15px;">${awdHtml}</div>`);
+        }
+    }
+};
+
+// 4. 修复：将 Peak 展示改为 Peak × N 周
+window.updatePeakRanks = function() {
+    let allItems = trackPool.filter(x => x.type === "track" || x.type === "album");
+    
+    allItems.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    allItems.forEach((t, i) => { 
+        let rank = i + 1;
+        if (!t.peakS || rank < t.peakS) { t.peakS = rank; t.peakW = 1; }
+        else if (rank === t.peakS) { t.peakW = (t.peakW || 1) + 1; }
+        t.lastW = rank; 
+    });
+
+    allItems.sort((a,b) => (b.stmUS_Week || 0) - (a.stmUS_Week || 0));
+    allItems.forEach((t, i) => { 
+        let rank = i + 1;
+        if (!t.peakB || rank < t.peakB) { t.peakB = rank; t.peakBW = 1; }
+        else if (rank === t.peakB) { t.peakBW = (t.peakBW || 1) + 1; }
+    });
+};
+
+// 在单曲详情中显示 Peak x N
+let oldViewSongStats = window.viewSongStats;
+window.viewSongStats = function(songId) {
+    oldViewSongStats(songId);
+    let t = trackPool.find(x => x.id === songId);
+    if(t && document.getElementById("mGameInputDesc")) {
+        let content = document.getElementById("mGameInputDesc").innerHTML;
+        content = content.replace(`全球峰值：<b>#${t.peakS || '--'}</b>`, `全球峰值：<b>#${t.peakS || '--'} (×${t.peakW || 1}周)</b>`);
+        content = content.replace(`美国峰值：<b>#${t.peakB || '--'}</b>`, `美国峰值：<b>#${t.peakB || '--'} (×${t.peakBW || 1}周)</b>`);
+        document.getElementById("mGameInputDesc").innerHTML = content;
+    }
+};
+
+// 5. 修复：大盘太割裂，接入自定义大盘底盘控制
+let oldAdvTimeForBase = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    oldAdvTimeForBase(weeks, showMsg);
+    
+    let baseInput = document.getElementById("customMarketBase");
+    let baseVal = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    
+    // 强制把下面的歌托起来，不让他们只有几千流媒
+    trks.forEach((t, i) => {
+        let targetMin = Math.floor(baseVal * Math.pow(0.98, i)); // 衰减曲线
+        if (targetMin < 500000) targetMin = 500000; // 最最最保底50万周播
+        
+        if ((t.stmGlobal_Week || 0) < targetMin) {
+            t.stmGlobal_Week = targetMin + Math.floor(Math.random() * (targetMin * 0.1));
+            t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+            t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+            t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+        }
+    });
+};
+
+// 6. 修复：未发歌跑通告问题
+window.quickAction = function(type) {
+    let planInput = document.getElementById("inSchedulePlan");
+    if(type === 'promo') {
+        let myTrks = trackPool.filter(x => x.isMe && x.type === "track" && x.weeks <= 12);
+        if(myTrks.length === 0) return alert("⚠️ 你近期(12周内)没有发行任何新歌，没资格跑通告！");
+        planInput.value = "这周疯狂跑电视台和电台打歌，疯狂刷脸增加曝光率！";
+        promoAlbSong(myTrks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0].id);
+        setTimeout(() => generateAiSchedule(), 300);
+    } else {
+        if(type === 'write') {
+            if(!curPj) return alert("⚠️ 没有写歌企划！");
+            planInput.value = "疯狂写歌中！"; writeSongStep(); setTimeout(() => generateAiSchedule(), 300);
+        } else if(type === 'relax') {
+            planInput.value = "休息放空。"; relaxHome(); setTimeout(() => generateAiSchedule(), 300);
+        }
+    }
+};
+
+// 7. 修复：社交平台重新加入长尾数据贴
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { n: ad.s, isMe: true }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    let trks = trackPool.filter(t => t.artist === targetArt.n || (targetArt.isMe && t.isMe));
+    
+    // 【25%概率：发出精准的长尾数据帖】
+    if (rand < 0.25 && targetArt.isMe && trks.length > 0) {
+        let t = trks[Math.floor(Math.random() * trks.length)];
+        let timeLabel = t.weeks <= 2 ? "首周爆发战报" : (t.weeks <= 5 ? "满月走势盘点" : (t.weeks >= 52 ? "一周年长尾数据盘点" : `第${t.weeks}周数据小结`));
+        let certStr = window.getCert(t.slTotal);
+        return { 
+            type: "data", 
+            title: `📊 【数据贴】《${t.n}》 ${timeLabel}`, 
+            desc: `最高排名：#${t.peakS||1} (×${t.peakW||1}周)\n累计销量：${t.slTotal.toLocaleString()} 张 ${certStr}\n这首歌的后劲太可怕了，长尾走势堪称教科书级别！` 
+        };
+    } 
+    // 【50%概率：撕逼贴】
+    else if (rand < 0.75) {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        return {
+            type: "drama",
+            title: `🔥 【嘲】就 ${artA.n} 那点糊逼销量，也敢来碰瓷 ${artB.n} ？？`,
+            desc: `拜托，你家姐姐/哥哥除了买营销还会干什么？流媒被 ${artB.n} 吊打，奖杯被碾压，天天在热搜上发洗脑包。别来沾边！`
+        };
+    }
+    // 【25%概率：安利贴】
+    else {
+        return { type: "promo", title: `💖 【按头安利】入坑 ${targetArt.n} 必听神曲！`, desc: `近期被洗脑出不去了！全网还有谁能打？` };
+    }
+};
+
+// 8. 修复：彻底复活所有点不动的按钮（单曲预热、发行、MV、专辑预发、时装周、巡演等）
+// 这些函数在多次覆盖中丢失了挂载，现在重新严格绑定到 window
+window.joinFashion = function() { 
+    if(!costEnergy(10)) return;
+    if(ad.st.f > 5000000 && ad.sk.fa >= 70){ 
+        ad.st.f += 50000; ad.sk.fa = Math.min(100, ad.sk.fa+5); 
+        alert("✨ 受邀免票出席四大时装周！粉丝+5万 | 时尚+5"); 
+    } else { 
+        if(ad.m < 200000) return alert("资金不够20万买门票！"); 
+        ad.m -= 200000; ad.st.f += 10000; ad.sk.fa = Math.min(100, ad.sk.fa+2); 
+        alert("✨ 花20万镀金入场时装大秀！粉丝+1万 | 时尚+2"); 
+    } 
+    advHour(24); updAttr(); saveGame(); 
+};
+
+window.preheatSong = function(songName) {
+    if(!costEnergy(5)) return;
+    ad.st.f += Math.floor(Math.random() * 5000 + 1000);
+    advHour(2);
+    alert(`📢 预热造势成功！\n你的新歌预告登上了热搜，粉丝们期待值拉满！`);
+    saveGame();
+};
+
+window.shootMV = function(tid, type){ 
+    if(!costEnergy(10)) return; 
+    let t = trackPool.find(x => x.id === tid); 
+    if(!t) return; 
+    let cost = type === 1 ? 1000000 : 10000;
+    if (type === 1 && ad.co !== "独立" && !t.hasRealMV) cost = 0; // 公司全包
+    if (ad.m < cost) return alert(`资金不足！拍摄需要 $${cost.toLocaleString()}`); 
+    ad.m -= cost; 
+    
+    let bonus = type === 1 ? (Math.random() * 2.0 + 1.0) : (Math.random() * 0.5 + 0.2); 
+    let finalAdd = Math.floor((t.stmGlobal || 10000) * bonus * ad.Geffect); 
+    t.stmGlobal += finalAdd; 
+    t.stmGlobal_Day += Math.floor(finalAdd/7); 
+    t.viralWk = 3; t.slTotal += Math.floor(finalAdd/150); t.mvN = (t.mvN||0) + 1; 
+    if(type===1) { t.hasRealMV = true; advHour(72); } else { t.hasLyricMV = true; advHour(24); }
+    
+    alert(`🎬 MV拍摄完成！\n带来了 ${finalAdd.toLocaleString()} 全球流媒大爆发！`); 
+    updAttr(); updatePeakRanks(); renderMVMap(); saveGame(); 
+};
+
+window.openRelSingle = function(sid){ 
+    tempIdx = sid; pickAction = "relSingleDirect"; 
+    document.getElementById("mPickExt").style.display="block"; 
+    document.getElementById("mPickTitle").innerText = "发行单曲定价"; 
+    document.getElementById("mPickList").innerHTML=""; 
+    document.getElementById("mPick").classList.add("open"); 
+};
+
+window.relPreSingle = function(type) {
+    if(!curAlbPj || !curAlbPj.s || curAlbPj.s.length===0) return alert("当前没有筹备中的专辑，或专辑没加歌！"); 
+    let avail = curAlbPj.s.filter(x => !x.released); 
+    if(!avail.length) return alert("所有曲目都发过了！"); 
+    pickAction = type === 'single' ? "relPreSingle" : "relPrePromo"; 
+    document.getElementById("mPickTitle").innerText = type === 'single' ? "发行先行主打" : "发行宣传单曲"; 
+    document.getElementById("mPickExt").style.display="block"; 
+    document.getElementById("mPickList").innerHTML = avail.map(x => `<div><input type="radio" name="preR" value="${x.id}"> ${escapeHTML(x.n)}</div>`).join(''); 
+    document.getElementById("mPick").classList.add("open"); 
+};
+
+window.relWipAlb = function() {
+    if(!curAlbPj || !curAlbPj.s || curAlbPj.s.length===0) return alert("专辑里没歌！");
+    // 直接复用之前写好的释放专辑逻辑
+    if(typeof releaseAlbum === 'function') releaseAlbum();
+    else if(typeof relMultiAlb === 'function') relMultiAlb(0); // 兜底调用多专辑逻辑
+    else alert("系统错误：找不到专辑发行内核！");
+};
+
+// 9. 修复邮箱来信检测
+window.openMailbox = function() {
+    currentMails = [];
+    let f = ad.st.f;
+    ad.showsRejected = ad.showsRejected || {};
+    
+    // 舞台邀请 (如果之前报错没发，现在保证会发)
+    if (f >= 10000000 && !ad.shows.includes('c1') && ad.showsRejected['c1'] !== time.y) 
+        currentMails.push({ id: "c1", title: "🌴 科切拉 演出邀请", sender: "组委会", content: "请回复是否同意，及期望的舞美规格（顶级/普通/极简）。" });
+    if (f >= 30000000 && !ad.shows.includes('c2') && ad.showsRejected['c2'] !== time.y) 
+        currentMails.push({ id: "c2", title: "⚽ 世界杯 演出邀请", sender: "FIFA", content: "请回复是否接下此通告？" });
+    if (f >= 50000000 && !ad.shows.includes('c3') && ad.showsRejected['c3'] !== time.y) 
+        currentMails.push({ id: "c3", title: "🏈 超级碗 演出邀请", sender: "NFL", content: "是否接受邀请？" });
+    
+    // 每到 2,5,8,11 颁奖月，100% 触发邀请函
+    if ([2,5,8,11].includes(time.m)) { 
+        currentMails.push({ id: "awd_invite", title: "🎫 颁奖典礼 出席邀请", sender: "音乐大奖评委会", content: "今晚将揭晓各大奖项最终得主。请回复您是否能拨冗【出席现场】？" }); 
+    }
+
+    if(currentMails.length === 0) currentMails.push({ id: "empty", title: "📭 收件箱为空", sender: "系统", content: "暂时没有收到新的邮件。" });
+    
+    renderMailboxUI();
+};
+// ==================== 史诗升级：演唱会与颁奖典礼自定义歌单系统 ====================
+
+// 1. 动态注入统一的【舞台表演与歌单配置】弹窗 UI
+document.addEventListener("DOMContentLoaded", function() {
+    if(!document.getElementById("mSetlist")) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal" id="mSetlist" style="z-index:500;">
+            <div class="modal-box" style="max-height:85vh; display:flex; flex-direction:column;">
+                <button class="modal-x" onclick="closeM('mSetlist')">X</button>
+                <h3 class="tg" id="mSetlistTitle" style="text-align:center;margin-bottom:10px;">🎤 舞台与歌单配置</h3>
+                
+                <div id="setlistStageBox" style="margin-bottom:15px; padding:10px; background:#fefcf5; border:1px solid #d1c290; border-radius:8px;">
+                    <label style="font-size:12px;font-weight:bold;">舞美规格与投资:</label>
+                    <select id="selPerformStage" style="margin-top:5px; margin-bottom:0;" onchange="updatePerformCost()">
+                        <option value="top">✨ 顶级舞美 (极高流媒加成)</option>
+                        <option value="normal" selected>🎵 常规舞美 (普通加成)</option>
+                        <option value="minimal">🎸 简约纯享 (考验硬实力)</option>
+                    </select>
+                    <div id="txtPerformCost" style="font-size:11px; color:#e6683c; margin-top:5px;"></div>
+                </div>
+
+                <div style="font-size:12px; margin-bottom:5px; display:flex; justify-content:space-between;">
+                    <b>选择表演曲目 (最多 <span id="txtSetlistMax" style="color:#e6683c;">0</span> 首)</b>
+                    <span id="txtSetlistCount">已选: 0</span>
+                </div>
+                
+                <div id="setlistTracks" style="flex:1; overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:6px; background:#fafafa; margin-bottom:15px;">
+                    <!-- 歌曲列表将在这里渲染 -->
+                </div>
+
+                <button onclick="confirmPerformance()">✅ 确认登台演出</button>
+            </div>
+        </div>
+        `);
+    }
+});
+
+// 全局变量记录当前表演的上下文
+let performContext = {};
+
+window.updatePerformCost = function() {
+    let stage = document.getElementById("selPerformStage").value;
+    let cost = 0;
+    if (performContext.type === 'award') {
+        cost = stage === 'top' ? 500000 : (stage === 'normal' ? 100000 : 0);
+        document.getElementById("txtPerformCost").innerText = `需个人垫资: $${cost.toLocaleString()} (颁奖方不包舞美)`;
+    } else {
+        // 巡演成本计算
+        let base = performContext.tourBudget || 1000000;
+        cost = stage === 'top' ? Math.max(10000000, base) : (stage === 'normal' ? Math.max(1000000, base) : Math.max(50000, base));
+        document.getElementById("txtPerformCost").innerText = `巡演总投资: $${cost.toLocaleString()}`;
+    }
+    performContext.finalCost = cost;
+};
+
+// 2. 改造巡演功能，点击后不再直接结算，而是拉起选歌单面板
+let superOldDoTour = window.doTour;
+window.doTour = function() {
+    let scale = document.getElementById("selTourScale").value;
+    let region = document.getElementById("selTourRegion").value;
+    if(region === "custom") region = document.getElementById("inTourCustom").value || "未知城市";
+    let budget = parseInt(document.getElementById("inTourBudget").value) || 0;
+
+    // 根据巡演规模决定可以唱几首歌
+    let maxSongs = scale === 'mega' ? 25 : (scale === 'large' ? 20 : (scale === 'medium' ? 15 : (scale === 'small' ? 10 : 8)));
+    
+    performContext = {
+        type: 'tour',
+        scale: scale,
+        region: region,
+        tourBudget: budget,
+        maxSongs: maxSongs
+    };
+
+    openSetlistUI(`🚀 配置巡演歌单 (${region})`);
+};
+
+// 3. 改造邮箱颁奖典礼回信，如果同意出席，拉起表演歌单配置
+let superOldSendMailReply = window.sendMailReply;
+window.sendMailReply = async function(idx) {
+    let m = currentMails[idx];
+    let replyText = document.getElementById(`inMailReplyText_${idx}`).value.trim();
+    if(!replyText) return alert("请先写点内容再发送！");
+
+    let textLower = replyText.toLowerCase();
+    let isAgree = textLower.includes("同意") || textLower.includes("出席") || textLower.includes("去") || textLower.includes("参加");
+    
+    if (m.id === 'awd_invite' && isAgree) {
+        ad.awardAbsent = 0;
+        document.getElementById(`inMailReplyText_${idx}`).value = "";
+        
+        // 颁奖典礼表演一般是串烧或单曲，最多3-5首
+        performContext = {
+            type: 'award',
+            maxSongs: 3
+        };
+        closeM('mInfo'); // 关掉邮箱
+        alert("✨ 官方收到了你的出席确认！\n顺便提一下，组委会为你预留了舞台表演时间，请配置你的表演曲目和舞美！");
+        openSetlistUI("🏆 颁奖典礼舞台表演配置");
+        return;
+    }
+    
+    // 其他情况走原版逻辑
+    superOldSendMailReply(idx);
+};
+
+// 4. 打开歌单 UI 并渲染你的所有歌曲
+window.openSetlistUI = function(title) {
+    document.getElementById("mSetlistTitle").innerText = title;
+    document.getElementById("txtSetlistMax").innerText = performContext.maxSongs;
+    document.getElementById("selPerformStage").value = "normal";
+    updatePerformCost();
+
+    let myTrks = trackPool.filter(x => x.isMe && x.type === "track").sort((a, b) => (b.stmGlobal || 0) - (a.stmGlobal || 0));
+    
+    if(myTrks.length === 0) {
+        document.getElementById("setlistTracks").innerHTML = "<p style='color:#888;text-align:center;'>你还没有发行过任何单曲...</p>";
+    } else {
+        document.getElementById("setlistTracks").innerHTML = myTrks.map(t => `
+            <div style="padding:6px 0; border-bottom:1px solid #eee; display:flex; align-items:center;">
+                <input type="checkbox" class="setlist-chk" value="${t.id}" onchange="checkSetlistLimit()" style="width:auto; margin:0 10px 0 0;">
+                <div style="flex:1;">
+                    <b style="font-size:13px;">${escapeHTML(t.n)}</b>
+                    <span style="font-size:11px;color:#888;margin-left:5px;">(全球: ${(t.stmGlobal||0).toLocaleString()})</span>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    document.getElementById("txtSetlistCount").innerText = "已选: 0";
+    document.getElementById("mSetlist").classList.add("open");
+};
+
+// 限制勾选数量
+window.checkSetlistLimit = function() {
+    let chks = document.querySelectorAll(".setlist-chk:checked");
+    document.getElementById("txtSetlistCount").innerText = `已选: ${chks.length}`;
+    if(chks.length > performContext.maxSongs) {
+        alert(`最多只能选择 ${performContext.maxSongs} 首歌曲！`);
+        event.target.checked = false;
+        document.getElementById("txtSetlistCount").innerText = `已选: ${chks.length - 1}`;
+    }
+};
+
+// 5. 确认演出并精准发放加成
+window.confirmPerformance = function() {
+    let chks = document.querySelectorAll(".setlist-chk:checked");
+    let selectedIds = Array.from(chks).map(c => c.value);
+    
+    if (selectedIds.length === 0) {
+        if(!confirm("你没有选择任何歌曲！确定要纯划水/放弃表演吗？")) return;
+    }
+
+    let cost = performContext.finalCost || 0;
+    
+    // 公司是否包销
+    let isCompanyPaying = (ad.co !== "独立" && ad.dealType === "7/3");
+    if (isCompanyPaying) cost = 0; 
+    
+    if (ad.m < cost) return alert(`个人账上资金不足以支付 $${cost.toLocaleString()} 的舞台费用！`);
+    
+    ad.m -= cost;
+    closeM('mSetlist');
+    
+    // 舞台流媒加成系数
+    let stage = document.getElementById("selPerformStage").value;
+    let stageBoost = stage === 'top' ? 2.5 : (stage === 'normal' ? 1.0 : 0.4);
+
+    let msg = "";
+
+    // 【颁奖典礼表演结算】
+    if (performContext.type === 'award') {
+        let fanGain = Math.floor((Math.random() * 50000 + 20000) * stageBoost);
+        ad.st.f += fanGain;
+        msg = `🏆 颁奖典礼舞台表演炸翻全场！\n${isCompanyPaying ? "(公司已为你报销舞美)" : `(个人垫资舞美 $${cost.toLocaleString()})`}\n吸粉: ${fanGain.toLocaleString()} 人\n\n【所选歌单流媒暴涨】：\n`;
+        
+        selectedIds.forEach(id => {
+            let t = trackPool.find(x => x.id === id);
+            if(t) {
+                let boost = Math.floor((t.stmGlobal_Week || 50000) * 0.5 * stageBoost + 100000);
+                t.stmGlobal += boost; t.stmGlobal_Day += Math.floor(boost/7); t.slTotal += Math.floor(boost/150);
+                t.viralBoost = (t.viralBoost || 1.0) + 0.1;
+                msg += `🎵 《${t.n}》 +${boost.toLocaleString()}\n`;
+            }
+        });
+        advHour(12);
+        alert(msg);
+    } 
+    // 【巡演结算】
+    else if (performContext.type === 'tour') {
+        let scale = performContext.scale;
+        
+        let energyCost = scale === 'mega' ? 60 : (scale === 'large' ? 40 : (scale === 'medium' ? 30 : 15));
+        let weekCost = scale === 'mega' ? 4 : (scale === 'large' ? 3 : (scale === 'medium' ? 2 : 1));
+        if(!costEnergy(energyCost)) { ad.m += cost; return; } // 精力不足退钱
+        advHour(24 * 7 * weekCost);
+        
+        let scaleMult = scale === 'mega' ? 5.0 : (scale === 'large' ? 3.0 : (scale === 'medium' ? 1.5 : (scale === 'small' ? 0.5 : 0.1)));
+        let gainM = Math.floor((ad.st.f * 0.1 * scaleMult + performContext.tourBudget * 1.5) * (Math.random() * 0.5 + 0.8)); 
+        let gainF = Math.floor(ad.st.f * 0.05 * scaleMult * stageBoost); 
+        
+        ad.m += gainM; 
+        ad.st.f += gainF; 
+
+        msg = `🌟 【${performContext.region}】巡演圆满落幕！\n`;
+        if(isCompanyPaying) msg += `🏢 (公司已全额承担 $${performContext.tourBudget.toLocaleString()} 舞美！)\n`;
+        msg += `💰 票房入账: $${gainM.toLocaleString()}\n🔥 吸粉: ${gainF.toLocaleString()} 人！\n\n【歌单神级现场流媒反馈】：\n`;
+
+        selectedIds.forEach(id => {
+            let t = trackPool.find(x => x.id === id);
+            if(t) {
+                let boost = Math.floor((t.stmGlobal_Week || 50000) * 0.3 * scaleMult * stageBoost + 50000);
+                t.stmGlobal += boost; t.stmGlobal_Day += Math.floor(boost/7); t.slTotal += Math.floor(boost/150);
+                t.viralBoost = (t.viralBoost || 1.0) + 0.1;
+                msg += `🎵 《${t.n}》 +${boost.toLocaleString()}\n`;
+            }
+        });
+
+        let currentMonthAbs = time.y * 12 + time.m;
+        let cdMonths = scale === 'mega' ? 12 : (scale === 'large' ? 6 : (scale === 'medium' ? 3 : (scale === 'small' ? 1 : 0)));
+        if(cdMonths > 0) ad.tourCooldownEnd = currentMonthAbs + Math.floor(weekCost/4) + cdMonths; 
+
+        alert(msg);
+    }
+    
+    updatePeakRanks();
+    updAttr();
+    saveGame();
+};
 
 // ==================== 代码结束 ====================
 </script>
