@@ -95,20 +95,10 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 .bubble-me span{display:inline-block;background:#c8e6c9;padding:8px 12px;border-radius:12px 12px 2px 12px;max-width:85%;text-align:left;font-size:13px;}
 .bubble-other{text-align:left;margin:6px 0;}
 .bubble-other span{display:inline-block;background:#f1f1f1;padding:8px 12px;border-radius:12px 12px 12px 2px;max-width:85%;font-size:13px;}
-/* --- 紧急粉碎隐形遮罩层补丁 --- */
-#loginPage { 
-    position: fixed !important; 
-    inset: 0 !important; 
-    z-index: 2147483647 !important; /* 浏览器允许的最高层级，神挡杀神 */
-    background: #f5f5f7 !important; 
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-}
 /* 强制让弹窗的透明背景不再阻挡点击 */
 .modal { pointer-events: none !important; }
 .modal-box { pointer-events: auto !important; }
-#mGameAlert { display: none !important; }
+
 
 </style>
 </head>
@@ -125,17 +115,17 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- === 1. 专属密码验证大厅 (只有第一次玩才显示) === -->
+<!-- === 1. 专属系统检测器 (只有第一次玩才显示) === -->
 <div id="loginPage" class="page active" style="position:fixed;inset:0;background:#f5f5f7;z-index:9999;display:flex;align-items:center;justify-content:center;">
   <div class="card" style="text-align:center; padding:30px; box-shadow:0 10px 30px rgba(0,0,0,0.1); width:90%; max-width:350px;">
     <h2 class="tg" style="font-size:24px;margin-bottom:10px;">星路制作人</h2>
-    <p style="font-size:12px;color:#888;margin-bottom:20px;">系统安全锁已开启</p>
-    <input type="password" id="loginPwd" placeholder="请输入访问密码" style="text-align:center;font-size:16px;padding:12px;">
+    <p style="font-size:12px;color:#888;margin-bottom:20px;">系统身份检测装置已开启</p>
+    <!-- 这里把 type="password" 改成了 type="text"，输入内容不再变成黑点 -->
+    <input type="text" id="loginPwd" placeholder="请输入检测识别码" style="text-align:center;font-size:16px;padding:12px;">
     <button onclick="checkLoginPwd()" style="padding:12px;font-size:16px;">验证并进入大厅</button>
-    <p style="font-size:11px;color:#aaa;margin-top:10px;">(默认密码: 123456。验证成功后永久免密)</p>
+    <p style="font-size:11px;color:#aaa;margin-top:10px;">(默认识别码: 123456。验证成功后永久免密)</p>
   </div>
 </div>
-
 <!-- === 2. 存档与新建大厅 === -->
 <div id="createPage" class="page" style="display:none; padding-top:20px;">
   <div class="card" style="text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
@@ -165,18 +155,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 </div>
 
 <!-- 下方保留你的 gameMain 原代码... -->
-
-<!-- === 极简创建页（默认隐藏 active 删除） === -->
-<div id="createPage" class="page">
-  <div class="card" style="margin-top:20px;text-align:center;">
-    <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人</h2>
-    <input id="inRealName" placeholder="真实姓名 (必填)" style="text-align:center;">
-    <input id="inStageName" placeholder="艺名" style="text-align:center;">
-    <input id="inFanName" placeholder="粉丝群体名称" style="text-align:center;">
-    <input id="inGender" placeholder="性别 (完全自定义)" style="text-align:center;">
-    <button id="btnCreate" onclick="startGame()" style="margin-top:20px;padding:16px;">✓ 创建并踏上星路</button>
-  </div>
-</div>          
+          
 <!-- === 榜单大厅弹窗 (保留最新迭代的结构：加入专辑榜与日增榜) === -->
 <div class="modal" id="mChart">
   <div class="modal-box" style="padding-top:40px;">
@@ -773,25 +752,25 @@ window.checkLoginPwd = function() {
         return;
     }
     
-    // 密码正确，本地存储免密凭证
-    localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
-    alert("登录成功！");
+    // 使用 Try-Catch 捕获可能的本地存储禁用报错（如无痕模式或容量溢出），防止代码卡死中断
+    try {
+        localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
+        localStorage.setItem("starPro_is_unlocked", "true"); 
+    } catch (e) {
+        console.warn("无法保存免密凭证，可能浏览器禁用了本地缓存，但允许单次登录。");
+    }
     
-    // 切换页面
+    alert("登录成功！进入大厅。");
+    
+    // 强制关闭所有弹窗并切换页面
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
     document.getElementById("loginPage").classList.remove("active");
     document.getElementById("loginPage").style.display = "none";
     
-    const slot = document.getElementById("selSaveSlot") ? document.getElementById("selSaveSlot").value : "1";
-    const saveKey = "starProSave_" + slot;
-    
-    if (localStorage.getItem(saveKey)) {
-        if(typeof loadGame === 'function') loadGame(slot);
-    } else {
-        let createPage = document.getElementById("createPage");
-        if(createPage) {
-            createPage.style.display = "block";
-            createPage.classList.add("active");
-        }
+    let createPage = document.getElementById("createPage");
+    if (createPage) {
+        createPage.style.display = "block";
+        createPage.classList.add("active");
     }
 };
 /* ================= 全局核心变量 ================= */
@@ -2145,19 +2124,6 @@ window.advTimeByFlow = function(){
 };
 
 // ==================== 2. 免密记忆与防卡死弹窗 ====================
-window.addEventListener("DOMContentLoaded", function() {
-    // 延迟一点执行，防止被其他界面的初始化代码覆盖掉 display 状态
-    setTimeout(function() {
-        let isUnlocked = localStorage.getItem("isGameUnlocked");
-        // 获取存档（兼容旧档和新档）
-        let hasSave = localStorage.getItem("starProSave_1") || localStorage.getItem("starProSave_2") || localStorage.getItem("starProSave_3") || localStorage.getItem("starProSave_");
-        
-        if(isUnlocked === "true" || hasSave) {
-            if(document.getElementById("keyAuthBox")) document.getElementById("keyAuthBox").style.display = "none";
-            if(document.getElementById("gameStartBox")) document.getElementById("gameStartBox").style.display = "block";
-        }
-    }, 100);
-// ...
     
     if(!document.getElementById("mGameAlert")) {
         document.body.insertAdjacentHTML('beforeend', `
@@ -2198,7 +2164,6 @@ window.addEventListener("DOMContentLoaded", function() {
         document.getElementById("mGameAlert").classList.add("open");
     };
     window.alert = window.gameAlert;
-});
 
 let inputCallback = null;
 
@@ -8187,26 +8152,6 @@ window.confirmPerformance = function() {
     updAttr();
     saveGame();
 };
- // ==================== 终极修补3.0：登录归位、大舞台史诗级拟真、打单与公司修复 ====================
-
-// ---------------- 1. 登录与主菜单逻辑回归 ----------------
-document.addEventListener('DOMContentLoaded', function() {
-    // 隐藏可能卡住的页面
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    let lp = document.getElementById('loginPage');
-    
-    // 如果已经免密，直接显示创建/读取页
-    if (localStorage.getItem("starPro_login_pwd") === "123456") {
-        if(lp) lp.style.display = 'none';
-        showCreateAndLoadPage();
-    } else {
-        if(lp) {
-            lp.style.display = 'flex';
-            lp.classList.add('active');
-        }
-    }
-});
-
 // ==================== 终极修补：美观密码页与正确的大厅控制 ====================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -8922,39 +8867,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
     }
 });
-
-window.checkLoginPwd = function() {
-    // 强制清理可能挡住按钮的遮罩
-    document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
-    
-    let pwdInput = document.getElementById("loginPwd");
-    if(!pwdInput) return alert("找不到密码输入框！");
-    
-    if (pwdInput.value !== "123456" && pwdInput.value !== "") {
-        alert("密码错误，请重新输入！");
-        return;
-    }
-    
-    localStorage.setItem("starPro_is_unlocked", "true");
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('loginPage').classList.remove('active');
-    
-    let cp = document.getElementById('createPage');
-    if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-};
-    
-    // 验证成功，记录免密，切换到大厅
-    localStorage.setItem("starPro_is_unlocked", "true");
-    
-    // 隐藏密码页
-    document.getElementById('loginPage').style.display = 'none';
-    document.getElementById('loginPage').classList.remove('active');
-    
-    // 显示大厅
-    let cp = document.getElementById('createPage');
-    if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-    alert("验证成功！以后进入游戏将永久免密！");
-};
 
 // 手动读取存档逻辑（由玩家在大厅点击触发）
 window.mainMenuLoad = function() {
