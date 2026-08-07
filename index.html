@@ -10563,6 +10563,266 @@ window.advTime = function(weeks, showMsg) {
         });
     }
 };
+// ==================== 1. 玩家初始关系绝对锁定为“陌生” ====================
+// 只要不主动社交/合作/产生撞档，玩家和任何艺人的私下与粉圈关系绝对只有“陌生”
+var oldInitNpcRelationsForStrictPlayer = window.initNpcRelations;
+window.initNpcRelations = function() {
+    if(!worldArtists) return;
+    let allEntities = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+
+    worldArtists.forEach(npc => {
+        if (!npc.relations || typeof npc.relations !== 'object') npc.relations = {};
+        allEntities.forEach(target => {
+            if (npc.id === target.id) return; 
+            
+            if (!npc.relations[target.id]) {
+                let pRel = "陌生", fRel = "陌生";
+                
+                // NPC之间正常随机生成圈内关系
+                if (npc.id !== 'player_self' && target.id !== 'player_self') {
+                    let roll = Math.random();
+                    if (roll < 0.15)      { pRel = "好朋友"; fRel = "相亲相爱"; }
+                    else if (roll < 0.35) { pRel = "朋友";   fRel = "陌生"; }
+                    else if (roll < 0.50) { pRel = "讨厌";   fRel = "互撕"; }
+                    else if (roll < 0.60) { pRel = "坏血";   fRel = "互撕"; }
+                    else if (roll < 0.75) { pRel = "好朋友"; fRel = "互撕"; }
+                    else if (roll < 0.85) { pRel = "恋人";   fRel = "相亲相爱"; }
+                    else                  { pRel = "陌生";   fRel = "互撕"; }
+                }
+                
+                npc.relations[target.id] = { p: pRel, f: fRel };
+                if (!target.isMe) {
+                    let targetNpc = worldArtists.find(x => x.id === target.id);
+                    if (targetNpc) {
+                        if (!targetNpc.relations) targetNpc.relations = {};
+                        targetNpc.relations[npc.id] = { p: pRel, f: fRel };
+                    }
+                }
+            } else {
+                // 如果已经存在关系，但发现是玩家且本来不该有关系（防止旧档遗留），强行洗掉变成陌生
+                if ((npc.id === 'player_self' || target.id === 'player_self') && npc.relations[target.id].p !== "陌生") {
+                    // 如果不是好朋友/恋人等玩家主动触发的关系，强制洗白
+                    let validRels = ["朋友", "好朋友", "恋人", "伴侣", "讨厌", "坏血"];
+                    if (!validRels.includes(npc.relations[target.id].p)) {
+                        npc.relations[target.id] = { p: "陌生", f: "陌生" };
+                    }
+                }
+            }
+        });
+    });
+};
+
+// ==================== 2. “每日底盘”改名为“每日大盘”并加入微波震荡 ====================
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let baseInput = document.getElementById("customMarketBase");
+        if(baseInput) {
+            let label = baseInput.previousElementSibling;
+            if(label) label.innerText = "大盘每日大盘(万):";
+            let pDesc = baseInput.parentElement.previousElementSibling;
+            if(pDesc) pDesc.innerText = "调节此数值，设置当前乐坛冠军的每日大约流媒(会有真实微小波动)。数值越高，整个榜单的基础流媒就越高。";
+        }
+    }, 500);
+});
+
+// 重写大盘流媒推演算法，引入冠军波动的真实感
+var oldAdvTimeForStrictBaseFluctuate = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    oldAdvTimeForStrictBaseFluctuate(weeks, showMsg);
+    
+    let baseInput = document.getElementById("customMarketBase");
+    // 您输入的是 300（万），那么每日大盘冠军就是 300万 左右
+    let targetBase = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    
+    // 加入真实感波动：正负 15% 之间的随机震荡
+    let fluctuation = (Math.random() * 0.3) - 0.15; 
+    let dailyTarget = Math.floor(targetBase * (1 + fluctuation));
+    let weeklyTarget = dailyTarget * 7; 
+    
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    
+    if(trks.length > 0) {
+        let currentTopWeekly = Math.max(1, trks[0].stmGlobal_Week || 1);
+        let scale = weeklyTarget / currentTopWeekly;
+        
+        trks.forEach((t) => {
+            t.stmGlobal_Week = Math.floor((t.stmGlobal_Week || 0) * scale);
+            t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+            t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+            t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+        });
+    }
+};
+
+// ==================== 3. 强制注入并激活：专辑宣发功能 ====================
+// 确保专辑宣发弹窗一定存在
+document.addEventListener("DOMContentLoaded", function() {
+    if(!document.getElementById("mAlbPromo")) {
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal" id="mAlbPromo" style="z-index:400;">
+            <div class="modal-box">
+                <button class="modal-x" onclick="closeM('mAlbPromo')">X</button>
+                <h3 class="tg" id="mAlbPromoTitle" style="text-align:center;margin-bottom:15px;">📢 专辑专属宣发</h3>
+                <p style="font-size:12px;color:#666;margin-bottom:10px;">选择一种营销策略来拉升本张专辑的整体大盘：</p>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div class="card" style="padding:10px;margin:0;border:1px solid #eee;background:#fefcf5;">
+                        <b style="font-size:14px;">💿 发行多版本彩胶/实体</b>
+                        <p style="font-size:11px;color:#888;margin:5px 0;">通过发行限量实体盘割韭菜，直接拉升纯销量。(成本: $10万)</p>
+                        <button class="sec" onclick="doAlbPromo('vinyl')" style="margin:0;font-size:12px;padding:8px;">发行新版本</button>
+                    </div>
+                    <div class="card" style="padding:10px;margin:0;border:1px solid #eee;background:#fefcf5;">
+                        <b style="font-size:14px;">✍️ 举办全球线下签售会</b>
+                        <p style="font-size:11px;color:#888;margin:5px 0;">极大地固粉并拉升基础流媒。(耗时1天，耗精: 20)</p>
+                        <button class="sec" onclick="doAlbPromo('sign')" style="margin:0;font-size:12px;padding:8px;">举办签售会</button>
+                    </div>
+                    <div class="card" style="padding:10px;margin:0;border:1px solid #eee;background:#fefcf5;">
+                        <b style="font-size:14px;">🏙️ 时代广场大屏 & 买量通稿</b>
+                        <p style="font-size:11px;color:#888;margin:5px 0;">简单粗暴的资本力量，增加超高曝光流媒。(成本: $100万)</p>
+                        <button class="sec" onclick="doAlbPromo('ads')" style="margin:0;font-size:12px;padding:8px;">砸钱买量</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `);
+    }
+});
+
+// 重写渲染逻辑，把宣发按钮贴上去
+window.renderAlb = function() {
+    let box = document.getElementById("listAList");
+    if(box && albs.length > 0) {
+        box.innerHTML = albs.map(function(a, i){ 
+            let dlxBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;padding:4px 8px;" onclick="openDeluxe(${i})">🌟追加豪华版</button>`; 
+            let detailBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;padding:4px 8px;" onclick="openAlbDetail(${i})">📖单曲一览</button>`; 
+            let promoBtn = `<button class="inline" style="margin-top:5px;font-size:11px;padding:4px 8px;background:#e0f2fe;color:#0369a1;font-weight:bold;" onclick="openAlbPromo(${i})">📢 专辑宣发</button>`;
+            
+            return `
+            <div class="card" style="border:1px solid #eee;position:relative;">
+                <b style="font-size:15px;">${escapeHTML(a.n)}</b> 
+                <span class="tier-badge" style="background:#8e44ad;">${a.st}</span><br>
+                <span style="font-size:12px;color:#666;">收录:${a.s.length}首歌曲</span><br>
+                <div style="font-size:11px;color:#555;margin-top:5px;">
+                    感知分: <b style="color:#111;">${a.trackRef?a.trackRef.Spub.toFixed(1):0}</b> | 累计等效销量: <b style="color:#e6683c;">${a.trackRef?a.trackRef.slTotal.toLocaleString():0}</b>
+                </div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">
+                    ${dlxBtn} ${detailBtn} ${promoBtn}
+                </div>
+            </div>`; 
+        }).join('');
+    }
+};
+
+window.openAlbPromo = function(idx) {
+    tempIdx = idx;
+    let a = albs[idx];
+    document.getElementById("mAlbPromoTitle").innerText = `📢 宣发《${escapeHTML(a.n)}》`;
+    document.getElementById("mAlbPromo").classList.add("open");
+};
+
+// ==================== 4. 硬核真刀真枪数据撕逼系统 ====================
+
+// 提取脱水硬核对比数据
+function getHardCoreStats(artistName, isMe) {
+    let allWorks = trackPool.filter(t => t.artist === artistName || (isMe && t.isMe));
+    let tracks = allWorks.filter(t => t.type === 'track');
+    let albums = allWorks.filter(t => t.type === 'album');
+    
+    // 艺术：最高评分5首
+    let top5Art = [...tracks].sort((a,b) => (b.Spub||0) - (a.Spub||0)).slice(0, 5);
+    let artAvg = top5Art.length > 0 ? (top5Art.reduce((s, t) => s + t.Spub, 0) / top5Art.length).toFixed(1) : 0;
+    
+    // 商业：最高流媒5首
+    let top5Stm = [...tracks].sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0)).slice(0, 5);
+    let stmSum = top5Stm.reduce((s, t) => s + (t.stmGlobal||0), 0);
+    
+    // 商业：最高日增5单、5专
+    let top5DailyT = [...tracks].sort((a,b) => (b.stmGlobal_Day||0) - (a.stmGlobal_Day||0)).slice(0, 5);
+    let top5DailyA = [...albums].sort((a,b) => (b.stmGlobal_Day||0) - (a.stmGlobal_Day||0)).slice(0, 5);
+    let dailyTSum = top5DailyT.reduce((s, t) => s + (t.stmGlobal_Day||0), 0);
+    let dailyASum = top5DailyA.reduce((s, t) => s + (t.stmGlobal_Day||0), 0);
+    
+    // 商业：冠单与认证
+    let no1 = tracks.filter(t => t.peakS === 1 || t.peakB === 1).length;
+    let dia = tracks.filter(t => t.slTotal >= 10000000).length;
+    let plat = tracks.filter(t => t.slTotal >= 1000000 && t.slTotal < 10000000).length;
+    let gold = tracks.filter(t => t.slTotal >= 500000 && t.slTotal < 1000000).length;
+    
+    // 奖项分开统计 (大致模拟分类)
+    let awdStrs = isMe ? ad.awd : historyAwards.filter(msg => msg.includes("：" + artistName) || msg.includes(artistName + "《"));
+    let aoty = awdStrs.filter(s => s.includes("年度专辑") || s.includes("最佳专辑")).length;
+    let soty = awdStrs.filter(s => s.includes("年度歌曲") || s.includes("神曲")).length;
+    let totalAwd = awdStrs.length;
+
+    return { artAvg, stmSum, dailyTSum, dailyASum, no1, dia, plat, gold, aoty, soty, totalAwd };
+}
+
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true, sk: ad.sk }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    
+    // 比例分配：40%数据，30%撕逼，30%安利
+    if (rand < 0.40) {
+        let stats = getHardCoreStats(targetArt.n, targetArt.isMe);
+        let title = `📊 【实绩速报】${targetArt.n} 生涯脱水核心数据汇总`;
+        let content = `👑 冠军单曲：${stats.no1} 首\n💎 钻石唱片：${stats.dia} 张 | 💿 白金：${stats.plat} 张 | 📀 黄金：${stats.gold} 张\n🎧 TOP5单曲总流媒：${(stats.stmSum/10000).toFixed(0)}万\n🏆 总奖项数：${stats.totalAwd} 座 (含 ${stats.aoty}座年度专辑)\n\n(粉丝控评团速来占领广场，数据即正义！)`;
+        return { type: "data", title: title, desc: content };
+    } 
+    else if (rand < 0.70) {
+        let sk = targetArt.sk || { f: 50, s: 50, fa: 50 };
+        let promoTypes = [];
+        if (sk.f > 85) promoTypes.push("face");
+        if (sk.s > 85) promoTypes.push("stage");
+        if (sk.fa > 85) promoTypes.push("fashion");
+        
+        let chosenPromo = promoTypes.length > 0 ? promoTypes[Math.floor(Math.random() * promoTypes.length)] : "song";
+        
+        if (chosenPromo === "face") return { type: "promo", title: `💖 【神颜出圈】${targetArt.n} 这张脸是真实存在的吗？`, desc: `最近被这组神图刷屏了，这骨相这皮相，简直是女娲毕设！内娱/欧美圈绝对的颜霸！` };
+        if (chosenPromo === "stage") return { type: "promo", title: `🔥 【百万直拍】${targetArt.n} 最新打歌舞台太绝了！`, desc: `这台风，这走位，这表现力！真的是天生属于舞台的王者，全开麦实力强到可怕！` };
+        if (chosenPromo === "fashion") return { type: "promo", title: `✨ 【时尚弄潮儿】${targetArt.n} 的红毯生图解析`, desc: `随便一套高定都能完美消化，生图比精修还抗打，红毯简直就是TA的统治区！` };
+        
+        return { type: "promo", title: `🎵 【按头安利】入坑 ${targetArt.n} 必听神曲`, desc: `近期一直在单曲循环，这音色和旋律真的没谁了！强烈安利给大家！` };
+    } 
+    else {
+        // 真刀真枪数据撕逼
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        if(artA.n === artB.n) return null;
+
+        let sA = getHardCoreStats(artA.n, artA.isMe);
+        let sB = getHardCoreStats(artB.n, artB.isMe);
+
+        let content = `不要发洗脑包了，直接上【脱水硬核数据】打脸！\n\n`;
+        content += `【👑 商业核心实绩】\n`;
+        content += `冠单数：${artA.n} (${sA.no1}首) 🆚 ${artB.n} (${sB.no1}首)\n`;
+        content += `钻石认证：${artA.n} (${sA.dia}张) 🆚 ${artB.n} (${sB.dia}张)\n`;
+        content += `白金认证：${artA.n} (${sA.plat}张) 🆚 ${artB.n} (${sB.plat}张)\n`;
+        content += `TOP5单曲累计流媒：${(sA.stmSum/1000000).toFixed(1)}M 🆚 ${(sB.stmSum/1000000).toFixed(1)}M\n`;
+        content += `TOP5单曲最高日增：${(sA.dailyTSum/10000).toFixed(0)}万 🆚 ${(sB.dailyTSum/10000).toFixed(0)}万\n`;
+        content += `TOP5专辑最高日增：${(sA.dailyASum/10000).toFixed(0)}万 🆚 ${(sB.dailyASum/10000).toFixed(0)}万\n\n`;
+        
+        content += `【🎵 艺术与乐评】(最高5首神曲均分对比)\n`;
+        content += `专业乐评均分：${artA.n} (${sA.artAvg}分) 🆚 ${artB.n} (${sB.artAvg}分)\n\n`;
+        
+        content += `【🏆 奖项底蕴】\n`;
+        content += `总大奖数：${artA.n} (${sA.totalAwd}座) 🆚 ${artB.n} (${sB.totalAwd}座)\n`;
+        content += `年度专辑：${artA.n} (${sA.aoty}座) 🆚 ${artB.n} (${sB.aoty}座)\n\n`;
+
+        let title = `🔥 【撕逼实况】${artA.n} VS ${artB.n}，数据教你做人！`;
+        
+        // 胜负判定总结
+        if (sA.dia > sB.dia && sA.no1 > sB.no1 && sA.stmSum > sB.stmSum) {
+            content += `👉 总结：${artA.n} 商业全方位吊打碾压，${artB.n} 粉丝别再嘴硬了，拿头比？`;
+        } else if (sB.dia > sA.dia && sB.no1 > sA.no1 && sB.stmSum > sA.stmSum) {
+            content += `👉 总结：${artB.n} 断层领先，${artA.n} 粉丝做梦也该醒醒了，谁在登月碰瓷一目了然。`;
+        } else {
+            content += `👉 总结：互有胜负五五开，商业艺术加奖杯各有千秋，但这并不妨碍两家粉丝继续互屠广场！`;
+        }
+
+        return { type: "drama", title: title, desc: content };
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
