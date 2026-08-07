@@ -745,48 +745,33 @@ window.autoLoginSkip = function() {
 };
 
 window.checkLoginPwd = function() {
-    let pwdInput = document.getElementById("loginPwd");
-    if (!pwdInput) return; // 防护：确保能抓取到输入框
+    let inputPwd = document.getElementById("loginPwd").value;
     
-    let inputPwd = pwdInput.value;
-    
-    if (inputPwd !== "123456") {
-        // 密码错误：直接弹出提示并中断
-        alert("密码错误，请重新输入！\n（默认密码为：123456）");
+    if (inputPwd !== CORRECT_PASSWORD) {
+        alert("密码错误，请重新输入！");
         return;
     }
     
-    // 密码正确：保存免密状态
+    // 使用 Try-Catch 捕获可能的本地存储禁用报错（如无痕模式或容量溢出），防止代码卡死中断
     try {
-        localStorage.setItem("starPro_login_pwd", inputPwd);
+        localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
         localStorage.setItem("starPro_is_unlocked", "true"); 
     } catch (e) {
-        console.warn("无痕模式或存储已满，本次仅单次登录。");
+        console.warn("无法保存免密凭证，可能浏览器禁用了本地缓存，但允许单次登录。");
     }
     
-    // 【核心修复】：先强制关闭可能残留的隐形遮罩弹窗
-    let modals = document.querySelectorAll('.modal');
-    for(let i=0; i<modals.length; i++) {
-        modals[i].classList.remove('open');
-    }
+    alert("登录成功！进入大厅。");
     
-    // 切换页面显示
-    let loginPage = document.getElementById("loginPage");
-    if (loginPage) {
-        loginPage.classList.remove("active");
-        loginPage.style.display = "none";
-    }
+    // 强制关闭所有弹窗并切换页面
+    document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+    document.getElementById("loginPage").classList.remove("active");
+    document.getElementById("loginPage").style.display = "none";
     
     let createPage = document.getElementById("createPage");
     if (createPage) {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
-    
-    // 【最后再弹出成功提示】，确保不会被上面的清理代码误伤秒杀！
-    setTimeout(function() {
-        alert("🎉 登录成功！已为您记录免密状态。\n请在下方建立或读取您的生涯档案！");
-    }, 100);
 };
 /* ================= 全局核心变量 ================= */
 const GAME_VERSION = "1.3.0";
@@ -7025,51 +7010,12 @@ window.confirmGamePrompt = function() {
 // 1. 修复原版多次重写 createEntity 造成的无限递归 (Maximum call stack size exceeded)
 if (!window._createEntitySafeguardApplied) {
     var rawOriginalCreateEntity = window.createEntity;
-    // 使用安全的闭包隔离，避免使用 arguments.callee 导致的栈溢出
-    window.createEntity = (function(_super) {
-        let isExecuting = false;
-        return function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
-            // 安全的防止无限递归开关
-            if (isExecuting) return {}; 
-            isExecuting = true;
-            
-            let t;
-            try {
-                t = _super(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
-            } finally {
-                isExecuting = false;
-            }
-            
-            // 执行 科切拉/大舞台 Buff 修正
-            if(isMe && ad.stageBuff) {
-                if(ad.stageBuff.god) {
-                    if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); } 
-                    else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); }
-                    ad.stageBuff.god = false; 
-                } else if(ad.stageBuff.bad) {
-                    t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8);
-                    ad.stageBuff.bad = false; 
-                }
-                t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
-            }
-
-            // 执行 NPC 保底修正
-            if (!isMe && type === "track") {
-                let baseFans = fans || 100000;
-                let npcDaily = Math.floor(baseFans * (Math.random() * 0.10 + 0.05) * 5) + 1000000 + Math.floor(Math.random() * 2000000);
-                t.stmGlobal_Day = npcDaily;
-                t.stmGlobal_Week = t.stmGlobal_Day * 7;
-                t.stmUS_Day = Math.floor(t.stmGlobal_Day * 0.4);
-                t.stmUS_Week = t.stmUS_Day * 7;
-                t.stmGlobal = t.stmGlobal_Week;
-                t.stmUS = t.stmUS_Week;
-                t.slTotal = Math.floor(t.stmGlobal / 150);
-            }
-            return t;
-        };
-    })(rawOriginalCreateEntity);
-    window._createEntitySafeguardApplied = true;
-}
+    window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
+        // 防止无限递归
+        if (arguments.callee.caller === window.createEntity) return; 
+        
+        let t = rawOriginalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
+        
         // 执行 科切拉/大舞台 Buff 修正
         if(isMe && ad.stageBuff) {
             if(ad.stageBuff.god) {
