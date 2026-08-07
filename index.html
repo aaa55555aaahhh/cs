@@ -2395,7 +2395,7 @@ window.reqAiMail = async function() {
     if(!tk) return alert("请先在【系统】设置并连接 API 才能使用 AI 信件系统！");
     
     let btn = event.target;
-    let oldTxt = btn.innerText;
+    var oldTxt = btn.innerText;
     btn.innerText = "生成中..."; btn.disabled = true;
 
     let prompt = `你是《星路制作人》的AI，请以粉丝(或圈内人)的身份给歌手“${ad.s}”写一封简短的信(大约80字)。
@@ -2702,7 +2702,7 @@ window.loverSleep = function() {
 
 
 // 2. 修复旧档读取后，大盘歌手、榜单数据、买歌市场全部消失的问题
-let oldLoadGameFix = window.loadGame;
+var oldLoadGameFix = window.loadGame;
 window.loadGame = function(slot) {
     oldLoadGameFix(slot);
     let needUpdate = false;
@@ -2990,7 +2990,7 @@ window.previewNpcAvatar = function(input) {
 };
 
 window.saveNpcEdit = function() {
-    let oldName = document.getElementById("eNpcOldName").value;
+    var oldName = document.getElementById("eNpcOldName").value;
     let newName = document.getElementById("eNpcName").value.trim();
     let age = parseInt(document.getElementById("eNpcAge").value) || 20;
     let gender = document.getElementById("eNpcGender").value.trim() || "保密";
@@ -3106,7 +3106,7 @@ window.batchGenNpc = function() {
 };
 // ==================== 修复初始大盘数据与写手榜 ====================
 // 1. 拦截并重写初始化逻辑，给 NPC 强行塞入历史爆款歌曲和数据！
-let oldInitNPCs = window.initNPCs;
+var oldInitNPCs = window.initNPCs;
 window.initNPCs = function() {
     worldArtists = []; 
     let num = Math.floor(Math.random()*11)+10; 
@@ -3119,7 +3119,7 @@ window.initNPCs = function() {
         // 制造三首歌曲：一张专辑、一首新单曲、一首远古爆款老歌
         let rNameAlb = ts[Math.floor(Math.random()*ts.length)] + " " + ts[Math.floor(Math.random()*ts.length)];
         let rNameTk = ts[Math.floor(Math.random()*ts.length)];
-        let oldHit = ts[Math.floor(Math.random()*ts.length)] + " (Classic Hit)";
+        var oldHit = ts[Math.floor(Math.random()*ts.length)] + " (Classic Hit)";
         
         let alb = createEntity(rNameAlb, art, false, "album", g, f, Math.random()*50+40, Math.random()*50+40, time.y, time.m, time.w);
         let tk1 = createEntity(rNameTk, art, false, "track", g, f, Math.random()*50+40, Math.random()*50+40, time.y, time.m, time.w);
@@ -3857,7 +3857,7 @@ window.cleanMyOldSongs = function(isTitleTrack) {
 };
 // ==================== 本周记事与 AI 行程推演系统 ====================
 
-let oldSwitchMainTabForSchedule = window.switchMainTab;
+var oldSwitchMainTabForSchedule = window.switchMainTab;
 window.switchMainTab = function(btn, targetId) {
     oldSwitchMainTabForSchedule(btn, targetId);
     if(targetId === 'pSchedule') refreshTodoStatus();
@@ -4021,7 +4021,7 @@ window.refreshTrend = function() {
 };
 
 // 重新渲染自己的发布记录（个人帖子）
-let oldPostSocial = window.postSocial;
+var oldPostSocial = window.postSocial;
 window.postSocial = function() {
     oldPostSocial();
     let text = document.getElementById("mTextInput").value || "分享了一条动态";
@@ -4067,7 +4067,7 @@ window.sendPostReply = async function(topic) {
 
 // ==================== 补丁：给排行榜和乐评增加详情入口 ====================
 // 在乐评平台生成详情按钮
-let oldRenderReviewApp = window.renderReviewApp;
+var oldRenderReviewApp = window.renderReviewApp;
 window.renderReviewApp = function(appId) {
     oldRenderReviewApp(appId);
     let cards = document.getElementById("mInfoContent").querySelectorAll('.card');
@@ -4248,7 +4248,7 @@ window.acceptCollab = function(npcName) {
 };
 
 // 2. 优化邮件详情页：如果没有填 API 密钥，主动隐藏 AI 回复框，避免误导
-let oldViewMailDetail = window.viewMailDetail;
+var oldViewMailDetail = window.viewMailDetail;
 window.viewMailDetail = function(idx) {
     oldViewMailDetail(idx);
     let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
@@ -4322,7 +4322,7 @@ if(!document.getElementById("mCoachella")) {
 
 
 // 2. 增加【给当前签约的公司改名】的功能
-let oldRenderMapCompanyForRename = window.renderMapCompany;
+var oldRenderMapCompanyForRename = window.renderMapCompany;
 window.renderMapCompany = function() {
     oldRenderMapCompanyForRename(); // 调回原版渲染
     
@@ -4382,7 +4382,7 @@ window.renameMyCompany = function() {
 };
 
 // 注入改名按钮到我的公司面板
-let oldRenderMapCompany = window.renderMapCompany;
+var oldRenderMapCompany = window.renderMapCompany;
 window.renderMapCompany = function() {
     oldRenderMapCompany();
     let box = document.getElementById("boxMyCompany");
@@ -4545,7 +4545,7 @@ window.confirmCoachella = function() {
 };
 
 // 4. 颁奖结算：拦截缺席情况
-let oldCheckAutoAwardAbs = window.checkAutoAward;
+var oldCheckAutoAwardAbs = window.checkAutoAward;
 window.checkAutoAward = function() {
     // 暂存出席状态
     let isAbsent = (ad.awardAbsent === time.m);
@@ -4916,7 +4916,7 @@ if (originalFinishWrite) {
     window.finishWrite = async function() {
         if(!curPj || curPj.type!=="write") return;
         
-        let rawQual = curPj.v + curPj.w; // 原始属性和
+        var rawQual = curPj.v + curPj.w; // 原始属性和
         let aiAdj = 0;
         
         // 如果有内核且启用了AI，尝试获取AI评分
@@ -4953,7 +4953,7 @@ if (originalFinishWrite) {
 window.finishWrite = async function() {
     if(!curPj || curPj.type!=="write") return;
     
-    let rawQual = curPj.v + curPj.w; // 原始属性和
+    var rawQual = curPj.v + curPj.w; // 原始属性和
     let roll = Math.random() * 100; // 0-100 的随机数，用于概率判定
     
     let scoreRange = [0, 0];
@@ -5194,7 +5194,7 @@ window.submitCustomNPC = async function() {
 window.aiGenName = async function(type, targetId) {
     let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
     let btn = event.target;
-    let oldText = btn.innerText;
+    var oldText = btn.innerText;
     btn.innerText = "生成中...";
     btn.disabled = true;
 
@@ -5241,7 +5241,7 @@ window.uploadMyAvatar = function(input) {
 
 // 3. 修复注入艺人后，下拉列表不更新的 Bug
 // 拦截原版的单体注入函数，在成功后强行刷新一下 feat 列表
-let oldSubmitCustomNPC = window.submitCustomNPC;
+var oldSubmitCustomNPC = window.submitCustomNPC;
 window.submitCustomNPC = async function() {
     await oldSubmitCustomNPC(); 
     // 刷新大盘下拉列表
@@ -5251,7 +5251,7 @@ window.submitCustomNPC = async function() {
 };
 
 // 拦截批量生成函数，在成功后也强行刷新 feat 列表
-let oldBatchGenNpc = window.batchGenNpc;
+var oldBatchGenNpc = window.batchGenNpc;
 window.batchGenNpc = function() {
     oldBatchGenNpc();
     if(typeof updateFeatList === 'function') {
@@ -5269,7 +5269,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 拦截原版的打开编辑界面函数，把已有性格填入输入框
-let oldOpenEditNpcForPersonality = window.openEditNpc;
+var oldOpenEditNpcForPersonality = window.openEditNpc;
 window.openEditNpc = function(id) {
     oldOpenEditNpcForPersonality(id); // 先执行原版的打开逻辑
     
@@ -5282,9 +5282,9 @@ window.openEditNpc = function(id) {
 };
 
 // 拦截原版的保存编辑函数，把新性格保存到大盘数据中
-let oldSaveNpcEditForPersonality = window.saveNpcEdit;
+var oldSaveNpcEditForPersonality = window.saveNpcEdit;
 window.saveNpcEdit = function() {
-    let oldName = document.getElementById("eNpcOldName").value;
+    var oldName = document.getElementById("eNpcOldName").value;
     let npc = worldArtists.find(x => x.n === oldName);
     
     let pInput = document.getElementById("eNpcPersonality");
@@ -5297,7 +5297,7 @@ window.saveNpcEdit = function() {
 // ==================== 补丁：修复流媒数值爆炸与销量割裂 Bug ====================
 
 // 1. 拦截并修复时间推演中的无限复利 BUG
-let oldAdvTimeForCap = window.advTime;
+var oldAdvTimeForCap = window.advTime;
 window.advTime = function(weeks, showMsg) {
     // 强制限制所有大盘歌曲的周流媒上限，防止因为打单和逆跌造成无限指数爆炸
     trackPool.forEach(t => {
@@ -5324,7 +5324,7 @@ window.advTime = function(weeks, showMsg) {
 };
 
 // 3. 修复打单和短视频宣发的无限乘数 BUG
-let oldPromoAlbSongForCap = window.promoAlbSong;
+var oldPromoAlbSongForCap = window.promoAlbSong;
 window.promoAlbSong = function(id) {
     let t = trackPool.find(x => x.id === id);
     if(t) {
@@ -5376,7 +5376,7 @@ function interceptFanGain(originalFunction) {
         let result = originalFunction.apply(this, args); 
         
         // 计算原版代码本该给你加多少粉丝
-        let rawGain = ad.st.f - beforeFans; 
+        var rawGain = ad.st.f - beforeFans; 
         
         if (rawGain > 0) {
             // 撤销原版的粗暴加粉
@@ -5399,7 +5399,7 @@ if (window.doTour) window.doTour = interceptFanGain(window.doTour);             
 // ==================== 补丁：修复榜单萎缩，重塑真实的大盘流媒生态 ====================
 
 // 1. 拦截大盘推演，强制注入“真实榜单保底机制”
-let oldAdvTimeForMarketFix = window.advTime;
+var oldAdvTimeForMarketFix = window.advTime;
 window.advTime = function(weeks, showMsg) {
     oldAdvTimeForMarketFix(weeks, showMsg);
 
@@ -5443,7 +5443,7 @@ window.advTime = function(weeks, showMsg) {
 };
 
 // 2. 修复 NPC 初始发歌数值过低的问题
-let oldCreateEntityForNPC = window.createEntity;
+var oldCreateEntityForNPC = window.createEntity;
 window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
     let t = oldCreateEntityForNPC(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
     
@@ -5465,7 +5465,7 @@ window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t
 };
 // ==================== 补丁：修复专辑与单曲销量割裂，引入 TEA 折算机制 ====================
 
-let oldUpdatePeakRanksForTEA = window.updatePeakRanks;
+var oldUpdatePeakRanksForTEA = window.updatePeakRanks;
 window.updatePeakRanks = function() {
     // 在更新榜单排位之前，先将单曲的流媒折算回母专辑
     if (typeof albs !== 'undefined') {
@@ -5547,7 +5547,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 2. 拦截并重写专辑列表渲染，加入【📢 专辑宣发】按钮
-let oldRenderAlbForPromo = window.renderAlb;
+var oldRenderAlbForPromo = window.renderAlb;
 window.renderAlb = function() {
     oldRenderAlbForPromo();
     
@@ -5642,7 +5642,7 @@ window.doAlbPromo = function(type) {
 // ==================== 补丁：社交生态增强、数据总结帖与走势记录 ====================
 
 // 1. 在时间推演时，记录每首歌的每周排名走势
-let oldAdvTimeForTrend = window.advTime;
+var oldAdvTimeForTrend = window.advTime;
 window.advTime = function(weeks, showMsg) {
     oldAdvTimeForTrend(weeks, showMsg);
     
@@ -5740,7 +5740,7 @@ window.renderMyPosts = function() {
     ).join('');
 };
 
-let oldPostSocialForDetail = window.postSocial;
+var oldPostSocialForDetail = window.postSocial;
 window.postSocial = function() {
     oldPostSocialForDetail();
     let text = document.getElementById("mTextInput").value || "分享了一条动态";
@@ -5976,7 +5976,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 2. 拦截并处理电台 APP 的打开逻辑
-let oldOpenAppForRadio = window.openApp;
+var oldOpenAppForRadio = window.openApp;
 window.openApp = function(appId) {
     if (appId === 'Radio') {
         renderRadioApp();
@@ -6057,7 +6057,7 @@ window.buyRadioPayola = function(id) {
 };
 
 // 4. 重写 B榜点数计算公式，正式接入电台数据
-let oldRenderChartForBB = window.renderChart;
+var oldRenderChartForBB = window.renderChart;
 window.renderChart = function() {
     oldRenderChartForBB(); // 先让原版渲染
     
@@ -6105,7 +6105,7 @@ window.renderChart = function() {
 };
 
 // 5. 社交平台新增【下周预测】功能
-let oldRefreshTrendForPredict = window.refreshTrend;
+var oldRefreshTrendForPredict = window.refreshTrend;
 window.refreshTrend = function() {
     oldRefreshTrendForPredict();
     let trendList = document.getElementById("trendList");
@@ -6308,7 +6308,7 @@ window.sellMySong = function(idx) {
 };
 
 // 3. 修复原版买歌逻辑，使得买来的歌打上标签，防止循环倒卖
-let oldBuySongForMarket = window.buySong;
+var oldBuySongForMarket = window.buySong;
 window.buySong = function(i) {
     let s = marketSongs[i]; 
     if(ad.m < s.price) return alert("资金不足！"); 
@@ -6455,7 +6455,7 @@ window.renderChart = function() {
 // ==================== 补丁：公司宣发全包、B榜点数拟真与长尾数据贴系统 ====================
 
 // 1. 修复电台买榜与巡演的公司全包机制
-let oldBuyRadioPayola = window.buyRadioPayola;
+var oldBuyRadioPayola = window.buyRadioPayola;
 window.buyRadioPayola = function(id) {
     let t = trackPool.find(x => x.id === id);
     if(!t) return;
@@ -6476,7 +6476,7 @@ window.buyRadioPayola = function(id) {
     renderRadioApp(); saveGame();
 };
 
-let oldDoTour = window.doTour;
+var oldDoTour = window.doTour;
 window.doTour = function() {
     let budget = parseInt(document.getElementById("inTourBudget").value) || 0;
     let isCompanyPaying = (ad.co !== "独立" && ad.dealType === "7/3");
@@ -6500,7 +6500,7 @@ window.doTour = function() {
 
 
 // 2. 拟真化 B榜点数 (缩小到现实的 100~500 点区间)
-let oldRenderChartForRealBB = window.renderChart;
+var oldRenderChartForRealBB = window.renderChart;
 window.renderChart = function() {
     oldRenderChartForRealBB(); 
     if (curChartPlatform === 'BB' && (curChType === 'track' || curChType === 'daily')) {
@@ -6544,7 +6544,7 @@ window.renderChart = function() {
     }
 };
 
-let oldShowBBPredictions = window.showBBPredictions;
+var oldShowBBPredictions = window.showBBPredictions;
 window.showBBPredictions = function() {
     oldShowBBPredictions(); // 调原版
     // 修改预测面板里的分数
@@ -6728,7 +6728,7 @@ window.openAlbDetail = function(idx) {
 };
 
 // 5. 修复：恢复多专辑面板的“发先行曲”和“发宣传曲”按钮
-let oldRenderMultiAlbumStudio = window.renderMultiAlbumStudio;
+var oldRenderMultiAlbumStudio = window.renderMultiAlbumStudio;
 window.renderMultiAlbumStudio = function() {
     oldRenderMultiAlbumStudio(); 
     
@@ -6767,7 +6767,7 @@ window.relMultiAlbPre = function(albIdx, type) {
 };
 
 // 6. 强制保障颁奖体系运行 (包裹 try-catch 防断流)
-let oldAdvTimeForAward = window.advTime;
+var oldAdvTimeForAward = window.advTime;
 window.advTime = function(weeks, showMsg) {
     oldAdvTimeForAward(weeks, showMsg);
     
@@ -6810,7 +6810,7 @@ function initNpcRelations() {
 }
 
 // 2. 在艺人详细档案中安全展示“人缘与粉圈关系”
-let oldOpenNpcDetailForRelFixed2 = window.openNpcDetail;
+var oldOpenNpcDetailForRelFixed2 = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     initNpcRelations();
     
@@ -6959,7 +6959,7 @@ window.onerror = function(msg, url, lineNo, columnNo, error) {
     return false;
 };
 
-let oldCheckAutoAwardForCollabFix = window.checkAutoAward;
+var oldCheckAutoAwardForCollabFix = window.checkAutoAward;
 window.checkAutoAward = function() {
     if (trackPool) {
         trackPool.forEach(t => { 
@@ -7009,7 +7009,7 @@ window.confirmGamePrompt = function() {
 
 // 1. 修复原版多次重写 createEntity 造成的无限递归 (Maximum call stack size exceeded)
 if (!window._createEntitySafeguardApplied) {
-    let rawOriginalCreateEntity = window.createEntity;
+    var rawOriginalCreateEntity = window.createEntity;
     window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
         // 防止无限递归
         if (arguments.callee.caller === window.createEntity) return; 
@@ -7047,7 +7047,7 @@ if (!window._createEntitySafeguardApplied) {
 }
 
 // 2. 修复颁奖大厅 `awardIntroBox` 空指针问题
-let oldRenderAwardRegistrySafe = window.renderAwardRegistry;
+var oldRenderAwardRegistrySafe = window.renderAwardRegistry;
 window.renderAwardRegistry = function() {
     let box = document.getElementById("awardIntroBox");
     if(!box) return; // 如果玩家不在地图面板直接返回，防止报错阻塞执行
@@ -7055,14 +7055,14 @@ window.renderAwardRegistry = function() {
 };
 
 // 3. 修复 `mChartTitle` 等 B榜预测空指针卡死问题
-let oldSwitchChartType = window.switchChartType;
+var oldSwitchChartType = window.switchChartType;
 window.switchChartType = function(type) {
     if(!document.getElementById("mChartContent")) return;
     oldSwitchChartType(type);
 };
 
 // 4. 防止存档爆仓被完全吞没 (安全封顶日志)
-let oldSaveGameImmediateSafe = window.saveGameImmediate;
+var oldSaveGameImmediateSafe = window.saveGameImmediate;
 window.saveGameImmediate = function() {
     // 定期清除多余日志防止存档过大
     if (posts && posts.mom && posts.mom.length > 50) posts.mom = posts.mom.slice(0, 50);
@@ -7351,7 +7351,7 @@ window.initNpcRelations = function() {
 };
 
 // 2. 升级艺人详情：展示TA在这个圈子里的所有非陌生关系！
-let superOldOpenNpcDetail = window.openNpcDetail;
+var superOldOpenNpcDetail = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     if(typeof checkAndFixNPCs === 'function') checkAndFixNPCs();
     initNpcRelations(); // 每次打开强制刷新和修补人际网
@@ -7528,7 +7528,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 2. 修复：严格限制大奖参与年份 (一首歌/专辑只能参加发布当年或次年的颁奖)
-let superOldCheckAutoAward = window.checkAutoAward;
+var superOldCheckAutoAward = window.checkAutoAward;
 window.checkAutoAward = function() {
     // 给实体打上参赛年份标记
     trackPool.forEach(t => { 
@@ -7555,7 +7555,7 @@ window.checkAutoAward = function() {
 };
 
 // 3. 修复：NPC 详情里的获奖记录，不再显示玩家自己赢的奖
-let oldOpenNpcDetailForAward = window.openNpcDetail;
+var oldOpenNpcDetailForAward = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     oldOpenNpcDetailForAward(id);
     let npc = worldArtists.find(x => x.id === id);
@@ -7596,7 +7596,7 @@ window.updatePeakRanks = function() {
 };
 
 // 在单曲详情中显示 Peak x N
-let oldViewSongStats = window.viewSongStats;
+var oldViewSongStats = window.viewSongStats;
 window.viewSongStats = function(songId) {
     oldViewSongStats(songId);
     let t = trackPool.find(x => x.id === songId);
@@ -7609,7 +7609,7 @@ window.viewSongStats = function(songId) {
 };
 
 // 5. 修复：大盘太割裂，接入自定义大盘底盘控制
-let oldAdvTimeForBase = window.advTime;
+var oldAdvTimeForBase = window.advTime;
 window.advTime = function(weeks, showMsg) {
     oldAdvTimeForBase(weeks, showMsg);
     
@@ -7835,7 +7835,7 @@ window.updatePerformCost = function() {
 };
 
 // 2. 改造巡演功能，点击后不再直接结算，而是拉起选歌单面板
-let superOldDoTour = window.doTour;
+var superOldDoTour = window.doTour;
 window.doTour = function() {
     let scale = document.getElementById("selTourScale").value;
     let region = document.getElementById("selTourRegion").value;
@@ -7857,7 +7857,7 @@ window.doTour = function() {
 };
 
 // 3. 改造邮箱颁奖典礼回信，如果同意出席，拉起表演歌单配置
-let superOldSendMailReply = window.sendMailReply;
+var superOldSendMailReply = window.sendMailReply;
 window.sendMailReply = async function(idx) {
     let m = currentMails[idx];
     let replyText = document.getElementById(`inMailReplyText_${idx}`).value.trim();
@@ -8045,7 +8045,7 @@ window.mainMenuLoad = function() {
 };
 
 // 修复：确保新建游戏时彻底关掉大厅
-let exOldStartGameFix = window.startGame;
+var exOldStartGameFix = window.startGame;
 window.startGame = function() {
     let inNameDom = document.getElementById("inRealName");
     if(!inNameDom || !inNameDom.value.trim()) return alert("⚠️ 必须填写真实姓名才能踏入星途！");
@@ -8074,7 +8074,7 @@ window.mainMenuLoad = function() {
 
 
 // ---------------- 2. 唱片公司与 NPC 生成修复 ----------------
-let superOldInitNPCs = window.initNPCs;
+var superOldInitNPCs = window.initNPCs;
 window.initNPCs = function() {
     // 确保公司列表已经加载
     if(!coList || coList.length === 0) initCos();
@@ -8096,7 +8096,7 @@ window.initNPCs = function() {
 
 
 // ---------------- 3. 电视台打单修复 (独立拦截防冲突) ----------------
-let safeOldConfirmPick = window.confirmPick;
+var safeOldConfirmPick = window.confirmPick;
 window.confirmPick = async function() {
     if (pickAction === "tvPromoFree") {
         let radios = document.getElementsByName("tvR");
@@ -8211,7 +8211,7 @@ window.openSetlistUI = function(title) {
     let box = document.getElementById("setlistTracks");
     if(box) {
         // 清理掉原有的独立 setlistStageBox，因为我们重新打包在 topHtml 里了
-        let oldStageBox = document.getElementById("setlistStageBox");
+        var oldStageBox = document.getElementById("setlistStageBox");
         if(oldStageBox && oldStageBox.parentElement === box.parentElement) oldStageBox.remove();
         box.innerHTML = topHtml;
     }
@@ -8336,7 +8336,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 2. 艺人设定扩充（加入外貌）与 AI 聊天联动
-let exOldOpenEditNpc = window.openEditNpc;
+var exOldOpenEditNpc = window.openEditNpc;
 window.openEditNpc = function(id) {
     exOldOpenEditNpc(id);
     let npc = worldArtists.find(x => x.id === id);
@@ -8351,9 +8351,9 @@ window.openEditNpc = function(id) {
     }
 };
 
-let exOldSaveNpcEdit = window.saveNpcEdit;
+var exOldSaveNpcEdit = window.saveNpcEdit;
 window.saveNpcEdit = function() {
-    let oldName = document.getElementById("eNpcOldName").value;
+    var oldName = document.getElementById("eNpcOldName").value;
     let npc = worldArtists.find(x => x.n === oldName);
     if(npc && document.getElementById("eNpcAppearance")) {
         npc.appearance = document.getElementById("eNpcAppearance").value.trim();
@@ -8418,7 +8418,7 @@ window.cleanMyOldSongs = function(isTitle) {
 };
 
 // 拦截 mPick 确认按钮处理删歌
-let superOldConfirmPick4 = window.confirmPick;
+var superOldConfirmPick4 = window.confirmPick;
 window.confirmPick = async function() {
     if (pickAction === "deleteSpecificSongs") {
         let checkboxes = document.querySelectorAll("#mPickList input[type='checkbox']:checked");
@@ -8466,7 +8466,7 @@ window.meetPeople = function() {
 };
 
 // 5. 邮箱系统扩充：收歌与暖场邀请
-let superOldOpenMailbox4 = window.openMailbox;
+var superOldOpenMailbox4 = window.openMailbox;
 window.openMailbox = function() {
     superOldOpenMailbox4(); // 先跑原版，生成现有的邮件
     
@@ -8536,7 +8536,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // 每次打开地图界面时，刷新嘉宾列表（并检测是否有邮箱预约）
-let exOldShowMap = window.showMap;
+var exOldShowMap = window.showMap;
 window.showMap = function(id) {
     exOldShowMap(id);
     if(id === 'mapTour' && document.getElementById("selTourGuest")) {
@@ -8556,7 +8556,7 @@ window.showMap = function(id) {
 };
 
 // 2. 升级巡演结算：加入暖场嘉宾的粉丝引流加成
-let exOldDoTour = window.doTour;
+var exOldDoTour = window.doTour;
 window.doTour = function() {
     // 拦截执行前的粉丝基数，稍后我们要额外加成
     let preFan = ad.st.f;
@@ -8593,7 +8593,7 @@ window.doTour = function() {
 };
 
 // 3. 邮箱系统大修：增加“主动写信”面板
-let exOldRenderMailboxUI = window.renderMailboxUI;
+var exOldRenderMailboxUI = window.renderMailboxUI;
 window.renderMailboxUI = function() {
     exOldRenderMailboxUI();
     
@@ -8748,7 +8748,7 @@ window.mainMenuLoad = function() {
 };
 
 // 修复新建游戏逻辑：确保新建完毕后大厅消失，游戏主界面浮出
-let exOldStartGameFix = window.startGame;
+var exOldStartGameFix = window.startGame;
 window.startGame = function() {
     let inNameDom = document.getElementById("inRealName");
     if(!inNameDom || !inNameDom.value.trim()) return alert("⚠️ 必须填写真实姓名才能踏入星途！");
@@ -8767,7 +8767,7 @@ window.startGame = function() {
 // ==================== 终极旧档兼容与修复系统 (防爆档/防更新卡死) ====================
 
 // 拦截并强化读取存档的逻辑
-let rawLoadGameForCompat = window.loadGame;
+var rawLoadGameForCompat = window.loadGame;
 window.loadGame = function(slotOverride) {
     // 1. 先执行原本的读取操作
     rawLoadGameForCompat(slotOverride);
@@ -8953,7 +8953,7 @@ window.fixMapAndShows = function() {
 };
 
 // 5. 【底层断根】彻底修复发歌/发专辑时，读取属性变成 NaN 的严重 Bug
-let oldReleaseAlbumFixReview = window.releaseAlbum;
+var oldReleaseAlbumFixReview = window.releaseAlbum;
 if (oldReleaseAlbumFixReview) {
     window.releaseAlbum = async function() {
         // 在发专辑算分时，之前错误地读取了不存在的 s.v 和 s.w，导致变成了 2.5 分
@@ -8967,7 +8967,7 @@ if (oldReleaseAlbumFixReview) {
         await oldReleaseAlbumFixReview();
     }
 }
-let oldFinishWriteFixReview = window.finishWrite;
+var oldFinishWriteFixReview = window.finishWrite;
 if (oldFinishWriteFixReview) {
     window.finishWrite = async function() {
         // 在写单曲算分时，同理补充玩家真实属性
@@ -8981,7 +8981,7 @@ if (oldFinishWriteFixReview) {
 // ==================== 终极扩展：精准数据、B榜重构与动态定价 ====================
 
 // 1. 深度追踪：拓展每首歌的榜单周数追踪体系
-let rawAdvTimeForDetailedStats = window.advTime;
+var rawAdvTimeForDetailedStats = window.advTime;
 window.advTime = function(weeks, showMsg) {
     // 执行推演前先更新周榜追踪
     trackPool.forEach(t => {
@@ -9085,7 +9085,7 @@ window.adjustAlbumPrice = function(idx) {
     let newPrice = parseInt(document.getElementById(`adjustPrice_${idx}`).value);
     if (!newPrice || newPrice < 1) return alert("价格不合理！");
     
-    let oldPrice = tAlb.price || 10;
+    var oldPrice = tAlb.price || 10;
     tAlb.price = newPrice;
     
     // 价格引发的销量与风评动态
@@ -9107,7 +9107,7 @@ window.adjustAlbumPrice = function(idx) {
 };
 
 // 3. 拟真化 B榜三大成分比例，并引发电台过高骂战
-let superOldRenderChartBB = window.renderChart;
+var superOldRenderChartBB = window.renderChart;
 window.renderChart = function() {
     superOldRenderChartBB();
     
@@ -9258,7 +9258,7 @@ window.viewSongStats = function(songId) {
 };
 
 // 2. 社交帖子增强：大众高感知“仙曲”播报
-let rawGenVarietyPostForGems = window.generateVarietyPost;
+var rawGenVarietyPostForGems = window.generateVarietyPost;
 window.generateVarietyPost = function() {
     let rand = Math.random();
     
