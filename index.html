@@ -752,7 +752,6 @@ window.checkLoginPwd = function() {
         return;
     }
     
-    // 使用 Try-Catch 捕获可能的本地存储禁用报错（如无痕模式或容量溢出），防止代码卡死中断
     try {
         localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
         localStorage.setItem("starPro_is_unlocked", "true"); 
@@ -760,9 +759,7 @@ window.checkLoginPwd = function() {
         console.warn("无法保存免密凭证，可能浏览器禁用了本地缓存，但允许单次登录。");
     }
     
-    alert("登录成功！进入大厅。");
-    
-    // 强制关闭所有弹窗并切换页面
+    // 先强制关闭可能残留的弹窗并切换页面
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
     document.getElementById("loginPage").classList.remove("active");
     document.getElementById("loginPage").style.display = "none";
@@ -772,6 +769,9 @@ window.checkLoginPwd = function() {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
+    
+    // 最后再弹出成功提示，避免被上方的清除弹窗代码给一刀切干掉
+    alert("登录成功！已为您免密，进入星途大厅。");
 };
 /* ================= 全局核心变量 ================= */
 const GAME_VERSION = "1.3.0";
