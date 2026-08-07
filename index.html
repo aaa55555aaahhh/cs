@@ -9961,6 +9961,608 @@ window.startMultiLegTour = function() {
     tourLegs = [];
     addTourLeg();
 };
+// ==================== 强制显示个人主页：圈内关系与粉圈表 ====================
+var superBaseUpdAttr = window.updAttr;
+window.updAttr = function() {
+    // 1. 先执行原版的所有档案刷新逻辑
+    if(superBaseUpdAttr) superBaseUpdAttr();
+    
+    // 2. 找到个人主页的 Tab 栏
+    let tabBar = document.querySelector("#pAttr .sub-tab-bar");
+    let tabsBox = document.getElementById("attrTabs");
+    
+    if (tabBar && tabsBox) {
+        // 如果还没生成这个关系按钮，就强制插入一个
+        if (!document.getElementById("btnTabRelations")) {
+            tabBar.insertAdjacentHTML('beforeend', `<div id="btnTabRelations" class="sub-tab" onclick="switchSubTab(this, 'tabRelations', 'attrTabs')">🔗 圈内关系</div>`);
+            tabsBox.insertAdjacentHTML('beforeend', `<div id="tabRelations" class="sub-page" style="font-size:13px;max-height:250px;overflow-y:auto;background:#fefcf5;padding:10px;border-radius:8px;border:1px solid #eee;"></div>`);
+        }
+        
+        // 3. 每次打开/刷新主页时，遍历大盘获取所有人对你的关系
+        let relHtml = "";
+        if (typeof worldArtists !== 'undefined') {
+            worldArtists.forEach(npc => {
+                // 读取 NPC 对 玩家(player_self) 的关系
+                if(npc.relations && npc.relations['player_self']) {
+                    let rel = npc.relations['player_self'];
+                    // 只要不是双纯陌生，就显示在你的关系表里
+                    if(rel.p !== "陌生" || rel.f !== "陌生") {
+                        let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "陌生" ? "#888" : "#25d366");
+                        let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
+                        
+                        relHtml += `
+                        <div style="padding:8px 0; border-bottom:1px dashed #d1c290; display:flex; justify-content:space-between; align-items:center;">
+                            <b style="font-size:13px;">${escapeHTML(npc.n)}</b>
+                            <span style="font-size:11px; text-align:right;">
+                                私下: <b style="color:${pColor};">${rel.p}</b> | 粉圈: <b style="color:${fColor};">${rel.f}</b>
+                            </span>
+                        </div>`;
+                    }
+                }
+            });
+        }
+        
+        // 如果没人认识你
+        if (relHtml === "") {
+            relHtml = "<div style='color:#888;text-align:center;padding:15px;'>你目前还是个圈内孤狼，还没有和其他艺人产生人际关系或粉圈摩擦。</div>";
+        }
+        
+        // 渲染进去
+        document.getElementById("tabRelations").innerHTML = relHtml;
+    }
+};
+
+// 立即触发一次刷新，确保当前页面直接显示出来
+setTimeout(() => { if(typeof updAttr === 'function') updAttr(); }, 500);
+// ==================== 社交平台硬核重制：40%数据、30%硬核撕逼、30%安利 ====================
+
+// 辅助函数：提取单个歌手的脱水硬核数据
+function getArtistHardStats(artistName, isMe) {
+    let allWorks = trackPool.filter(t => t.artist === artistName || (isMe && t.isMe));
+    let tracks = allWorks.filter(t => t.type === 'track');
+    let albums = allWorks.filter(t => t.type === 'album');
+    
+    // 艺术：最高评分5首
+    let top5Art = [...tracks].sort((a,b) => (b.Spub||0) - (a.Spub||0)).slice(0, 5);
+    let artAvg = top5Art.length > 0 ? (top5Art.reduce((s, t) => s + t.Spub, 0) / top5Art.length).toFixed(1) : 0;
+    
+    // 商业：最高流媒5首
+    let top5Stm = [...tracks].sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0)).slice(0, 5);
+    let stmSum = top5Stm.reduce((s, t) => s + (t.stmGlobal||0), 0);
+    
+    // 商业：最高日增5单、5专
+    let top5DailyT = [...tracks].sort((a,b) => (b.stmGlobal_Day||0) - (a.stmGlobal_Day||0)).slice(0, 5);
+    let top5DailyA = [...albums].sort((a,b) => (b.stmGlobal_Day||0) - (a.stmGlobal_Day||0)).slice(0, 5);
+    let dailyTSum = top5DailyT.reduce((s, t) => s + (t.stmGlobal_Day||0), 0);
+    let dailyASum = top5DailyA.reduce((s, t) => s + (t.stmGlobal_Day||0), 0);
+    
+    // 商业：冠单与认证
+    let no1 = tracks.filter(t => t.peakS === 1 || t.peakB === 1).length;
+    let dia = tracks.filter(t => t.slTotal >= 10000000).length;
+    let plat = tracks.filter(t => t.slTotal >= 1000000 && t.slTotal < 10000000).length;
+    let gold = tracks.filter(t => t.slTotal >= 500000 && t.slTotal < 1000000).length;
+    
+    // 奖项
+    let awdCount = isMe ? ad.awd.length : historyAwards.filter(msg => msg.includes("：" + artistName) || msg.includes(artistName + "《")).length;
+
+    return { artAvg, stmSum, dailyTSum, dailyASum, no1, dia, plat, gold, awdCount };
+}
+
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true, sk: ad.sk }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    
+    // 【40% 概率：数据贴】
+    if (rand < 0.40) {
+        let stats = getArtistHardStats(targetArt.n, targetArt.isMe);
+        let title = `📊 【实绩速报】${targetArt.n} 生涯核心数据汇总`;
+        let content = `👑 冠单数量：${stats.no1} 首\n💎 钻石唱片：${stats.dia} 张 | 💿 白金：${stats.plat} 张\n🎧 TOP5单曲总流媒：${(stats.stmSum/10000).toFixed(0)}万\n🏆 生涯重大奖项数：${stats.awdCount} 座\n(粉丝控评团速来占领广场！)`;
+        return { type: "data", title: title, desc: content };
+    } 
+    // 【30% 概率：安利贴】(结合八维属性)
+    else if (rand < 0.70) {
+        let sk = targetArt.sk || { f: 50, s: 50, fa: 50 };
+        let promoTypes = [];
+        if (sk.f > 85) promoTypes.push("face");
+        if (sk.s > 85) promoTypes.push("stage");
+        if (sk.fa > 85) promoTypes.push("fashion");
+        
+        let chosenPromo = promoTypes.length > 0 ? promoTypes[Math.floor(Math.random() * promoTypes.length)] : "song";
+        
+        if (chosenPromo === "face") return { type: "promo", title: `💖 【神颜出圈】${targetArt.n} 这张脸是真实存在的吗？`, desc: `最近被这组神图刷屏了，这骨相这皮相，简直是女娲毕设！颜霸实至名归！` };
+        if (chosenPromo === "stage") return { type: "promo", title: `🔥 【百万直拍】${targetArt.n} 最新打歌舞台太绝了！`, desc: `这台风，这走位，这表现力！真的是天生属于舞台的王者，全开麦实力强到可怕！` };
+        if (chosenPromo === "fashion") return { type: "promo", title: `✨ 【时尚弄潮儿】${targetArt.n} 的红毯生图解析`, desc: `随便一套高定都能完美消化，生图比精修还抗打，红毯简直就是TA的统治区！` };
+        
+        return { type: "promo", title: `🎵 【按头安利】入坑 ${targetArt.n} 必听曲目`, desc: `近期一直在单曲循环TA的歌，这音色和旋律真的没谁了！` };
+    } 
+    // 【30% 概率：硬核撕逼贴 (真刀真枪数据对比)】
+    else {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        if(artA.n === artB.n) return null;
+
+        let statsA = getArtistHardStats(artA.n, artA.isMe);
+        let statsB = getArtistHardStats(artB.n, artB.isMe);
+
+        let content = `不要发洗脑包了，直接上【脱水硬核数据】打脸！\n\n`;
+        content += `【👑 商业爆发】\n`;
+        content += `冠单数：${artA.n} (${statsA.no1}首) VS ${artB.n} (${statsB.no1}首)\n`;
+        content += `钻石唱片：${artA.n} (${statsA.dia}张) VS ${artB.n} (${statsB.dia}张)\n`;
+        content += `TOP5单曲累计流媒：${(statsA.stmSum/1000000).toFixed(1)}M VS ${(statsB.stmSum/1000000).toFixed(1)}M\n`;
+        content += `TOP5单曲日增综合：${(statsA.dailyTSum/10000).toFixed(0)}万 VS ${(statsB.dailyTSum/10000).toFixed(0)}万\n\n`;
+        
+        content += `【🎵 艺术与乐评】(取最高5首歌均分)\n`;
+        content += `乐评均分：${artA.n} (${statsA.artAvg}分) VS ${artB.n} (${statsB.artAvg}分)\n\n`;
+        
+        content += `【🏆 奖项荣誉】\n`;
+        content += `大奖数量：${artA.n} (${statsA.awdCount}座) VS ${artB.n} (${statsB.awdCount}座)\n\n`;
+
+        let title = `🔥 【撕逼实况】${artA.n} VS ${artB.n}，到底谁在登月碰瓷？`;
+        if (statsA.dia > statsB.dia && statsA.no1 > statsB.no1) {
+            content += `总结：${artA.n} 商业全方位吊打，${artB.n} 粉丝别再嘴硬了，拿头比？`;
+        } else if (statsB.dia > statsA.dia && statsB.no1 > statsA.no1) {
+            content += `总结：${artB.n} 断层碾压，${artA.n} 粉丝做梦也该醒醒了，数据教你做人。`;
+        } else {
+            content += `总结：互有胜负，但双方粉丝依旧死鸭子嘴硬，广场全是黑词条！`;
+        }
+
+        return { type: "drama", title: title, desc: content };
+    }
+};
+
+window.refreshFeed = function() {
+    let h = "";
+    // 强制生成 5 条不同类型的动态帖子
+    for(let i=0; i<5; i++) {
+        let post = generateVarietyPost();
+        if (post) {
+            let borderColor = post.type === "drama" ? "#ff0000" : (post.type === "data" ? "#0055ff" : "#e91e63");
+            let bgColor = post.type === "drama" ? "#fff0f5" : (post.type === "data" ? "#e0f2fe" : "#fce4ec");
+            
+            h += `
+            <div class="cmt-box" style="cursor:pointer; border-left:3px solid ${borderColor}; background:${bgColor}; margin-bottom:8px;" 
+                 onclick="viewPostDetail('${post.title}', \`${post.desc}\`, false)">
+                <b>${post.title}</b><br>
+                <span style="font-size:12px;color:#555;display:block;margin-top:4px;white-space:pre-wrap;">${post.desc}</span>
+                <div style="font-size:10px;color:${borderColor};margin-top:6px;">👉 点击进入帖子查看评论...</div>
+            </div>`;
+        }
+    }
+    document.getElementById("feedList").innerHTML = h;
+};
+
+// ==================== UI 调整：合并榜单修复按钮 ====================
+
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. 隐藏系统模块原有的“强制修正/刷新榜单数据”按钮
+    let apiPage = document.getElementById("pApi");
+    if(apiPage) {
+        let btns = apiPage.querySelectorAll("button");
+        btns.forEach(b => {
+            if(b.innerText.includes("强制修正/刷新榜单数据")) {
+                b.style.display = 'none'; 
+            }
+        });
+    }
+
+    // 2. 将其整合进深层修复终端
+    setTimeout(() => {
+        let fixTerminal = Array.from(document.querySelectorAll("#pApi .card")).find(c => c.innerHTML.includes("深度异常修复终端"));
+        if(fixTerminal && !fixTerminal.innerHTML.includes("深度洗榜")) {
+            fixTerminal.insertAdjacentHTML('beforeend', `
+            <button class="sec" style="margin-bottom:8px; border-color:#25d366; color:#25d366; width:100%;" onclick="fixChartDataSuper()">
+                🔧 深度洗榜 / 修复错乱的 Peak 排名数据
+            </button>`);
+        }
+    }, 500);
+});
+
+// 重定义深度洗榜修复函数
+window.fixChartDataSuper = function() {
+    let fixCount = 0;
+    trackPool.forEach(t => {
+        if(isNaN(t.stmGlobal) || t.stmGlobal == null) t.stmGlobal = 0;
+        if(isNaN(t.stmGlobal_Week) || t.stmGlobal_Week == null) t.stmGlobal_Week = Math.floor(t.stmGlobal / Math.max(1, t.weeks||1));
+        if(isNaN(t.peakS) || t.peakS <= 0) t.peakS = 99;
+        if(isNaN(t.peakB) || t.peakB <= 0) t.peakB = 99;
+        fixCount++;
+    });
+
+    let trks = trackPool.filter(x => x.type === "track" || x.type === "album");
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    trks.forEach((t, i) => { if (!t.peakS || i + 1 < t.peakS) t.peakS = i + 1; });
+    trks.sort((a,b) => (b.stmUS_Week || 0) - (a.stmUS_Week || 0));
+    trks.forEach((t, i) => { if (!t.peakB || i + 1 < t.peakB) t.peakB = i + 1; });
+    
+    updatePeakRanks();
+    saveGameImmediate();
+    alert(`✅ 深度洗榜完毕！\n修复了 ${fixCount} 处数据，Peak 排名已重置。`);
+    if(document.getElementById("mChart").classList.contains("open")) renderChart();
+};
+// ==================== 1. 玩家初始关系全为“陌生” ====================
+var oldInitNpcRelationsForPlayer = window.initNpcRelations;
+window.initNpcRelations = function() {
+    if(!worldArtists) return;
+    let allEntities = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+
+    worldArtists.forEach(npc => {
+        if (!npc.relations || typeof npc.relations !== 'object') npc.relations = {};
+        allEntities.forEach(target => {
+            if (npc.id === target.id) return; 
+            if (!npc.relations[target.id]) {
+                let pRel = "陌生", fRel = "陌生";
+                
+                // 【核心修改】：只要有一方是玩家，初始关系强制为“陌生”，需要玩家后续自己去互动/触发事件攻略
+                if (npc.id !== 'player_self' && target.id !== 'player_self') {
+                    // NPC 之间依然保持五五开的丰富关系网
+                    let roll = Math.random();
+                    if (roll < 0.15)      { pRel = "好朋友"; fRel = "相亲相爱"; }
+                    else if (roll < 0.35) { pRel = "朋友";   fRel = "陌生"; }
+                    else if (roll < 0.50) { pRel = "讨厌";   fRel = "互撕"; }
+                    else if (roll < 0.60) { pRel = "坏血";   fRel = "互撕"; }
+                    else if (roll < 0.75) { pRel = "好朋友"; fRel = "互撕"; }
+                    else if (roll < 0.85) { pRel = "恋人";   fRel = "相亲相爱"; }
+                    else                  { pRel = "陌生";   fRel = "互撕"; }
+                }
+                
+                npc.relations[target.id] = { p: pRel, f: fRel };
+                if (!target.isMe) {
+                    let targetNpc = worldArtists.find(x => x.id === target.id);
+                    if (targetNpc) {
+                        if (!targetNpc.relations) targetNpc.relations = {};
+                        targetNpc.relations[npc.id] = { p: pRel, f: fRel };
+                    }
+                }
+            }
+        });
+    });
+};
+
+// ==================== 2. 终极 NaN 杀手修复按钮 ====================
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let fixTerminal = Array.from(document.querySelectorAll("#pApi .card")).find(c => c.innerHTML.includes("深度异常修复终端"));
+        if(fixTerminal && !fixTerminal.innerHTML.includes("修复 NaN")) {
+            fixTerminal.insertAdjacentHTML('beforeend', `
+            <button class="sec" style="margin-bottom:8px; border-color:#ff0000; color:#ff0000; width:100%; font-weight:bold;" onclick="fixAllNaNErrors()">
+                🚨 终极抢救：修复 销量/感知分 变成 NaN 的死档问题
+            </button>`);
+        }
+    }, 800);
+});
+
+window.fixAllNaNErrors = function() {
+    let fixCount = 0;
+    
+    // 修复大盘歌曲
+    trackPool.forEach(t => {
+        if (isNaN(t.Spub) || t.Spub == null) { t.Spub = 50; fixCount++; }
+        if (isNaN(t.slTotal) || t.slTotal == null) { t.slTotal = Math.floor((t.stmGlobal||0) / 150); fixCount++; }
+        if (isNaN(t.stmGlobal) || t.stmGlobal == null) { t.stmGlobal = 0; fixCount++; }
+        if (isNaN(t.price) || t.price == null) { t.price = 1; }
+        if (isNaN(t.radioAud) || t.radioAud == null) { t.radioAud = 0; }
+    });
+    
+    // 修复专辑记录
+    if(typeof albs !== 'undefined') {
+        albs.forEach(a => {
+            if (a.trackRef) {
+                if (isNaN(a.trackRef.Spub)) { a.trackRef.Spub = 75; fixCount++; }
+                if (isNaN(a.trackRef.slTotal)) { a.trackRef.slTotal = Math.floor((a.trackRef.stmGlobal||0)/1500); fixCount++; }
+            }
+        });
+    }
+
+    // 修复玩家档案中的作品记录
+    myWorks.forEach(w => {
+        if (isNaN(w.slTotal) || w.slTotal == null) { w.slTotal = 0; fixCount++; }
+        if (isNaN(w.revenue) || w.revenue == null) { w.revenue = 0; fixCount++; }
+    });
+
+    // 修复金钱和粉丝
+    if (isNaN(ad.m) || ad.m == null) { ad.m = 50000; fixCount++; }
+    if (isNaN(ad.st.f) || ad.st.f == null) { ad.st.f = 10000; fixCount++; }
+
+    updatePeakRanks();
+    updAttr();
+    saveGameImmediate();
+    alert(`✅ 致命 NaN 数据清洗完毕！\n系统已成功修复了 ${fixCount} 处崩溃数据，游戏已恢复正常！`);
+};
+
+// ==================== 3. 宣发与签售次数限制 (3~5次) ====================
+var oldDoAlbPromoLimit = window.doAlbPromo;
+window.doAlbPromo = function(type) {
+    let a = albs[tempIdx];
+    if(!a) return alert("找不到专辑数据！");
+    
+    // 记录各营销手段的使用次数
+    if(!a.promoCounts) a.promoCounts = { vinyl: 0, sign: 0, ads: 0 };
+    
+    if (type === 'vinyl' && a.promoCounts.vinyl >= 5) return alert("⚠️ 专辑彩胶发行已达上限(5次)！粉丝已经被榨干了，别再出新版本了！");
+    if (type === 'sign' && a.promoCounts.sign >= 3) return alert("⚠️ 签售会举办已达上限(3次)！频繁签售会导致路人反感，效果归零。");
+    if (type === 'ads' && a.promoCounts.ads >= 3) return alert("⚠️ 时代广场与买量通稿已达上限(3次)！过度营销会适得其反。");
+    
+    // 增加计数并调用原版
+    a.promoCounts[type]++;
+    oldDoAlbPromoLimit(type);
+};
+
+var oldPromoAlbSongLimit = window.promoAlbSong;
+window.promoAlbSong = function(id) {
+    let t = trackPool.find(x => x.id === id);
+    if(t) {
+        if((t.promoCount || 0) >= 5) {
+            return alert("⚠️ 这首歌的电视/电台打单次数已达上限(5次)！频繁刷脸会让观众审美疲劳，请换一首歌宣发！");
+        }
+    }
+    oldPromoAlbSongLimit(id);
+};
+
+// ==================== 4. 严谨的遗珠与逆袭判定 ====================
+// 在时间推演中，记录每首歌是否在【0打单】情况下闯入前10
+var oldAdvTimeForTop10Tracker = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    trackPool.forEach(t => {
+        if (t.isMe && t.type === 'track') {
+            let isTop10 = (t.peakS <= 10 || t.peakB <= 10);
+            let noPromo = (t.promoCount || 0) === 0 && !t.hasRealMV;
+            // 只要它在没有打单的时候曾经进过前10，就打上“靠自己出息”的烙印
+            if (isTop10 && noPromo) {
+                t.hitTop10WithoutPromo = true;
+            }
+        }
+    });
+    oldAdvTimeForTop10Tracker(weeks, showMsg);
+};
+
+var oldViewSongStatsForTags = window.viewSongStats;
+window.viewSongStats = function(songId) {
+    oldViewSongStatsForTags(songId); 
+    
+    let t = trackPool.find(x => x.id === songId);
+    if(t && document.getElementById("mGameInputDesc")) {
+        let content = document.getElementById("mGameInputDesc").innerHTML;
+        
+        let promoCount = t.promoCount || 0;
+        let isTopHit = t.peakS <= 10 || t.peakB <= 10;
+        let extraTag = "";
+        
+        // 判定 1：【遗珠】(评分>=80极好，但商业没进前20且流媒极低)
+        if (t.Spub >= 80 && (t.peakS > 20 && t.peakB > 20) && t.stmGlobal < 10000000) {
+            extraTag = `<span style="background:#f3f4f6;color:#475569;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:5px;">🐚 沧海遗珠</span>`;
+        }
+        // 判定 2：【弃曲当自强】(没打过单，没拍真人MV，凭自己杀入前10)
+        else if (t.hitTop10WithoutPromo && promoCount === 0 && !t.hasRealMV) {
+            extraTag = `<span style="background:#fef08a;color:#b45309;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:5px;">🌟 弃曲当自强</span>`;
+        }
+        // 判定 3：【靠实力逆袭转正】(本来是弃曲并且靠自己进了前10，然后玩家发现它火了，开始给它补打单/拍MV)
+        else if (t.hitTop10WithoutPromo && (promoCount > 0 || t.hasRealMV)) {
+            extraTag = `<span style="background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:5px;">🚀 靠实力逆袭转正</span>`;
+        }
+        
+        // 注入在榜天数和标签
+        if(extraTag !== "") {
+            content = content.replace(/(成就认证：.*?)<br>/, `$1 ${extraTag}<br>`);
+        }
+        
+        // 增加在榜天数显示 (周数 x 7 + 天数偏移)
+        let totalDays = (t.weeks || 1) * 7;
+        content = content.replace(/(📅 在榜总周数：<b>.*?周<\/b>)/, `$1 <span style="color:#888;">(计 ${totalDays} 天)</span>`);
+        
+        document.getElementById("mGameInputDesc").innerHTML = content;
+    }
+};
+// ==================== 修复：解除专辑打单的12周限制，引入新鲜感衰减机制 ====================
+
+// 1. 恢复专辑详情页中，所有收录曲目的打单按钮（永远可以点击）
+window.openAlbDetail = function(idx) {
+    let a = albs[idx];
+    let tAlb = trackPool.find(x => x.isMe && x.n === a.n && x.type === "album");
+    let currentPrice = tAlb ? (tAlb.price || 10) : 10;
+
+    let h = a.s.map(song => {
+        let t = trackPool.find(x => x.isMe && x.type === "track" && (x.n === song.n || x.n.replace(/&#39;/g, "'") === song.n.replace(/&#39;/g, "'")));
+        if(!t) return `<div class="card" style="padding:10px;margin-bottom:5px;background:#f9f9f9;"><b>${escapeHTML(song.n)}</b> (暂无数据)</div>`;
+        return `
+        <div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;background:#fff;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <b style="font-size:14px;">${escapeHTML(t.n)}</b>
+                <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="viewSongStats('${t.id}')">数据详情</button>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:4px;">全球: ${(t.stmGlobal||0).toLocaleString()} | 在榜 ${t.weeks||1} 周</div>
+            <button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单 (转正主打)</button>
+        </div>`;
+    }).join('');
+    
+    // 注入定价面板
+    let pricePanel = `
+    <div style="background:#e0f2fe; padding:10px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+        <div style="flex:1;">
+            <b style="color:#0369a1; font-size:13px;">💿 专辑定价调控</b><br>
+            <span style="font-size:11px; color:#555;">降价促销量，高价保逼格。过度骨折价(<$4)会被全网群嘲。</span>
+        </div>
+        <input type="number" id="adjustPrice_${idx}" value="${currentPrice}" style="width:60px; margin:0; padding:6px; font-size:12px;">
+        <button class="sec inline" style="margin:0; padding:6px 12px; font-size:12px; background:#0284c7; color:#fff;" onclick="adjustAlbumPrice(${idx})">修改</button>
+    </div>`;
+
+    document.getElementById("mAlbDetailTitle").innerText = `💿 《${a.n}》 收录曲`;
+    document.getElementById("mAlbDetailContent").innerHTML = pricePanel + h;
+    document.getElementById("mAlbDetail").classList.add("open");
+};
+
+
+// 2. 深度重写专辑内单曲的打歌算法 (包含新鲜感衰减)
+window.promoAlbSong = function(id) {
+    let t = trackPool.find(x => x.id === id);
+    if(!t) return;
+    
+    if((t.promoCount || 0) >= 5) {
+        return alert("⚠️ 这首歌的现场打单次数已达上限(5次)！频繁刷脸会让观众审美疲劳，请换一首歌宣发！");
+    }
+    
+    if(!costEnergy(10)) return;
+    advHour(24);
+    
+    // 【核心机制】：发行时间新鲜感衰减
+    // 前4周新鲜感为 1.0(100%)，之后每周递减 5%，最低跌至 0.2(20%) 的保底效果
+    let freshness = 1.0;
+    if (t.weeks > 4) {
+        freshness = Math.max(0.2, 1.0 - ((t.weeks - 4) * 0.05));
+    }
+    
+    // 宣发次数边际递减
+    let promoDecay = Math.pow(0.65, t.promoCount || 0); 
+    
+    // 计算基础盘
+    let baseBoost = (t.stmGlobal_Week * 7 || t.stmGlobal || 50000) * 0.15 * ad.Geffect;
+    
+    // 最终加成 = 基础加成 × 宣发次数衰减 × 新鲜感衰减
+    let extraStm = Math.floor((baseBoost + 100000) * promoDecay * freshness);
+
+    // 强力封顶，防止暴走
+    if(extraStm > 3000000) extraStm = 3000000 + Math.floor(Math.random()*500000);
+
+    // 判定是否是转正主打
+    let upgradeMsg = "";
+    let alb = albs.find(a => a.s.some(s => s.n === t.n || s.n === t.n.replace(/&#39;/g, "'")));
+    
+    if (alb) {
+        if (!t.singleLabel || t.singleLabel === "宣传曲" || t.singleLabel === "非主打") {
+            alb.singleCount = (alb.singleCount || 0) + 1;
+            t.singleLabel = window.getSingleLabelName(alb.singleCount);
+            
+            let albSong = alb.s.find(s => s.n === t.n || s.n === t.n.replace(/&#39;/g, "'"));
+            if (albSong) albSong.singleLabel = t.singleLabel;
+            
+            if (t.promoCount === 0) {
+                extraStm = Math.floor(extraStm * 1.5); // 首次转正爆发
+                upgradeMsg = `\n🌟 【转正通知】这首歌已正式晋升为【${t.singleLabel}】！\n✨ 曲序衰减 Debuff 已永久消除，长线爆发开启！`;
+            } else {
+                upgradeMsg = `\n🌟 【转正通知】这首歌已正式晋升为【${t.singleLabel}】！`;
+            }
+        }
+    }
+
+    t.stmGlobal += extraStm; 
+    t.slTotal += Math.floor(extraStm/150); 
+    t.longViral = (t.longViral||0) + 4; 
+    t.viralBoost = (t.viralBoost || 1.0) + 0.15; 
+    t.promoCount = (t.promoCount || 0) + 1; 
+    
+    alert(`📺 针对《${t.n}》的现场打单成功！\n全球流媒激增 ${extraStm.toLocaleString()}！\n(当前为第 ${t.promoCount} 次打单)\n(距离发行已过去 ${t.weeks} 周，新鲜感倍率保留: ${Math.floor(freshness*100)}%)${upgradeMsg}`); 
+    
+    saveGame(); 
+    
+    // 刷新页面
+    let albIdx = albs.indexOf(alb);
+    if(albIdx > -1) window.openAlbDetail(albIdx); 
+};
+// ==================== 1. 修复：专辑日增等于所有收录歌曲的总和 ====================
+var oldUpdatePeakRanksForAlbumStm = window.updatePeakRanks;
+window.updatePeakRanks = function() {
+    // 强制把单曲的数据汇总给母专辑
+    if (typeof albs !== 'undefined') {
+        albs.forEach(a => {
+            if (a.trackRef) {
+                let albEntity = trackPool.find(x => x.id === a.trackRef.id);
+                if (albEntity) {
+                    // 找出大盘里所有属于这张专辑的单曲
+                    let albTracks = trackPool.filter(t => t.isMe && t.type === "track" && a.s.some(s => s.n === t.n || s.id === t.id));
+                    
+                    let daySum = 0, weekSum = 0, totalSum = 0;
+                    albTracks.forEach(t => {
+                        daySum += (t.stmGlobal_Day || 0);
+                        weekSum += (t.stmGlobal_Week || 0);
+                        totalSum += (t.stmGlobal || 0);
+                    });
+                    
+                    // 专辑流媒强制等于歌曲总和
+                    if (daySum > 0) albEntity.stmGlobal_Day = daySum;
+                    if (weekSum > 0) albEntity.stmGlobal_Week = weekSum;
+                    if (totalSum > 0) albEntity.stmGlobal = totalSum;
+                }
+            }
+        });
+    }
+
+    // 顺便给 NPC 的专辑也做个近似汇总，防止 NPC 专辑日增为 0
+    trackPool.forEach(t => {
+        if (!t.isMe && t.type === 'album') {
+            let npcTracks = trackPool.filter(x => !x.isMe && x.type === 'track' && x.artist === t.artist);
+            if (npcTracks.length > 0) {
+                t.stmGlobal_Day = npcTracks.reduce((sum, tr) => sum + (tr.stmGlobal_Day || 0), 0);
+                t.stmGlobal_Week = npcTracks.reduce((sum, tr) => sum + (tr.stmGlobal_Week || 0), 0);
+            }
+        }
+    });
+
+    oldUpdatePeakRanksForAlbumStm(); // 执行原版排序逻辑
+};
+
+// ==================== 2. 修复：签约公司后，专辑宣发全免 ====================
+var oldDoAlbPromoForCost = window.doAlbPromo;
+window.doAlbPromo = function(type) {
+    let a = albs[tempIdx];
+    if(!a) return alert("找不到专辑数据！");
+    
+    // 检查是否是 7/3 分成的全包合约
+    let isCompanyPaying = (ad.co !== "独立" && ad.dealType === "7/3");
+    let cost = 0;
+    if (type === 'vinyl') cost = 100000;
+    if (type === 'ads') cost = 1000000;
+    
+    let preMoney = ad.m;
+    // 如果公司包钱，但玩家自己账上没钱，我们先临时给玩家塞钱骗过原版的资金检测
+    if (isCompanyPaying && ad.m < cost) {
+        ad.m = cost; 
+    }
+    
+    // 执行原版的宣发与次数限制逻辑
+    oldDoAlbPromoForCost(type);
+    
+    // 如果宣发成功且是公司付钱，退还扣掉的钱
+    if (isCompanyPaying) {
+        ad.m = preMoney; // 恢复原状 (相当于没扣钱)
+        setTimeout(() => {
+            alert(`🏢 【公司宣发全包】\n本次专辑宣发/买量费用已由 ${ad.co} 全额承担，你没有花一分钱！`);
+            updAttr();
+            saveGame();
+        }, 500); // 延迟半秒弹出，避免被原版的弹窗吃掉
+    }
+};
+
+// ==================== 3. 修复：大盘底盘严格锁定冠军每日流媒 ====================
+// 拦截大盘推演，清除以前乱加的通货膨胀，严格根据您输入的数值计算
+var oldAdvTimeForStrictBase = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    oldAdvTimeForStrictBase(weeks, showMsg);
+    
+    let baseInput = document.getElementById("customMarketBase");
+    // 您输入的是 300（万），那么每日冠军流媒就是 300万
+    let dailyTarget = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    let weeklyTarget = dailyTarget * 7; // 算出冠军对应的周榜流媒 (如 2100万)
+    
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    
+    if(trks.length > 0) {
+        let currentTopWeekly = Math.max(1, trks[0].stmGlobal_Week || 1);
+        
+        // 计算缩放比例：用目标周流媒 除以 现在的冠军周流媒
+        let scale = weeklyTarget / currentTopWeekly;
+        
+        // 强制把所有歌曲的流媒按此比例缩放，使得冠军恰好等于您设置的值
+        trks.forEach((t) => {
+            t.stmGlobal_Week = Math.floor((t.stmGlobal_Week || 0) * scale);
+            t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+            
+            // 同步调整美国区流媒 (占全球的 30%~40%)
+            t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+            t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+        });
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
