@@ -125,9 +125,20 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- === 全新的创建与读档大厅 === -->
-<div id="createPage" class="page active">
-  <div class="card" style="margin-top:20px;text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+<!-- === 1. 专属密码验证大厅 (只有第一次玩才显示) === -->
+<div id="loginPage" class="page active" style="position:fixed;inset:0;background:#f5f5f7;z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div class="card" style="text-align:center; padding:30px; box-shadow:0 10px 30px rgba(0,0,0,0.1); width:90%; max-width:350px;">
+    <h2 class="tg" style="font-size:24px;margin-bottom:10px;">星路制作人</h2>
+    <p style="font-size:12px;color:#888;margin-bottom:20px;">系统安全锁已开启</p>
+    <input type="password" id="loginPwd" placeholder="请输入访问密码" style="text-align:center;font-size:16px;padding:12px;">
+    <button onclick="checkLoginPwd()" style="padding:12px;font-size:16px;">验证并进入大厅</button>
+    <p style="font-size:11px;color:#aaa;margin-top:10px;">(默认密码: 123456。验证成功后永久免密)</p>
+  </div>
+</div>
+
+<!-- === 2. 存档与新建大厅 === -->
+<div id="createPage" class="page" style="display:none; padding-top:20px;">
+  <div class="card" style="text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
     <h2 class="tg" style="font-size:24px;margin-bottom:20px;">星路制作人</h2>
     
     <!-- 新建档案区 -->
@@ -152,6 +163,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
     </div>
   </div>
 </div>
+
+<!-- 下方保留你的 gameMain 原代码... -->
 
 <!-- === 极简创建页（默认隐藏 active 删除） === -->
 <div id="createPage" class="page">
@@ -7464,22 +7477,6 @@ window.refreshFeed = function() {
     }
     document.getElementById("feedList").innerHTML = h;
 };
-// ==================== 终极修复：免密直通与新建存档剥夺问题 ====================
-
-// 1. 拦截并重写错误的自动登录逻辑，把选择权还给玩家
-document.addEventListener('DOMContentLoaded', function() {
-    // 关掉所有强制遮罩
-    let lp = document.getElementById('loginPage');
-    if(lp) lp.style.display = 'none'; 
-    
-    let isUnlocked = localStorage.getItem("isGameUnlocked");
-    if (isUnlocked === "true") {
-        // 如果已经解锁过，只隐藏密码框，显示“创建/读取”的选择面板
-        if(document.getElementById("keyAuthBox")) document.getElementById("keyAuthBox").style.display = "none";
-        if(document.getElementById("gameStartBox")) document.getElementById("gameStartBox").style.display = "block";
-    }
-});
-
 
 // ==================== 史诗升级：全网真实人际关系与粉圈网 ====================
 
@@ -8213,27 +8210,67 @@ window.checkLoginPwd = function() {
     if(lp) lp.style.display = 'none';
     showCreateAndLoadPage();
 };
+// ==================== 终极修补：美观密码页与正确的大厅控制 ====================
 
-window.showCreateAndLoadPage = function() {
-    let cp = document.getElementById('createPage');
-    if (cp) {
-        // 在创建页面底部注入读取存档的区域
-        if(!document.getElementById("mainMenuLoadArea")) {
-            cp.querySelector('.card').insertAdjacentHTML('beforeend', `
-                <div id="mainMenuLoadArea" style="margin-top:30px; padding-top:20px; border-top:1px dashed #ccc;">
-                    <h3 class="tg" style="font-size:16px; margin-bottom:10px;">💾 读取已有生涯</h3>
-                    <select id="mainMenuSlot" style="font-size:14px; padding:10px; margin-bottom:10px; width:80%;">
-                        <option value="1">存档槽位 1</option>
-                        <option value="2">存档槽位 2</option>
-                        <option value="3">存档槽位 3</option>
-                    </select><br>
-                    <button class="sec" onclick="mainMenuLoad()" style="padding:12px; font-size:14px; width:80%;">读取存档进入游戏</button>
-                </div>
-            `);
-        }
-        cp.style.display = "block";
-        cp.classList.add('active');
+document.addEventListener('DOMContentLoaded', function() {
+    // 隐藏主游戏界面
+    let gameMain = document.getElementById('gameMain');
+    if(gameMain) { gameMain.classList.remove('active'); gameMain.style.display = 'none'; }
+    
+    let isUnlocked = localStorage.getItem("starPro_is_unlocked");
+    
+    if (isUnlocked === "true") {
+        // 已经免密过，直接隐藏密码页，显示创建大厅
+        document.getElementById('loginPage').style.display = 'none';
+        document.getElementById('createPage').style.display = 'block';
+    } else {
+        // 没免密，显示密码页，隐藏创建大厅
+        document.getElementById('loginPage').style.display = 'flex';
+        document.getElementById('createPage').style.display = 'none';
     }
+});
+
+// 美观密码页的验证逻辑
+window.checkLoginPwd = function() {
+    let pwd = document.getElementById("loginPwd").value;
+    if (pwd !== "123456") {
+        alert("密码错误，请重新输入！");
+        return;
+    }
+    // 验证成功，记录免密，切换到大厅
+    localStorage.setItem("starPro_is_unlocked", "true");
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('createPage').style.display = 'block';
+};
+
+// 手动读取存档逻辑
+window.mainMenuLoad = function() {
+    let slot = document.getElementById('mainMenuSlot').value;
+    if(document.getElementById('selSaveSlot')) document.getElementById('selSaveSlot').value = slot;
+    
+    let saveKey = "starProSave_" + slot;
+    if(localStorage.getItem(saveKey)) {
+        // 读取成功后隐藏大厅
+        document.getElementById('createPage').style.display = 'none';
+        loadGame(slot);
+    } else {
+        alert(`⚠️ 【存档槽位 ${slot}】 为空！\n请在上方填写资料并点击【踏上星路】建立新档！`);
+    }
+};
+
+// 修复：确保新建游戏时彻底关掉大厅
+let exOldStartGameFix = window.startGame;
+window.startGame = function() {
+    let inNameDom = document.getElementById("inRealName");
+    if(!inNameDom || !inNameDom.value.trim()) return alert("⚠️ 必须填写真实姓名才能踏入星途！");
+    
+    // 执行原版的创建逻辑
+    exOldStartGameFix();
+    
+    // 确保大厅彻底消失，主界面显示出来
+    document.getElementById("createPage").style.display = "none";
+    document.getElementById("gameMain").style.display = "block";
+    document.getElementById("gameMain").classList.add("active");
 };
 
 window.mainMenuLoad = function() {
