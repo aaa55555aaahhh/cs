@@ -9312,6 +9312,655 @@ function escapeHTML(str) {
     }); 
 }
 window.escapeHTML = escapeHTML;
+// 覆盖原版的 updAttr，在底部加入关系表展示
+var oldUpdAttrForRelations = window.updAttr;
+window.updAttr = function() {
+    oldUpdAttrForRelations(); // 执行原版属性渲染
+    
+    if(!document.getElementById("tabWorks")) return; // 确保在个人档案页面
+    
+    // 动态在“奖项履历”旁边加一个“人际关系”Tab (如果还没加过的话)
+    let tabBar = document.querySelector("#pAttr .sub-tab-bar");
+    if(tabBar && !document.getElementById("tabRelations")) {
+        tabBar.insertAdjacentHTML('beforeend', `<div class="sub-tab" onclick="switchSubTab(this, 'tabRelations', 'attrTabs')">人脉关系</div>`);
+        document.getElementById("attrTabs").insertAdjacentHTML('beforeend', `<div id="tabRelations" class="sub-page" style="font-size:13px;max-height:250px;overflow-y:auto;">无</div>`);
+    }
+    
+    // 渲染人脉关系
+    if(document.getElementById("tabRelations")) {
+        let relHtml = "";
+        worldArtists.forEach(npc => {
+            if(npc.relations && npc.relations['player_self']) {
+                let rel = npc.relations['player_self'];
+                if(rel.p !== "陌生" || rel.f !== "陌生") {
+                    let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "陌生" ? "#888" : "#25d366");
+                    let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
+                    relHtml += `<div style="padding:5px;border-bottom:1px solid #eee;">
+                        <b>${escapeHTML(npc.n)}</b><br>
+                        <span style="font-size:11px;">私下: <b style="color:${pColor};">${rel.p}</b> | 粉圈: <b style="color:${fColor};">${rel.f}</b></span>
+                    </div>`;
+                }
+            }
+        });
+        document.getElementById("tabRelations").innerHTML = relHtml || "<span style='color:#888;'>暂时没有特别的圈内关系。</span>";
+    }
+};
+window.initNpcRelations = function() {
+    if(!worldArtists) return;
+    let allEntities = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true }];
+
+    worldArtists.forEach(npc => {
+        if (!npc.relations || typeof npc.relations !== 'object') npc.relations = {};
+        allEntities.forEach(target => {
+            if (npc.id === target.id) return; 
+            if (!npc.relations[target.id]) {
+                let roll = Math.random();
+                let pRel = "陌生", fRel = "陌生";
+                
+                // 更平缓的五五开分布
+                if (roll < 0.15)      { pRel = "好朋友"; fRel = "相亲相爱"; }
+                else if (roll < 0.35) { pRel = "朋友";   fRel = "陌生"; }
+                else if (roll < 0.50) { pRel = "讨厌";   fRel = "互撕"; }
+                else if (roll < 0.60) { pRel = "坏血";   fRel = "互撕"; }
+                else if (roll < 0.75) { pRel = "好朋友"; fRel = "互撕"; }
+                else if (roll < 0.85) { pRel = "恋人";   fRel = "相亲相爱"; }
+                else                  { pRel = "陌生";   fRel = "互撕"; } // 莫名其妙粉圈打架
+                
+                npc.relations[target.id] = { p: pRel, f: fRel };
+                
+                if (!target.isMe) {
+                    let targetNpc = worldArtists.find(x => x.id === target.id);
+                    if (targetNpc) {
+                        if (!targetNpc.relations) targetNpc.relations = {};
+                        targetNpc.relations[npc.id] = { p: pRel, f: fRel };
+                    }
+                }
+            }
+        });
+    });
+};
+document.addEventListener("DOMContentLoaded", function() {
+    // 修改大盘底盘文案
+    let customMarketLabel = document.querySelector("#customMarketBase")?.previousElementSibling;
+    if(customMarketLabel) {
+        customMarketLabel.innerText = "大盘每日底盘(万) [即冠军每日流媒]:";
+    }
+
+    // 修改 NPC 规则文案
+    let sysNpcRateInput = document.getElementById("sysNpcRate");
+    if(sysNpcRateInput && sysNpcRateInput.parentElement) {
+        sysNpcRateInput.parentElement.insertAdjacentHTML('afterend', 
+            `<p style="font-size:10px;color:#888;margin-bottom:10px;">(例：1.0大概每年回归1-2次，0.5大概每两年回归1次)</p>`);
+    }
+
+    let sysNpcDeluxeInput = document.getElementById("sysNpcDeluxe");
+    if(sysNpcDeluxeInput && sysNpcDeluxeInput.parentElement) {
+        sysNpcDeluxeInput.parentElement.insertAdjacentHTML('afterend', 
+            `<p style="font-size:10px;color:#888;margin-bottom:10px;">(例：0.15代表每发一张专辑有15%概率出豪华版)</p>`);
+    }
+});
+var oldUpdateAlbProjUI = window.updateAlbProjUI;
+window.updateAlbProjUI = function() {
+    oldUpdateAlbProjUI();
+    
+    // 注入预热按钮
+    let wipNameTag = document.getElementById("txtWipName");
+    if(wipNameTag && curAlbPj && !document.getElementById("btnHypeAlbum")) {
+        wipNameTag.insertAdjacentHTML('beforeend', 
+            `<button id="btnHypeAlbum" class="sec inline" style="float:right; font-size:11px; padding:2px 8px; margin-top:-2px;" onclick="hypeCurrentAlbum()">🔥 预热宣传</button>`
+        );
+    }
+};
+
+window.hypeCurrentAlbum = function() {
+    if(!curAlbPj) return;
+    if(!costEnergy(10)) return;
+    
+    curAlbPj.hype = (curAlbPj.hype || 1.0) + 0.1; // 增加期待值倍率
+    ad.st.f += Math.floor(Math.random() * 5000 + 1000); // 涨点粉
+    
+    // 自动在社交媒体发一条预热贴
+    posts.mom.unshift({ 
+        t: "预热动态", 
+        c: `新专辑《${curAlbPj.n}》正在努力筹备中，概念是【${curAlbPj.core}】，大家敬请期待！` 
+    });
+    if(typeof renderMyPosts === 'function') renderMyPosts();
+
+    alert(`📢 预热成功！你向全网透露了新专《${curAlbPj.n}》的消息！\n当前专辑期待值倍率升至：${curAlbPj.hype.toFixed(2)}`);
+    updateAlbProjUI();
+    saveGame();
+};
+// 覆盖注入面板
+document.addEventListener("DOMContentLoaded", function() {
+    let pInput = document.getElementById("aNpcPersonality");
+    let aInput = document.getElementById("eNpcAppearance");
+    // 如果存在旧的外貌框，隐藏它
+    if(aInput) aInput.style.display = 'none';
+    
+    // 把性格输入框改成综合的设定框
+    if(pInput) {
+        pInput.id = "aNpcSetting";
+        pInput.placeholder = "艺人设定 (含性格/外貌，例：甜美可爱但毒舌)";
+    }
+});
+
+// 覆盖编辑面板
+var oldOpenEditNpcForSettings = window.openEditNpc;
+window.openEditNpc = function(id) {
+    oldOpenEditNpcForSettings(id);
+    let pInput = document.getElementById("eNpcPersonality");
+    if(pInput) {
+        pInput.placeholder = "艺人综合设定";
+        pInput.previousElementSibling.innerText = "艺人设定:"; // 修改Label
+    }
+};
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true, sk: ad.sk, awd: ad.awd }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    let trks = trackPool.filter(t => t.artist === targetArt.n || (targetArt.isMe && t.isMe));
+    
+    // 【20% 概率：基于八维属性的安利贴】
+    if (rand < 0.20) {
+        let sk = targetArt.sk || { f: 50, s: 50, fa: 50 };
+        if (sk.f > 85 && Math.random() < 0.3) {
+            return { type: "promo", title: `💖 【神颜出圈】${targetArt.n} 这张脸是真实存在的吗？`, desc: `最近被这组神图刷屏了，这骨相这皮相，简直是女娲毕设！内娱/欧美圈颜霸实至名归！` };
+        } else if (sk.s > 85 && Math.random() < 0.5) {
+            return { type: "promo", title: `🔥 【百万直拍】${targetArt.n} 最新打歌舞台太绝了！`, desc: `这台风，这走位，这表现力！真的是天生属于舞台的王者，全开麦实力强到可怕！` };
+        } else if (sk.fa > 85) {
+            return { type: "promo", title: `✨ 【时尚弄潮儿】${targetArt.n} 的私服/红毯解析`, desc: `随便一套穿搭都能引发全网断货，这时尚消化能力太绝了，高定品牌宠儿不是吹的！` };
+        } else if (trks.length > 0) {
+            let rSong = trks[Math.floor(Math.random() * trks.length)];
+            return { type: "promo", title: `🎵 【按头安利】入坑 ${targetArt.n} 必听神曲！`, desc: `近期被《${rSong.n}》洗脑出不去了！全网还有谁能打？` };
+        }
+    } 
+    // 【40% 概率：高阶撕逼与实绩对比帖】
+    else if (rand < 0.60) {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        if(artA.n === artB.n) return null; // 跳过自己撕自己
+
+        // 收集 A 和 B 的数据用于对比
+        let trksA = trackPool.filter(t => t.artist === artA.n || (artA.isMe && t.isMe)).sort((a,b) => b.stmGlobal - a.stmGlobal);
+        let trksB = trackPool.filter(t => t.artist === artB.n || (artB.isMe && t.isMe)).sort((a,b) => b.stmGlobal - a.stmGlobal);
+        
+        let commA = trksA.length ? trksA[0].stmGlobal : 0; // 商业 (最高播放)
+        let commB = trksB.length ? trksB[0].stmGlobal : 0;
+        
+        trksA.sort((a,b) => b.Spub - a.Spub); trksB.sort((a,b) => b.Spub - a.Spub);
+        let artScoreA = trksA.length ? trksA[0].Spub : 0; // 艺术 (最高评分)
+        let artScoreB = trksB.length ? trksB[0].Spub : 0;
+
+        let awdA = artA.awd ? artA.awd.length : 0; // 奖杯
+        let awdB = artB.awd ? artB.awd.length : 0;
+
+        let winA = 0, winB = 0;
+        let compareText = "";
+        
+        if(commA > commB * 1.5) { winA++; compareText += `商业成绩 ${artA.n} 吊打；`; } else if(commB > commA * 1.5) { winB++; compareText += `商业被 ${artB.n} 碾压；`; }
+        if(artScoreA > artScoreB + 10) { winA++; compareText += `艺术口碑 ${artA.n} 更胜一筹；`; } else if(artScoreB > artScoreA + 10) { winB++; compareText += `乐评口碑 ${artB.n} 完爆；`; }
+        if(awdA > awdB + 3) { winA++; compareText += `奖杯数量 ${artA.n} 断层领先。`; } else if(awdB > awdA + 3) { winB++; compareText += `奖杯数被 ${artB.n} 吊打。`; }
+
+        if (winA >= 2) {
+            return { type: "drama", title: `🔥 【碾压局】${artA.n} 粉丝脱水实绩图打脸 ${artB.n}`, desc: `${compareText} 无论怎么比都是 ${artA.n} 全面包围，别再来登月碰瓷了！` };
+        } else if (winB >= 2) {
+            return { type: "drama", title: `🔥 【嘲】${artA.n} 拿什么跟 ${artB.n} 比？`, desc: `${compareText} 就这惨淡的数据还敢发洗脑包？先去拿个像样的冠单再来叫！` };
+        } else {
+            return { type: "drama", title: `🔥 【混战】${artA.n} 和 ${artB.n} 粉丝又在广场互屠了！`, desc: `两人实绩其实五五开，商业艺术各有千秋，但这两家粉丝就是水火不容，广场简直没法看。` };
+        }
+    }
+    
+    // 【其他：常规数据贴】
+    return { type: "data", title: `📊 乐坛实绩速报`, desc: `近期大盘讨论度极高，大家最看好谁的后续发展？` };
+};
+// 拦截原版的颁奖季触发函数，加入红毯结算
+var oldCheckAutoAwardForRedCarpet = window.checkAutoAward;
+window.checkAutoAward = function() {
+    let isAwardMonth = [2, 5, 8, 11].includes(time.m); 
+    // 如果是颁奖月，且本月还没颁过奖
+    if(isAwardMonth && !(historyAwards.length > 0 && historyAwards[0].includes(`${time.y}年${time.m}月`))) {
+        
+        // --- 红毯表现判定 ---
+        if (!ad.awardAbsent) { // 前提是玩家没有在邮箱里拒绝出席
+            let fashionScore = ad.sk.fa || 50;
+            let faceScore = ad.sk.f || 50;
+            let redCarpetPerform = (fashionScore * 0.6) + (faceScore * 0.4) + (Math.random() * 20 - 10);
+            
+            let redCarpetMsg = "";
+            let postType = "promo";
+            
+            if (redCarpetPerform >= 85) {
+                redCarpetMsg = `✨ 你的红毯造型大获成功，被多家时尚杂志评为全场最佳！`;
+                ad.st.f += Math.floor(Math.random() * 50000 + 30000); // 涨粉
+                if(posts && posts.mom) posts.mom.unshift({ t: `🔥 [热搜] ${ad.s} 颁奖典礼红毯封神`, c: `我的天，这套高定太美/帅了，简直是降维打击！生图比精修还抗打！` });
+            } else if (redCarpetPerform <= 45) {
+                redCarpetMsg = `💩 你的红毯造型翻车了，得罪了造型师，被时尚博主全网群嘲...`;
+                ad.st.f -= Math.floor(Math.random() * 10000 + 5000); // 掉粉
+                if(posts && posts.mom) posts.mom.unshift({ t: `🔥 [热搜] ${ad.s} 红毯造型灾难`, c: `这穿的是什么东西？像披了个麻袋就出来了，造型师可以引咎辞职了。` });
+            } else {
+                redCarpetMsg = `✅ 你的红毯表现中规中矩，无功无过。`;
+                if(posts && posts.mom) posts.mom.unshift({ t: `📰 [热搜] 颁奖典礼红毯生图直出`, c: `${ad.s} 今天的造型打个及格分吧，正常发挥。` });
+            }
+            
+            // 延迟弹出红毯反馈，避免被奖项弹窗直接覆盖
+            setTimeout(() => {
+                alert(`📸 【红毯环节结束】\n${redCarpetMsg}`);
+            }, 500);
+        }
+    }
+    
+    // 执行原版的颁奖逻辑
+    if(typeof oldCheckAutoAwardForRedCarpet === 'function') {
+        oldCheckAutoAwardForRedCarpet();
+    }
+};
+var oldViewSongStatsForQiQu = window.viewSongStats;
+window.viewSongStats = function(songId) {
+    oldViewSongStatsForQiQu(songId); // 先执行原版
+    
+    let t = trackPool.find(x => x.id === songId);
+    if(t && document.getElementById("mGameInputDesc")) {
+        let content = document.getElementById("mGameInputDesc").innerHTML;
+        
+        let promoCount = t.promoCount || 0;
+        let isTopHit = t.peakS <= 5 || t.peakB <= 5 || t.stmGlobal > 10000000;
+        let extraTag = "";
+        
+        if (isTopHit && promoCount === 0 && (!t.hasRealMV)) {
+            extraTag = `<span style="background:#ffeb3b;color:#f57f17;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:5px;">🌟 弃曲当自强</span>`;
+        } else if (isTopHit && promoCount > 0 && t.singleLabel !== "首单" && t.singleLabel !== "二单") {
+            // 如果原本是弃曲，后来补了打单
+            extraTag = `<span style="background:#e0f2fe;color:#0ea5e9;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:bold;margin-left:5px;">🚀 靠实力逆袭转正</span>`;
+        }
+        
+        if(extraTag !== "") {
+            // 找到成就认证那一栏，强行塞入标签
+            content = content.replace(/(成就认证：.*?)<br>/, `$1 ${extraTag}<br>`);
+            document.getElementById("mGameInputDesc").innerHTML = content;
+        }
+    }
+};
+let curSocialPlatform = "wb"; // 默认平台
+
+// 拦截打开APP逻辑，记录当前打开的是哪个社交平台
+var oldOpenAppForSocial = window.openApp;
+window.openApp = function(appId) {
+    oldOpenAppForSocial(appId);
+    if(['Wb', 'X', 'Ins', 'TikTok'].includes(appId)) {
+        curSocialPlatform = appId.toLowerCase(); 
+        refreshFeed(); // 刷新对应平台的首页
+        refreshTrend(); // 刷新对应平台的热搜
+    }
+};
+
+// 玩家发帖时，只发到当前打开的平台
+var oldPostSocialForPlatform = window.postSocial;
+window.postSocial = function() {
+    let text = document.getElementById("mTextInput").value || "分享了一条动态";
+    if (!posts[curSocialPlatform]) posts[curSocialPlatform] = [];
+    
+    // 调用原版发帖扣精力和涨粉逻辑（注意不要重复触发原版的posts.mom.unshift）
+    if(costEnergy(5)) {
+        let fanGain = Math.floor(Math.random() * 5000 + 2000); 
+        ad.st.f += fanGain;
+        alert(`📱 在 ${curSocialPlatform.toUpperCase()} 发布成功！吸引了 ${fanGain.toLocaleString()} 名新粉丝！`); 
+        
+        posts[curSocialPlatform].unshift({ t: "我的动态", c: text });
+        renderMyPosts();
+        
+        updAttr(); saveGame(); closeM('mText'); advHour(1);
+    }
+};
+
+// 渲染我的帖子时，只读取当前平台的
+window.renderMyPosts = function() {
+    let list = document.getElementById("mTextList");
+    if(!list) return;
+    let myPlatPosts = posts[curSocialPlatform] || [];
+    list.innerHTML = myPlatPosts.map((p, i) => `
+        <div style="padding:10px; border:1px solid #c8a440; background:#fff8e8; border-radius:6px; margin-bottom:8px; cursor:pointer;"
+            onclick="viewPostDetail('${escapeHTML(p.t)}', '${escapeHTML(p.c)}', true)">
+            <b style="color:#c8a440;">${escapeHTML(p.t)}</b><br>
+            <span style="font-size:13px;color:#333;">${escapeHTML(p.c)}</span>
+        </div>`
+    ).join('') || "<p style='color:#888;font-size:12px;'>你在该平台还没有发过帖子。</p>";
+};
+
+// 全局热搜推入工具函数
+window.pushToTrend = function(topic, desc) {
+    if(!window.globalTrends) window.globalTrends = [];
+    window.globalTrends.unshift({ t: topic, c: desc });
+    if(window.globalTrends.length > 15) window.globalTrends.pop(); // 最多保留15条
+};
+// 【合作导致关系变好】
+var oldFinishWriteForRel = window.finishWrite;
+if(oldFinishWriteForRel) {
+    window.finishWrite = async function() {
+        if(curPj && curPj.ff) {
+            let featNames = curPj.ff.split(',').map(x => x.trim());
+            featNames.forEach(fn => {
+                let npc = worldArtists.find(a => a.n === fn);
+                if(npc && npc.relations && npc.relations['player_self']) {
+                    // 合作后，关系强制变好
+                    if(npc.relations['player_self'].p === "陌生" || npc.relations['player_self'].p === "讨厌") {
+                        npc.relations['player_self'].p = "朋友";
+                    } else if (npc.relations['player_self'].p === "朋友") {
+                        npc.relations['player_self'].p = "好朋友";
+                        npc.relations['player_self'].f = "相亲相爱"; // 粉丝爱屋及乌
+                    }
+                }
+            });
+        }
+        await oldFinishWriteForRel();
+    };
+}
+
+// 【撞档/抢第一导致关系恶化】
+var oldUpdatePeakRanksForClash = window.updatePeakRanks;
+window.updatePeakRanks = function() {
+    oldUpdatePeakRanksForClash();
+    
+    // 找出目前榜单前两名
+    let trks = trackPool.filter(x => x.type === "track").sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    if(trks.length >= 2) {
+        let top1 = trks[0];
+        let top2 = trks[1];
+        
+        // 如果一个是玩家，一个是NPC，且差距极小（撞档抢第一）
+        if ((top1.isMe && !top2.isMe) || (!top1.isMe && top2.isMe)) {
+            if (top1.stmGlobal_Week < top2.stmGlobal_Week * 1.2) { // 差距不到20%，竞争激烈
+                let npcName = top1.isMe ? top2.artist : top1.artist;
+                let npc = worldArtists.find(a => a.n === npcName);
+                
+                if (npc && npc.relations && npc.relations['player_self'] && Math.random() < 0.3) {
+                    // 竞争导致粉圈关系恶化
+                    npc.relations['player_self'].f = "互撕";
+                    if (Math.random() < 0.2) {
+                        npc.relations['player_self'].p = "讨厌";
+                        pushToTrend(`🔥 # ${ad.s} 与 ${npc.n} 争夺榜首白热化`, `这两家粉丝为了抢第一已经撕得昏天黑地了，据说正主私下关系也降至冰点了！`);
+                    }
+                }
+            }
+        }
+    }
+};
+// 拦截大舞台结算上热搜
+var oldConfirmPerformanceForTrend = window.confirmPerformance;
+window.confirmPerformance = function() {
+    let stage = document.getElementById("selPerformStage").value;
+    let oldShowsLen = ad.shows.length;
+    
+    oldConfirmPerformanceForTrend();
+    
+    if (performContext.type === 'show' && ad.shows.length > oldShowsLen) {
+        let sName = performContext.showName;
+        pushToTrend(`🔥 # ${ad.s} 登顶 ${sName} 舞台！`, `昨晚的表演简直是神级现场，全网都在转这几段直拍！这表现力直接封神！`);
+    } else if (performContext.type === 'tour' && stage === 'top') {
+        pushToTrend(`✨ # ${ad.s} 巡演神级舞美`, `巡演首场的舞美也太砸钱了吧！完全是顶级视听盛宴，没买到票的我哭晕在厕所。`);
+    }
+};
+
+// 拦截巡演暖场嘉宾上热搜
+var oldDoTourForGuestTrend = window.doTour;
+window.doTour = function() {
+    let guestName = document.getElementById("selTourGuest") ? document.getElementById("selTourGuest").value : "";
+    if (ad.bookedTourGuest) guestName = ad.bookedTourGuest;
+    
+    oldDoTourForGuestTrend();
+    
+    if (guestName && !guestName.startsWith("(")) {
+        pushToTrend(`🎤 # ${ad.s} 巡演特邀嘉宾 ${guestName}`, `神仙联动！${guestName} 居然来当暖场嘉宾了，现场气氛直接掀翻屋顶！`);
+    }
+};
+
+// 热搜界面渲染时优先读取全局真实大事件
+var oldRefreshTrendForGlobal = window.refreshTrend;
+window.refreshTrend = function() {
+    oldRefreshTrendForGlobal(); // 先渲染常规的
+    
+    let trendList = document.getElementById("trendList");
+    if(trendList && window.globalTrends && window.globalTrends.length > 0) {
+        let h = window.globalTrends.map((t, i) => `
+            <div style="padding:10px; border-bottom:1px solid #eee; cursor:pointer; background:#fff0f5; border-radius:6px; margin-bottom:5px;" 
+                 onclick="viewPostDetail('${t.t}', '${t.c}', false)">
+                <span style="color:#e91e63;font-weight:bold;margin-right:5px;">🔥 爆</span> ${t.t}
+            </div>
+        `).join('');
+        
+        trendList.insertAdjacentHTML('afterbegin', h);
+    }
+};
+let tourLegs = []; // 存放巡演各场次的数据
+
+// 定义各规模场次限制
+const TOUR_LIMITS = {
+    'mega': { min: 20, max: 100 },
+    'large': { min: 10, max: 50 },
+    'medium': { min: 5, max: 30 },
+    'small': { min: 1, max: 15 },
+    'livehouse': { min: 1, max: 5 }
+};
+
+// 重新渲染巡演面板
+var oldShowMapForTourLegs = window.showMap;
+window.showMap = function(id) {
+    oldShowMapForTourLegs(id);
+    
+    if (id === 'mapTour') {
+        let tourBox = document.getElementById("mapTour");
+        if (tourBox && !document.getElementById("tourLegsContainer")) {
+            // 清理掉原有的简单城市和嘉宾选择
+            let oldRegion = document.getElementById("selTourRegion");
+            if(oldRegion) oldRegion.parentElement.style.display = 'none';
+            let oldGuest = document.getElementById("selTourGuest");
+            if(oldGuest) oldGuest.parentElement.style.display = 'none';
+            let oldBtn = tourBox.querySelector("button");
+            if(oldBtn) oldBtn.style.display = 'none'; // 隐藏原版启动按钮
+            
+            tourBox.insertAdjacentHTML('beforeend', `
+            <div id="tourLegsContainer" style="margin-top:15px; border-top:2px dashed #d1c290; padding-top:10px;">
+                <h4 class="tg" style="margin-bottom:10px;">📅 巡演场次排期</h4>
+                <p style="font-size:11px;color:#888;margin-bottom:10px;">超大型巡演最多可排100场，LiveHouse最多5场。同等舞美投资下，场次越多，总票房越高，但精力消耗越大。</p>
+                <div id="tourLegsList"></div>
+                <button class="sec" onclick="addTourLeg()" style="background:#e0f2fe;color:#0369a1;margin-bottom:15px;">➕ 新增加载场次</button>
+                <button onclick="startMultiLegTour()" style="background:#25d366;color:#fff;">🚀 启动全球巡演计划</button>
+            </div>
+            `);
+            
+            // 初始化第一场
+            tourLegs = [];
+            addTourLeg();
+        }
+    }
+};
+
+window.addTourLeg = function() {
+    let scale = document.getElementById("selTourScale").value;
+    let limits = TOUR_LIMITS[scale] || { min: 1, max: 10 };
+    
+    if (tourLegs.length >= limits.max) {
+        return alert(`⚠️ 当前规模的巡演最多只能举办 ${limits.max} 场！`);
+    }
+    
+    let legId = Date.now() + "_" + tourLegs.length;
+    let defaultMonth = time.m;
+    let defaultDay = time.d;
+    
+    // 如果有上一场，时间自动往后推一天
+    if (tourLegs.length > 0) {
+        let lastLeg = tourLegs[tourLegs.length - 1];
+        defaultMonth = lastLeg.m;
+        defaultDay = lastLeg.d + 2;
+        if(defaultDay > 30) { defaultDay = 1; defaultMonth = (defaultMonth % 12) + 1; }
+    }
+    
+    let guestOpts = `<option value="">(无暖场嘉宾)</option>`;
+    worldArtists.sort((a,b)=>b.fans-a.fans).slice(0, 30).forEach(npc => {
+        guestOpts += `<option value="${npc.n}">${escapeHTML(npc.n)} (粉:${(npc.fans/10000).toFixed(0)}w)</option>`;
+    });
+
+    let legData = { id: legId, m: defaultMonth, d: defaultDay, city: "", guest: "", songId: "" };
+    tourLegs.push(legData);
+    
+    renderTourLegs();
+};
+
+window.renderTourLegs = function() {
+    let listHTML = tourLegs.map((leg, i) => {
+        let myTrks = trackPool.filter(x => x.isMe && x.type === "track").sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0));
+        let songOpts = myTrks.map(t => `<option value="${t.id}">${escapeHTML(t.n)}</option>`).join('');
+        if(!songOpts) songOpts = `<option value="">(无歌可唱)</option>`;
+        
+        let guestOpts = `<option value="">(无暖场嘉宾)</option>`;
+        worldArtists.sort((a,b)=>b.fans-a.fans).slice(0, 30).forEach(npc => {
+            guestOpts += `<option value="${npc.n}">${escapeHTML(npc.n)} (粉:${(npc.fans/10000).toFixed(0)}w)</option>`;
+        });
+
+        return `
+        <div class="card" style="padding:10px; border:1px solid #c8a440; background:#fefcf5; margin-bottom:10px; position:relative;">
+            <b style="color:#c8a440;">第 ${i+1} 场</b>
+            ${i > 0 ? `<button class="sec inline" style="position:absolute;top:5px;right:5px;padding:2px 6px;font-size:10px;" onclick="removeTourLeg(${i})">X 移除</button>` : ''}
+            
+            <div style="display:flex;gap:5px;margin-top:8px;">
+                <input type="text" id="city_${leg.id}" value="${leg.city}" placeholder="举办城市 (如：东京)" style="flex:1;margin:0;padding:6px;font-size:12px;" onchange="updateLegData(${i}, 'city', this.value)">
+                <input type="number" id="m_${leg.id}" value="${leg.m}" min="1" max="12" style="width:50px;margin:0;padding:6px;font-size:12px;" onchange="updateLegData(${i}, 'm', this.value)"> 月
+                <input type="number" id="d_${leg.id}" value="${leg.d}" min="1" max="31" style="width:50px;margin:0;padding:6px;font-size:12px;" onchange="updateLegData(${i}, 'd', this.value)"> 日
+            </div>
+            
+            <div style="margin-top:8px;">
+                <label style="font-size:11px;">主打开场曲:</label>
+                <select id="song_${leg.id}" style="margin:0;font-size:12px;padding:4px;width:100%;" onchange="updateLegData(${i}, 'songId', this.value)">
+                    <option value="">-- 选择开场曲 --</option>
+                    ${songOpts}
+                </select>
+            </div>
+            
+            <div style="margin-top:8px;">
+                <label style="font-size:11px;">专属暖场嘉宾:</label>
+                <select id="guest_${leg.id}" style="margin:0;font-size:12px;padding:4px;width:100%;" onchange="updateLegData(${i}, 'guest', this.value)">
+                    ${guestOpts}
+                </select>
+            </div>
+        </div>`;
+    }).join('');
+    
+    document.getElementById("tourLegsList").innerHTML = listHTML;
+};
+
+window.updateLegData = function(index, key, val) {
+    if(tourLegs[index]) {
+        if(key === 'm' || key === 'd') tourLegs[index][key] = parseInt(val) || 1;
+        else tourLegs[index][key] = val;
+    }
+};
+
+window.removeTourLeg = function(index) {
+    tourLegs.splice(index, 1);
+    renderTourLegs();
+};
+window.startMultiLegTour = function() {
+    let scale = document.getElementById("selTourScale").value;
+    let limits = TOUR_LIMITS[scale] || { min: 1, max: 10 };
+    
+    if (tourLegs.length < limits.min) return alert(`⚠️ 按照现实规格，该规模的巡演最少需要排 ${limits.min} 场！`);
+    
+    let budget = parseInt(document.getElementById("inTourBudget").value) || 0;
+    let stage = document.getElementById("selTourStage").value;
+    if(stage === 'top' && budget < 10000000) return alert("❌ 顶级舞美最低需投入 1000万！");
+    
+    let isCompanyPaying = (ad.co !== "独立" && ad.dealType === "7/3");
+    let totalCost = budget; 
+    
+    if (!isCompanyPaying && ad.m < totalCost) return alert(`❌ 个人账上资金不足以支付此次舞美成本！`);
+    if (!isCompanyPaying) ad.m -= totalCost;
+
+    // 检查时间顺序是否合规
+    for(let i=1; i<tourLegs.length; i++) {
+        let prev = tourLegs[i-1];
+        let curr = tourLegs[i];
+        if(curr.m < prev.m || (curr.m === prev.m && curr.d <= prev.d)) {
+            // 如果跨年情况没处理好，给个宽容，或者警告
+            // 简单处理：时间不纠结卡死，自动强制转为按场次推演时间
+        }
+    }
+
+    // 扣除精力与推进时间
+    let energyCost = Math.min(100, tourLegs.length * 5 + 10);
+    if(!costEnergy(energyCost)) { if(!isCompanyPaying) ad.m += totalCost; return; }
+    advHour(24 * tourLegs.length); // 每场耗时1天
+
+    // 核心结算：逐场累加
+    let totalGainM = 0;
+    let totalGainF = 0;
+    let songBoosts = {}; // 记录哪些歌加了多少流媒
+    let guestNames = new Set();
+    
+    let scaleMult = scale === 'mega' ? 3.0 : (scale === 'large' ? 1.5 : (scale === 'medium' ? 0.8 : (scale === 'small' ? 0.3 : 0.1)));
+    let stageMult = 1.0 + (budget / 50000000); 
+    
+    tourLegs.forEach(leg => {
+        // 单场门票
+        let singleGainM = Math.floor((ad.st.f * 0.05 * scaleMult + (budget / tourLegs.length) * 1.5) * (Math.random() * 0.5 + 0.8));
+        let singleGainF = Math.floor(ad.st.f * 0.01 * scaleMult * stageMult);
+        
+        // 暖场嘉宾效应
+        if (leg.guest) {
+            guestNames.add(leg.guest);
+            let guestNpc = worldArtists.find(x => x.n === leg.guest);
+            if (guestNpc) {
+                // 每带一场嘉宾，吸取一点嘉宾粉丝
+                singleGainF += Math.floor((guestNpc.fans || 50000) * 0.005 * ad.Geffect);
+            }
+        }
+        
+        // 开场曲效应
+        if (leg.songId) {
+            if (!songBoosts[leg.songId]) songBoosts[leg.songId] = 0;
+            // 现场演唱带来的流媒激增
+            songBoosts[leg.songId] += Math.floor(50000 * scaleMult * stageMult * (Math.random()*0.5+0.5));
+        }
+        
+        totalGainM += singleGainM;
+        totalGainF += singleGainF;
+    });
+
+    ad.m += totalGainM; 
+    ad.st.f += totalGainF; 
+
+    // 分发歌曲流媒
+    let songMsg = "";
+    Object.keys(songBoosts).forEach(sid => {
+        let t = trackPool.find(x => x.id === sid);
+        if (t) {
+            let boost = songBoosts[sid];
+            t.stmGlobal += boost;
+            t.stmGlobal_Day += Math.floor(boost/7);
+            t.slTotal += Math.floor(boost/150);
+            songMsg += `🎵 《${t.n}》暴增 ${boost.toLocaleString()} 流媒\n`;
+        }
+    });
+
+    let msg = `🌟 ${tourLegs.length} 场 ${scale==='mega'?'超大型时代巡演':'世界巡回演唱会'} 圆满落幕！\n`;
+    if(isCompanyPaying) msg += `🏢 (公司已全额报销 $${totalCost.toLocaleString()} 舞美！)\n`;
+    msg += `💰 累计总票房入账: $${totalGainM.toLocaleString()}\n`;
+    msg += `🔥 全球吸粉: ${totalGainF.toLocaleString()} 人！\n`;
+    if(guestNames.size > 0) msg += `🤝 携手 ${Array.from(guestNames).join(', ')} 燃爆全场！\n`;
+    if(songMsg) msg += `\n【巡演现场版反馈】：\n${songMsg}`;
+
+    // 巡演热搜
+    if (tourLegs.length >= 10 && scale === 'mega') {
+        pushToTrend(`✨ # ${ad.s} 时代级巡演一票难求`, `全网都在抢 ${ad.s} 这轮巡演的票，黄牛已经炒到天价了，舞台效果真的值回票价！`);
+    }
+
+    updAttr(); 
+    updatePeakRanks(); 
+    saveGame(); 
+    alert(msg); 
+    
+    // 清空场次回到原点
+    tourLegs = [];
+    addTourLeg();
+};
 
 // ==================== 代码结束 ====================
 </script>
