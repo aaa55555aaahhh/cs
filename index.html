@@ -9297,6 +9297,38 @@ if (!window._patchedVarietyPostForGems) {
     };
     window._patchedVarietyPostForGems = true; // 上锁，防止重复加载
 }
+// ==================== 终极防死循环与卡死护盾 (放 script 最顶部) ====================
+(function() {
+    // 拦截全局函数的无限嵌套递归
+    const safeWrap = (obj, funcName) => {
+        let original = obj[funcName];
+        let depth = 0;
+        Object.defineProperty(obj, funcName, {
+            get: () => original,
+            set: (newFunc) => {
+                let prevFunc = original;
+                original = function(...args) {
+                    depth++;
+                    if (depth > 20) {
+                        console.warn(`拦截了 ${funcName} 的死循环！已强制跳出。`);
+                        depth = 0;
+                        return; // 强制打断死循环
+                    }
+                    try {
+                        return newFunc.apply(this, args);
+                    } finally {
+                        depth--;
+                    }
+                };
+            }
+        });
+    };
+    
+    // 给极易发生死循环的核心函数加上护盾
+    const targets = ['loadGame', 'advTime', 'checkAutoAward', 'renderChart', 'openNpcDetail', 'confirmPick', 'generateVarietyPost', 'createEntity'];
+    targets.forEach(fn => safeWrap(window, fn));
+})();
+// =========================================================================
 
 // ==================== 代码结束 ====================
 </script>
