@@ -7010,12 +7010,51 @@ window.confirmGamePrompt = function() {
 // 1. 修复原版多次重写 createEntity 造成的无限递归 (Maximum call stack size exceeded)
 if (!window._createEntitySafeguardApplied) {
     var rawOriginalCreateEntity = window.createEntity;
-    window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
-        // 防止无限递归
-        if (arguments.callee.caller === window.createEntity) return; 
-        
-        let t = rawOriginalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
-        
+    // 使用安全的闭包隔离，避免使用 arguments.callee 导致的栈溢出
+    window.createEntity = (function(_super) {
+        let isExecuting = false;
+        return function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
+            // 安全的防止无限递归开关
+            if (isExecuting) return {}; 
+            isExecuting = true;
+            
+            let t;
+            try {
+                t = _super(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
+            } finally {
+                isExecuting = false;
+            }
+            
+            // 执行 科切拉/大舞台 Buff 修正
+            if(isMe && ad.stageBuff) {
+                if(ad.stageBuff.god) {
+                    if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); } 
+                    else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); }
+                    ad.stageBuff.god = false; 
+                } else if(ad.stageBuff.bad) {
+                    t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8);
+                    ad.stageBuff.bad = false; 
+                }
+                t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
+            }
+
+            // 执行 NPC 保底修正
+            if (!isMe && type === "track") {
+                let baseFans = fans || 100000;
+                let npcDaily = Math.floor(baseFans * (Math.random() * 0.10 + 0.05) * 5) + 1000000 + Math.floor(Math.random() * 2000000);
+                t.stmGlobal_Day = npcDaily;
+                t.stmGlobal_Week = t.stmGlobal_Day * 7;
+                t.stmUS_Day = Math.floor(t.stmGlobal_Day * 0.4);
+                t.stmUS_Week = t.stmUS_Day * 7;
+                t.stmGlobal = t.stmGlobal_Week;
+                t.stmUS = t.stmUS_Week;
+                t.slTotal = Math.floor(t.stmGlobal / 150);
+            }
+            return t;
+        };
+    })(rawOriginalCreateEntity);
+    window._createEntitySafeguardApplied = true;
+}
         // 执行 科切拉/大舞台 Buff 修正
         if(isMe && ad.stageBuff) {
             if(ad.stageBuff.god) {
