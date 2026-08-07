@@ -9325,12 +9325,14 @@ window.checkLoginPwd = function() {
         createPage.classList.add("active");
     }
 };
-window.escapeHTML = function(str) { 
+// ==================== 核心文字转义工具 ====================
+function escapeHTML(str) { 
     if(str === null || str === undefined) return '';
     return String(str).replace(/[&<>'"]/g, function(tag){
         return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag;
     }); 
-};
+}
+window.escapeHTML = escapeHTML;
 
 // ==================== 代码结束 ====================
 </script>
