@@ -9178,7 +9178,7 @@ window.renderChart = function() {
         }).join('');
     }
 };
-// ==================== 终极扩展：单曲详细数据面板与仙曲发掘系统 ====================
+、// ==================== 终极扩展：单曲详细数据面板与仙曲发掘系统 (防卡死版) ====================
 
 // 1. 重构单曲数据详情面板，加入多维度榜单追踪与评判
 window.viewSongStats = function(songId) {
@@ -9257,44 +9257,46 @@ window.viewSongStats = function(songId) {
     document.getElementById("mGameInput").classList.add("open");
 };
 
-// 2. 社交帖子增强：大众高感知“仙曲”播报
-var rawGenVarietyPostForGems = window.generateVarietyPost;
-window.generateVarietyPost = function() {
-    let rand = Math.random();
-    
-    // 15% 的几率，专门盘点乐坛中的“高感知神曲（仙曲）”
-    if (rand < 0.15) {
-        // 筛选感知分极高（>85），且发行超过10周的老歌
-        let gems = trackPool.filter(x => x.Spub > 85 && x.weeks > 10);
-        if (gems.length > 0) {
-            let g = gems[Math.floor(Math.random() * gems.length)];
-            let isOut = (g.lastW && g.lastW <= 100) ? "TBC" : "OUT";
-            let trendStr = g.trendChart && g.trendChart.length > 0 ? g.trendChart.join(" - ") : (g.peakS || 1);
-            
-            let content = `🎧 歌曲：《${g.n}》\n🎤 歌手：${g.artist}\n`;
-            content += `⭐ 综合口碑感知分：${g.Spub.toFixed(1)} / 100\n`;
-            content += `--------------------\n`;
-            content += `最高排位：#${g.peakS || 1} | 在榜：${g.weeks}周 (${isOut})\n`;
-            content += `榜单走势：[ ${trendStr} ]\n`;
-            content += `--------------------\n`;
-            
-            if (g.stmGlobal < 50000000) {
-                content += `这绝对是乐坛史上最被埋没的仙曲！！听过的人都说好，不懂为什么就是不火，大家快去听！`;
-            } else {
-                content += `什么叫叫好又叫座啊！这首歌真的是艺术品级别的，每一次前奏响起我都要起鸡皮疙瘩！`;
+// 2. 社交帖子增强：大众高感知“仙曲”播报 (加入防无限循环保护锁)
+if (!window._patchedVarietyPostForGems) {
+    window._rawGenVarietyPostForGems = window.generateVarietyPost;
+    window.generateVarietyPost = function() {
+        let rand = Math.random();
+        
+        // 15% 的几率，专门盘点乐坛中的“高感知神曲（仙曲）”
+        if (rand < 0.15) {
+            let gems = trackPool.filter(x => x.Spub > 85 && x.weeks > 10);
+            if (gems.length > 0) {
+                let g = gems[Math.floor(Math.random() * gems.length)];
+                let isOut = (g.lastW && g.lastW <= 100) ? "TBC" : "OUT";
+                let trendStr = g.trendChart && g.trendChart.length > 0 ? g.trendChart.join(" - ") : (g.peakS || 1);
+                
+                let content = `🎧 歌曲：《${g.n}》\n🎤 歌手：${g.artist}\n`;
+                content += `⭐ 综合口碑感知分：${g.Spub.toFixed(1)} / 100\n`;
+                content += `--------------------\n`;
+                content += `最高排位：#${g.peakS || 1} | 在榜：${g.weeks}周 (${isOut})\n`;
+                content += `榜单走势：[ ${trendStr} ]\n`;
+                content += `--------------------\n`;
+                
+                if (g.stmGlobal < 50000000) {
+                    content += `这绝对是乐坛史上最被埋没的仙曲！！听过的人都说好，不懂为什么就是不火，大家快去听！`;
+                } else {
+                    content += `什么叫叫好又叫座啊！这首歌真的是艺术品级别的，每一次前奏响起我都要起鸡皮疙瘩！`;
+                }
+                
+                return {
+                    type: "data",
+                    title: `✨ 【神曲盘点】大众感知极高的仙曲/遗珠大赏`,
+                    desc: content
+                };
             }
-            
-            return {
-                type: "data",
-                title: `✨ 【神曲盘点】大众感知极高的仙曲/遗珠大赏`,
-                desc: content
-            };
         }
-    }
-    
-    // 如果没触发仙曲，走原版逻辑
-    return rawGenVarietyPostForGems();
-};
+        
+        // 如果没触发仙曲，走原版逻辑
+        return window._rawGenVarietyPostForGems();
+    };
+    window._patchedVarietyPostForGems = true; // 上锁，防止重复加载
+}
 
 // ==================== 代码结束 ====================
 </script>
