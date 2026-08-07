@@ -733,7 +733,7 @@ document.addEventListener("DOMContentLoaded", function(){
 const LOGIN_STORAGE_KEY = "starPro_login_pwd";
 const CORRECT_PASSWORD = "123456";
 
-document.addEventListener('DOMContentLoaded', function() {
+   document.addEventListener('DOMContentLoaded', function() {
     // 修复点1：强制关闭所有可能阻挡点击的隐形遮罩层
     let modals = document.querySelectorAll('.modal');
     modals.forEach(m => m.classList.remove('open'));
@@ -753,6 +753,25 @@ document.addEventListener('DOMContentLoaded', function() {
     if(typeof updTimeUI === 'function') updTimeUI();
 });
 
+// ==== 下面这两个函数放在 DOMContentLoaded 的外面 ====
+
+window.autoLoginSkip = function() {
+    document.getElementById('loginPage').classList.remove('active');
+    document.getElementById('loginPage').style.display = 'none';
+    let createPage = document.getElementById("createPage");
+    if(createPage) {
+        createPage.style.display = "block";
+        createPage.classList.add("active");
+    }
+};
+
+window.checkLoginPwd = function() {
+    let inputPwd = document.getElementById("loginPwd").value;
+    
+    if (inputPwd !== CORRECT_PASSWORD) {
+        alert("密码错误，请重新输入！");
+        return;
+    }
     
     // 密码正确，本地存储免密凭证
     localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
@@ -760,6 +779,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 切换页面
     document.getElementById("loginPage").classList.remove("active");
+    document.getElementById("loginPage").style.display = "none";
     
     const slot = document.getElementById("selSaveSlot") ? document.getElementById("selSaveSlot").value : "1";
     const saveKey = "starProSave_" + slot;
@@ -768,7 +788,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if(typeof loadGame === 'function') loadGame(slot);
     } else {
         let createPage = document.getElementById("createPage");
-        if(createPage) createPage.classList.add("active");
+        if(createPage) {
+            createPage.style.display = "block";
+            createPage.classList.add("active");
+        }
     }
 };
 /* ================= 全局核心变量 ================= */
