@@ -9325,6 +9325,13 @@ window.checkLoginPwd = function() {
         createPage.classList.add("active");
     }
 };
+window.escapeHTML = function(str) { 
+    if(str === null || str === undefined) return '';
+    return String(str).replace(/[&<>'"]/g, function(tag){
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag;
+    }); 
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
