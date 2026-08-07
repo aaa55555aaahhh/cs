@@ -641,33 +641,6 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 
 <script>
 
-// ==================== 兼容与安全验证工具 ====================
-// 注入游戏内自定义防卡死弹窗HTML
-document.addEventListener("DOMContentLoaded", function(){
-    if(!document.getElementById("mGameAlert")) {
-        document.body.insertAdjacentHTML('beforeend', `
-        <div class="modal" id="mGameAlert" style="z-index:9999;">
-            <div class="modal-box" style="text-align:center; padding:30px 20px;">
-                <h3 class="tg" style="margin-bottom:15px;font-size:18px;">系统提示</h3>
-                <p id="mGameAlertMsg" style="font-size:14px;line-height:1.6;margin-bottom:20px;white-space:pre-wrap;color:#333;"></p>
-                <button onclick="closeM('mGameAlert')" style="width:80%;margin:0 auto;">确认</button>
-            </div>
-        </div>`);
-    }
-    // 强制接管原生的所有 alert，将其转化为游戏内的UI
-    window.gameAlert = function(msg) {
-        document.getElementById("mGameAlertMsg").innerText = msg;
-        document.getElementById("mGameAlert").classList.add("open");
-    };
-    window.alert = window.gameAlert;
-});
-
-function escapeHTML(str) { 
-    if(str === null || str === undefined) return '';
-    return String(str).replace(/[&<>'"]/g, function(tag){
-        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag;
-    }); 
-}
 
 // ====== 全局致命错误捕获弹窗（抓虫神器） ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
@@ -708,30 +681,6 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     }
 });
-// ===================== 登录模块 【最高优先级 - 修复版】 =====================
-const LOGIN_STORAGE_KEY = "starPro_login_pwd";
-const CORRECT_PASSWORD = "123456";
-
-   document.addEventListener('DOMContentLoaded', function() {
-    // 修复点1：强制关闭所有可能阻挡点击的隐形遮罩层
-    let modals = document.querySelectorAll('.modal');
-    modals.forEach(m => m.classList.remove('open'));
-    
-    // 1. 自动免密登录检测
-    const savedPwd = localStorage.getItem(LOGIN_STORAGE_KEY);
-    if (savedPwd === CORRECT_PASSWORD) {
-        autoLoginSkip();
-    } else {
-        // 确保登录页是唯一显示的
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById('loginPage').classList.add('active');
-    }
-    
-    // 初始化基础界面
-    if(typeof initG === 'function') initG();
-    if(typeof updTimeUI === 'function') updTimeUI();
-});
-
 // ==== 下面这两个函数放在 DOMContentLoaded 的外面 ====
 
 window.autoLoginSkip = function() {
