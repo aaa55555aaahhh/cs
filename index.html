@@ -577,6 +577,28 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
                 <input id="eNpcAge" type="number" placeholder="年龄">
                 <input id="eNpcGender" placeholder="性别">
                 <input id="eNpcFans" type="number" placeholder="粉丝数">
+                <input id="eNpcGender" placeholder="性别">
+<input id="eNpcFans" type="number" placeholder="粉丝数">
+
+<!-- 下面是新增的自定义关系选项 -->
+<label style="font-size:12px;color:#666;margin-top:5px;display:block;">私下关系(与你):</label>
+<select id="eNpcPRel" style="margin-bottom:5px;">
+    <option value="陌生">陌生</option>
+    <option value="朋友">朋友</option>
+    <option value="好朋友">好朋友</option>
+    <option value="恋人">恋人</option>
+    <option value="伴侣">伴侣</option>
+    <option value="讨厌">讨厌</option>
+    <option value="坏血">坏血</option>
+</select>
+
+<label style="font-size:12px;color:#666;margin-top:5px;display:block;">粉圈关系(与你):</label>
+<select id="eNpcFRel" style="margin-bottom:10px;">
+    <option value="陌生">陌生</option>
+    <option value="相亲相爱">相亲相爱</option>
+    <option value="互撕">互撕</option>
+</select>
+
                 <button onclick="saveNpcEdit()">保存修改</button>
                 <button class="sec" onclick="switchSubTab(document.getElementById('npcBoxTabs').parentElement.querySelector('.sub-tab'), 'npcListSec', 'npcBoxTabs')">取消返回</button>
             </div>
@@ -1204,7 +1226,7 @@ function updAttr(){
         let cert = getCert(t ? t.slTotal : x.slTotal);
         let peakText = t && t.peakS ? `<br><span style="color:#888;font-size:11px;">在榜 ${t.weeks} 周 | 全球最高: #${t.peakS} | 美国最高: #${t.peakB || '--'}</span>` : '';
         return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
-            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${(t?t.slTotal:x.slTotal).toLocaleString()} 张 | 收入: $${x.revenue.toLocaleString()}${peakText}
+            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${((t?t.slTotal:x.slTotal)||0).toLocaleString()} 张 | 收入: $${(x.revenue||0).toLocaleString()}${peakText}
         </div>`;
     }).join('') : "无"; 
     
@@ -8278,12 +8300,17 @@ window.openEditNpc = function(id) {
     }
 };
 
+
 var exOldSaveNpcEdit = window.saveNpcEdit;
 window.saveNpcEdit = function() {
     var oldName = document.getElementById("eNpcOldName").value;
     let npc = worldArtists.find(x => x.n === oldName);
     if(npc && document.getElementById("eNpcAppearance")) {
         npc.appearance = document.getElementById("eNpcAppearance").value.trim();
+        if (!npc.relations) npc.relations = {};
+        let pRelVal = document.getElementById("eNpcPRel").value;
+        let fRelVal = document.getElementById("eNpcFRel").value;
+        npc.relations['player_self'] = { p: pRelVal, f: fRelVal };
     }
     exOldSaveNpcEdit();
 };
@@ -9452,6 +9479,9 @@ window.openEditNpc = function(id) {
     if(pInput) {
         pInput.placeholder = "艺人综合设定";
         pInput.previousElementSibling.innerText = "艺人设定:"; // 修改Label
+        let rel = (npc.relations && npc.relations['player_self']) ? npc.relations['player_self'] : { p: "陌生", f: "陌生" };
+        if(document.getElementById("eNpcPRel")) document.getElementById("eNpcPRel").value = rel.p;
+        if(document.getElementById("eNpcFRel")) document.getElementById("eNpcFRel").value = rel.f;
     }
 };
 window.generateVarietyPost = function() {
