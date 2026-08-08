@@ -2611,9 +2611,35 @@ window.buySong = function(i) { let s = marketSongs[i]; if(ad.m < s.price) return
 
     
 let originalCreateEntity = window.createEntity;
-window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="") {
-    let t = originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat);
-    if(isMe && ad.stageBuff) {
+window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
+    // 递归锁：如果检测到已经在执行中，说明发生了死循环，直接熔断并走底层原始逻辑，不再触发拦截
+    if (window._isCreatingEntityLock) {
+        return originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
+    }
+    
+    window._isCreatingEntityLock = true;
+    let t;
+    try {
+        t = originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
+        
+        if(isMe && ad.stageBuff) {
+            if(ad.stageBuff.god) {
+                if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); setTimeout(() => alert(`🌟 科切拉神级红利爆发！新作品口碑过硬，流媒暴涨 60%！`), 500); } 
+                else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); setTimeout(() => alert(`📉 神级期待遭反噬！新作品口碑平庸，流媒暴跌 60%，大量脱粉！`), 500); }
+                ad.stageBuff.god = false; 
+            } else if(ad.stageBuff.bad) {
+                t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8); setTimeout(() => alert(`💩 灾难现场余波未平！路人偏见导致新歌初始流媒缩水 20%！`), 500);
+                ad.stageBuff.bad = false; 
+            }
+            t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
+        }
+    } finally {
+        // 确保无论发生什么错误，锁都会被释放
+        window._isCreatingEntityLock = false;
+    }
+    
+    return t;
+};
         if(ad.stageBuff.god) {
             if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); setTimeout(() => alert(`🌟 科切拉神级红利爆发！新作品口碑过硬，流媒暴涨 60%！`), 500); } 
             else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); setTimeout(() => alert(`📉 神级期待遭反噬！新作品口碑平庸，流媒暴跌 60%，大量脱粉！`), 500); }
