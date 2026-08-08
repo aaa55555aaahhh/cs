@@ -3021,54 +3021,6 @@ window.saveNpcEdit = function() {
     document.getElementById("npcListSec").classList.add("active");
 }
     
-window.submitCustomNPC = async function() {
-
-    let btn = document.getElementById("btnCustomNPC");
-    let name = document.getElementById("aNpcName").value.trim();
-    let stageName = document.getElementById("aNpcStageName").value.trim() || name;
-    let gender = document.getElementById("aNpcGender").value.trim() || "未知";
-    let fanName = document.getElementById("aNpcFanName").value.trim() || "";
-    let fans = parseInt(document.getElementById("aNpcFans").value) || 50000;
-    
-    if(!name) return alert("艺人真实姓名不能为空！");
-    
-    btn.innerText = "正在注入中...";
-    btn.disabled = true;
-
-    let base = Math.min(85, 30 + Math.floor(fans / 2000000) * 10);
-    let newNpc = {
-        id: "npc_custom_" + Date.now(),
-        n: stageName, // 大盘统一使用艺名显示
-        realName: name,
-        fanName: fanName,
-        fans: fans,
-        age: 20 + Math.floor(Math.random() * 10),
-        gender: gender,
-        alb: "Debut Album",
-        bnaSubmissions: 0,
-        bio: "",
-        sk: {
-            v: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
-            d: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 15)),
-            r: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 20)),
-            w: Math.max(1, Math.min(100, Math.floor(Math.random()*50) + base - 20)),
-            f: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base)),
-            s: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 5)),
-            fa: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
-            va: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 10))
-        }
-    };
-    
-        } catch(e) {
-            alert(`🎉 成功注入空壳艺人【${stageName}】！(AI生成失败，未产生出道作品)`);
-        }
-    } else { // 👉 这里补上丢失的 else {
-                    
-        alert(`🎉 成功注入空壳艺人【${stageName}】！(未连接API，作为白纸艺人等待后续发展)`);
-    }
-
-    worldArtists.push(newNpc);
-   }
 
 window.batchGenNpc = function() {
     let count = parseInt(document.getElementById("aNpcCount").value) || 5;
@@ -12409,7 +12361,11 @@ window.confirmPick = async function() {
     // 路由7：普通的单曲发行/预发逻辑兜底
     if (pickAction === "relSingleDirect") {
         let price = parseFloat(document.getElementById("sgPrice").value) || 1;
-        let sIdx = tempIdx;
+        let sIdx = std.findIndex(x => x.id === tempIdx); // 【修复】：通过 ID 寻找真实的下标
+        if (sIdx === -1) {
+            closeM('mPick');
+            return alert("⚠️ 找不到该歌曲，可能已经被发行或删除了！");
+        }
         let s = std.splice(sIdx, 1)[0];
         if(!s) return;
         s.released = true;
