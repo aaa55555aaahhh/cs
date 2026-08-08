@@ -12709,6 +12709,143 @@ window.refreshFeed = function() {
     }
     document.getElementById("feedList").innerHTML = h;
 };
+// ==================== 专辑终极修补：发先行曲、精细预热、防双零 ====================
+
+// 1. 拦截 confirmPick，补全“发先行曲”和“发宣传曲”的事件路由
+var safeConfirmPickForPreSong = window.confirmPick;
+window.confirmPick = async function() {
+    if (pickAction === "relPreSingle" || pickAction === "relPrePromo") {
+        let radios = document.getElementsByName("preR");
+        let selId = null;
+        for(let i=0; i<radios.length; i++){ if(radios[i].checked) selId = radios[i].value; }
+        if(!selId) return alert("请先选择一首歌曲！");
+        
+        let alb = window.curAlbPj; 
+        if(!alb) return alert("专辑企划数据丢失！");
+        
+        let s = alb.s.find(x => x.id === selId);
+        if(!s) return alert("未找到歌曲！");
+        s.released = true; // 标记为已发
+        
+        let isSingle = (pickAction === "relPreSingle");
+        if (isSingle) {
+            alb.singleCount = (alb.singleCount || 0) + 1;
+            s.singleLabel = window.getSingleLabelName(alb.singleCount);
+        } else {
+            alb.preCount = (alb.preCount || 0) + 1;
+            s.singleLabel = "宣传曲";
+        }
+        
+        // 强行补充属性，防NaN
+        s.v = s.v || ad.sk.v || 50;
+        s.w = s.w || ad.sk.w || 50;
+        
+        // 发行实体
+        let tTrk = window.createEntity(s.n, ad.s, true, "track", alb.g.join(), ad.st.f, s.w, s.v, time.y, time.m, time.w, false, s.ff, isSingle ? 0.95 : 0.65);
+        tTrk.price = 1;
+        tTrk.singleLabel = s.singleLabel;
+        
+        // 记录先行曲初动，用来给最后发全专时加成
+        alb.preStmDay = (alb.preStmDay || 0) + tTrk.stmGlobal_Day;
+        
+        trackPool.push(tTrk);
+        myWorks.push({id:tTrk.id, n:`${s.n} [单曲]`, slTotal:tTrk.slTotal, revenue:0});
+        
+        alert(`🚀 ${s.singleLabel}《${s.n}》已提前释出！\n首日预计流媒：${tTrk.stmGlobal_Day.toLocaleString()}`);
+        closeM('mPick'); 
+        if(typeof updateAlbProjUI === 'function') updateAlbProjUI(); 
+        if(typeof renderMultiAlbumStudio === 'function') renderMultiAlbumStudio();
+        saveGame();
+        return;
+    }
+    
+    // 处理预热选项
+    if (pickAction === "hypeAlbumOptions") {
+        let radios = document.getElementsByName("hypeR");
+        let selVal = null;
+        for(let i=0; i<radios.length; i++){ if(radios[i].checked) selVal = radios[i].value; }
+        if(!selVal) return alert("请选择预热对象！");
+        if(!costEnergy(10)) { closeM('mPick'); return; }
+        
+        let alb = window.tempHypeAlb;
+        if (selVal === "ALBUM") {
+            alb.hype = (alb.hype || 1.0) + 0.15;
+            ad.st.f += Math.floor(Math.random() * 5000 + 1000);
+            posts.mom.unshift({ t: "全专预热", c: `新专辑《${alb.n}》即将到来，概念是【${alb.core||'保密'}】，大家敬请期待！` });
+            alert(`📢 预热成功！你向全网透露了新专《${alb.n}》的消息！\n当前专辑期待值倍率升至：${alb.hype.toFixed(2)}`);
+        } else {
+            let s = alb.s.find(x => x.id === selVal);
+            if(s) {
+                ad.st.f += Math.floor(Math.random() * 8000 + 2000);
+                posts.mom.unshift({ t: "新歌剧透", c: `偷偷给大家剧透一首专辑收录曲《${s.n}》的片段，旋律真的太绝了！` });
+                alert(`📢 预热成功！你释放了收录曲《${s.n}》的物料片段，引发了粉丝热烈讨论！`);
+            }
+        }
+        
+        closeM('mPick');
+        if(typeof renderMyPosts === 'function') renderMyPosts();
+        if(typeof updateAlbProjUI === 'function') updateAlbProjUI(); 
+        if(typeof renderMultiAlbumStudio === 'function') renderMultiAlbumStudio();
+        saveGame();
+        return;
+    }
+
+    return safeConfirmPickForPreSong();
+};
+
+// 2. 升级预热按钮（弹出选择框）
+window.hypeCurrentAlbum = function(idx) {
+    let alb = (idx !== undefined && ad.multiAlbPjs) ? ad.multiAlbPjs[idx] : window.curAlbPj;
+    if(!alb) return alert("未找到企划数据！");
+    
+    pickAction = "hypeAlbumOptions";
+    window.tempHypeAlb = alb;
+    
+    document.getElementById("mPickTitle").innerText = "🔥 预热宣传";
+    document.getElementById("mPickExt").style.display = "none";
+    
+    let html = `<div style="padding:8px 0; border-bottom:1px solid #eee;"><input type="radio" name="hypeR" value="ALBUM" checked> <b>预热整张专辑</b> <span style="font-size:10px;color:#888;">(提升全专爆发力)</span></div>`;
+    
+    alb.s.forEach(s => {
+        html += `<div style="padding:8px 0; border-bottom:1px solid #eee;"><input type="radio" name="hypeR" value="${s.id}"> 剧透单曲物料：<b>${escapeHTML(s.n)}</b></div>`;
+    });
+    
+    document.getElementById("mPickList").innerHTML = html;
+    document.getElementById("mPick").classList.add("open");
+};
+
+// 覆盖多专辑按钮，挂载带索引的预热
+var oldRenderMultiAlbumStudioForHype = window.renderMultiAlbumStudio;
+window.renderMultiAlbumStudio = function() {
+    oldRenderMultiAlbumStudioForHype();
+    ad.multiAlbPjs.forEach((alb, idx) => {
+        let btnArea = document.getElementById("price_alb_" + idx);
+        if(btnArea && btnArea.parentElement && !document.getElementById("btn_hype_" + idx)) {
+            let promoDiv = document.createElement("div");
+            promoDiv.style.cssText = "display:flex;gap:5px;margin-top:10px;border-top:1px dashed #ccc;padding-top:10px;";
+            promoDiv.innerHTML = `
+                <button id="btn_hype_${idx}" class="sec inline" style="flex:1;font-size:11px;background:#fff8e8;color:#a67c00;" onclick="hypeCurrentAlbum(${idx})">🔥 预热造势</button>
+                <button class="sec inline" style="flex:1;font-size:11px;" onclick="relMultiAlbPre(${idx}, 'single')">🎵 发先行曲</button>
+                <button class="sec inline" style="flex:1;font-size:11px;" onclick="relMultiAlbPre(${idx}, 'promo')">📢 发宣传曲</button>
+            `;
+            btnArea.parentElement.parentElement.insertBefore(promoDiv, btnArea.parentElement);
+        }
+    });
+};
+
+// 3. 彻底修复发行专辑后感知分和销量为 0 的 Bug (强制注入玩家属性)
+var oldReleaseMultiAlbForScore = window.releaseMultiAlb;
+window.releaseMultiAlb = async function(idx) {
+    let alb = ad.multiAlbPjs[idx];
+    if(alb && alb.s) {
+        alb.s.forEach(s => {
+            // 最关键的一步：确保歌曲拥有计算评分用的基础属性！否则会得出 NaN！
+            s.v = s.v || ad.sk.v || 50;
+            s.w = s.w || ad.sk.w || 50;
+        });
+    }
+    await oldReleaseMultiAlbForScore(idx);
+};
 
 // ==================== 代码结束 ====================
 </script>
