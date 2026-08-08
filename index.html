@@ -11642,8 +11642,6 @@ window.advTime = function(weeks, showMsg) {
 
     oldAdvTimeForAudits(weeks, showMsg);
 };
-<!-- 【修复1】修复 `npc is not defined` 报错 -->
-<script>
 // 找到旧的覆盖函数并修正
 var oldOpenEditNpcForSettings = window.openEditNpc;
 window.openEditNpc = function(id) {
@@ -11658,10 +11656,6 @@ window.openEditNpc = function(id) {
         if(document.getElementById("eNpcFRel")) document.getElementById("eNpcFRel").value = rel.f;
     }
 };
-</script>
-
-<!-- 【修复2】删掉“专辑日增榜” -->
-<script>
 // 重写 openApp 里的榜单部分，不再注入专辑日增榜
 var oldOpenAppForDaily = window.openApp;
 window.openApp = function(appId) {
@@ -11678,10 +11672,6 @@ window.openApp = function(appId) {
         oldOpenAppForDaily(appId);
     }
 };
-</script>
-
-<!-- 【修复3】奖项合并 xN 展示与删除奖项功能 -->
-<script>
 // 重写档案面板里渲染奖项的部分
 var oldUpdAttrForAwards = window.updAttr;
 window.updAttr = function() {
@@ -11750,10 +11740,6 @@ window.deleteMyAward = function(awardKey) {
     updAttr();
     saveGame();
 };
-</script>
-
-<!-- 【修复4】AI 记事奖项剧情与“人美心善”让奖功能 -->
-<script>
 var oldGenerateAiScheduleForAwards = window.generateAiSchedule;
 window.generateAiSchedule = async function() {
     let isAwardMonth = [2,5,8,11].includes(time.m);
@@ -11789,8 +11775,6 @@ window.generateAiSchedule = async function() {
     // 如果不是颁奖月或没填API，走正常逻辑
     oldGenerateAiScheduleForAwards();
 };
-<!-- 【修复：电台榜增加“我的歌曲”页签，允许为出榜歌曲注水】 -->
-<script>
 // 重写电台APP渲染，加入“全美TOP50”与“我的所有歌曲”双页签
 window.renderRadioApp = function(tab = 'all') {
     // 确保都有电台数据
@@ -11873,8 +11857,233 @@ window.buyRadioPayola = function(id, tab = 'all') {
     renderRadioApp(tab); 
     saveGame();
 };
-</script>
+// ==================== 1. 修复乐评同步机制，固定官方乐评 ====================
+window.syncReviewScores = function() {
+    trackPool.forEach(t => {
+        // 加入 reviewSynced 锁，确保官方乐评一旦生成并同步后，不再随大众分的变动而变动
+        if (t.Spub !== undefined && !t.reviewSynced) {
+            // 乐评人可能会有小幅度的苛刻或宽容，但在基准上绝不能背离太多
+            let rsScore = Math.floor(t.Spub + (Math.random() * 10 - 5)); 
+            let pfScore = ((t.Spub + (Math.random() * 12 - 6)) / 10).toFixed(1);
+            
+            // 兜底极值
+            if (rsScore > 100) rsScore = 100; if (rsScore < 0) rsScore = 0;
+            if (pfScore > 10.0) pfScore = 10.0; if (pfScore < 0.0) pfScore = 0.0;
+            
+            t.rs = `[Rolling Stone ${rsScore}]`;
+            t.bx = `[Pitchfork ${pfScore}]`;
+            t.reviewSynced = true; // 打上标记，以后不再被篡改
+        }
+    });
+};
 
+// ==================== 2. 更改风控查水表的惩罚逻辑 ====================
+var oldAdvTimeForAudits = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    // 在推演前进行一轮 Spotify 风控清洗
+    trackPool.forEach(t => {
+        if (t.waterRisk && t.waterRisk > 0) {
+            // 掷骰子判定是否被抓
+            let roll = Math.random() * 100;
+            if (roll < t.waterRisk) {
+                // 🚨 翻车！触发审查清算
+                
+                // 惩罚1：大砍本周流媒 (剔除所有假量，甚至伤及自然算法推荐)
+                let penaltyRatio = (t.waterRisk > 50) ? 0.3 : 0.6; // 风险越高砍得越狠，剩30%或60%
+                t.stmGlobal_Week = Math.floor(t.stmGlobal_Week * penaltyRatio);
+                t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+                t.stmUS_Week = Math.floor(t.stmUS_Week * penaltyRatio);
+                t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+                
+                // 惩罚2：大众口碑下降（官方乐评保持不变，因为造假被全网群嘲，路人好感度暴跌）
+                t.Spub = Math.max(10, t.Spub - 15);
+                
+                // 清空风控值 (已经被查过了)
+                t.waterRisk = 0; 
+                
+                // 惩罚3：爆出惊天大瓜上热搜
+                if (t.isMe) {
+                    // 玩家自己造假被抓：严重脱粉
+                    ad.st.f -= Math.floor(ad.st.f * 0.1); 
+                    posts.mom.unshift({
+                        t: `🚨 【惊天丑闻】官方通报：${ad.s} 涉嫌严重流媒造假！`, 
+                        c: `Spotify和B榜同时发难！《${t.n}》因为使用违规手段注水，今日已被大面积清算流媒！虽然官方乐评没改，但现在大众口碑已经跌入谷底，太丢人了！`
+                    });
+                } else {
+                    // 对手造假被抓 (玩家陷害成功)
+                    posts.mom.unshift({
+                        t: `🍉 【大快人心】竞品翻车！${t.artist} 数据注水被后台制裁！`, 
+                        c: `笑死我了！我就说《${t.n}》这首歌这么难听怎么可能排名这么高！今天直接被平台后台揪出僵尸网络和劣质脚本，流媒大跳水，大众路人缘彻底崩盘了！`
+                    });
+                }
+            } else {
+                // 逃过一劫，风控警戒值随时间慢慢冷却 (每周降 10%)
+                t.waterRisk = Math.max(0, t.waterRisk - 10);
+            }
+        }
+    });
+
+    oldAdvTimeForAudits(weeks, showMsg);
+};
+// ==================== 终极修补：修复专辑数据显示、无限打单与 B榜比例条 ====================
+
+// 1. 修复：专辑详情中的打单按钮永久解锁 (移除12周限制)
+window.openAlbDetail = function(idx) {
+    let a = albs[idx];
+    let tAlb = trackPool.find(x => x.isMe && x.n === a.n && x.type === "album");
+    let currentPrice = tAlb ? (tAlb.price || 10) : 10;
+
+    let h = a.s.map(song => {
+        let t = trackPool.find(x => x.isMe && x.type === "track" && (x.n === song.n || x.n.replace(/&#39;/g, "'") === song.n.replace(/&#39;/g, "'")));
+        if(!t) return `<div class="card" style="padding:10px;margin-bottom:5px;background:#f9f9f9;"><b>${escapeHTML(song.n)}</b> (暂无数据)</div>`;
+        return `
+        <div class="card" style="padding:10px;margin-bottom:8px;border:1px solid #eee;background:#fff;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <b style="font-size:14px;">${escapeHTML(t.n)}</b>
+                <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="viewSongStats('${t.id}')">数据详情</button>
+            </div>
+            <div style="font-size:11px;color:#888;margin-top:4px;">全球: ${(t.stmGlobal||0).toLocaleString()} | 在榜 ${t.weeks||1} 周</div>
+            <button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单 (转正主打)</button>
+        </div>`;
+    }).join('');
+    
+    // 注入定价面板
+    let pricePanel = `
+    <div style="background:#e0f2fe; padding:10px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+        <div style="flex:1;">
+            <b style="color:#0369a1; font-size:13px;">💿 专辑定价调控</b><br>
+            <span style="font-size:11px; color:#555;">降价促销量，高价保逼格。过度骨折价(<$4)会被全网群嘲。</span>
+        </div>
+        <input type="number" id="adjustPrice_${idx}" value="${currentPrice}" style="width:60px; margin:0; padding:6px; font-size:12px;">
+        <button class="sec inline" style="margin:0; padding:6px 12px; font-size:12px; background:#0284c7; color:#fff;" onclick="adjustAlbumPrice(${idx})">修改</button>
+    </div>`;
+
+    document.getElementById("mAlbDetailTitle").innerText = `💿 《${a.n}》 收录曲`;
+    document.getElementById("mAlbDetailContent").innerHTML = pricePanel + h;
+    document.getElementById("mAlbDetail").classList.add("open");
+};
+
+// 2. 修复：专辑大厅列表的感知分与销量读取 (处理存档断联问题)
+window.renderAlb = function() {
+    let box = document.getElementById("listAList");
+    if(box && albs.length > 0) {
+        box.innerHTML = albs.map(function(a, i){ 
+            let dlxBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;padding:4px 8px;" onclick="openDeluxe(${i})">🌟追加豪华版</button>`; 
+            let detailBtn = `<button class="sec inline" style="margin-top:5px;font-size:11px;padding:4px 8px;" onclick="openAlbDetail(${i})">📖单曲一览</button>`; 
+            let promoBtn = `<button class="inline" style="margin-top:5px;font-size:11px;padding:4px 8px;background:#e0f2fe;color:#0369a1;font-weight:bold;" onclick="openAlbPromo(${i})">📢 专辑宣发</button>`;
+            
+            // 智能查找引用
+            let ref = a.trackRef || trackPool.find(x => x.isMe && x.type === "album" && (x.n === a.n || x.id === a.id));
+            let spubShow = ref ? (ref.Spub || 0).toFixed(1) : 0;
+            let salesShow = ref ? (ref.slTotal || 0).toLocaleString() : 0;
+
+            return `
+            <div class="card" style="border:1px solid #eee;position:relative;">
+                <b style="font-size:15px;">${escapeHTML(a.n)}</b> 
+                <span class="tier-badge" style="background:#8e44ad;">${a.st}</span><br>
+                <span style="font-size:12px;color:#666;">收录:${a.s.length}首歌曲</span><br>
+                <div style="font-size:11px;color:#555;margin-top:5px;">
+                    感知分: <b style="color:#111;">${spubShow}</b> | 累计等效销量: <b style="color:#e6683c;">${salesShow}</b>
+                </div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">
+                    ${dlxBtn} ${detailBtn} ${promoBtn}
+                </div>
+            </div>`; 
+        }).join('');
+    }
+};
+
+// 3. 修复：恢复 Billboard 单曲榜的三色构成比例条
+var oldRenderChartForBBMix = window.renderChart;
+window.renderChart = function() {
+    // 调一次原版的渲染以获取走势箭头
+    oldRenderChartForBBMix();
+    
+    // 如果当前打开的是 Billboard，且是单曲榜或日增，追加覆盖处理比例条
+    if (curChartPlatform === 'BB' && (curChType === 'track' || curChType === 'daily')) {
+        let isUS = (curChReg === 'US');
+        let trks = trackPool.filter(x => x.type === "track");
+        
+        trks.forEach(t => {
+            let stmUS = t.stmUS_Week || Math.floor(t.stmUS/7) || 0;
+            let pureSales = Math.floor((t.stmGlobal_Week || 0) / 150) * (t.price || 1); 
+            let radio = t.radioAud || 0;
+            
+            // 点数公式换算与分布
+            let ptsSales = pureSales / 150;
+            let ptsStm = stmUS / 15000;
+            let ptsRadio = radio * 3;
+            
+            let totalPts = ptsSales + ptsStm + ptsRadio;
+            if (totalPts < 1) totalPts = 1;
+            t._bbPtsExact = Math.floor(totalPts);
+            
+            t._pctSales = Math.round((ptsSales / totalPts) * 100);
+            t._pctStm = Math.round((ptsStm / totalPts) * 100);
+            t._pctRadio = Math.round((ptsRadio / totalPts) * 100);
+            
+            // Payola 检测
+            if (t.isMe && t._pctRadio > 50 && totalPts > 100 && !t.radioScandal) {
+                posts.mom.unshift({ 
+                    t: `🔥 【惊天丑闻】${ad.s} 电台Payola实锤！`, 
+                    c: `大家快看B榜构成！《${t.n}》电台占比居然高达 ${t._pctRadio}%！流媒和销量全在下水道，全靠资本塞钱给电台洗脑，太恶心了！` 
+                });
+                t.radioScandal = true;
+                ad.st.f -= Math.floor(ad.st.f * 0.05);
+            }
+        });
+        
+        trks.sort((a,b) => b._bbPtsExact - a._bbPtsExact);
+        
+        let box = document.getElementById("mChartContent");
+        box.innerHTML = trks.slice(0, 100).map((t, i) => {
+            let currentRank = i + 1;
+            let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
+            let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
+            let peakStr = peakVal ? `最高: #${peakVal} | 在榜: ${t.weeks||1}周` : `在榜: ${t.weeks||1}周`;
+            
+            // 生成走势标识
+            let trendHtml = "";
+            if (t.weeks <= 1) {
+                trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+            } else {
+                let lastRank = t.trendChart && t.trendChart.length > 0 ? t.trendChart[t.trendChart.length - 1] : (t.lastW || currentRank);
+                let diff = lastRank - currentRank;
+                if (diff > 0) trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
+                else if (diff < 0) trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
+                else trendHtml = `<span style="color:#888; font-weight:bold; font-size:10px;">-</span>`;
+            }
+
+            let detailBtn = (t.isMe && t.type === 'track') ? `<br><button class="sec inline" style="padding:2px 6px;font-size:10px;margin-top:4px;" onclick="viewSongStats('${t.id}')">查看歌曲详情</button>` : '';
+
+            // 三色比例进度条
+            let barHtml = `
+            <div style="display:flex; width:100%; height:4px; margin-top:4px; border-radius:2px; overflow:hidden;">
+                <div style="width:${t._pctStm}%; background:#25d366;" title="流媒 ${t._pctStm}%"></div>
+                <div style="width:${t._pctSales}%; background:#0055ff;" title="实销 ${t._pctSales}%"></div>
+                <div style="width:${t._pctRadio}%; background:#8b5cf6;" title="电台 ${t._pctRadio}%"></div>
+            </div>`;
+
+            return `
+            <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+                <div style="width:45px; text-align:center; padding-right:10px;">
+                    <b style="color:#333;font-size:17px;display:block;">${currentRank}</b>
+                    ${trendHtml}
+                </div>
+                <div style="flex:1;">
+                    <b style="font-size:14px;">${escapeHTML(t.n)}</b><br>
+                    <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)} | ${peakStr}</span>
+                    ${detailBtn}
+                    ${barHtml}
+                </div>
+                <div style="text-align:right;font-size:12px;width:75px;">
+                    <b style="color:#c8a440;">${t._bbPtsExact.toLocaleString()} Pts</b><br>
+                    <span style="font-size:10px;color:#888;">🎧${t._pctStm}% 🛒${t._pctSales}% 📻${t._pctRadio}%</span>
+                </div>
+            </div>`;
+        }).join('') || "<p style='text-align:center;color:#888;'>暂无数据</p>";
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
