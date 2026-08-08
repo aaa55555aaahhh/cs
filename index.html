@@ -203,6 +203,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
           <div id="boxInputs"></div>
           <button onclick="saveAttr()">保存</button> 
           <button class="sec" onclick="document.getElementById('boxEditAttr').style.display='none';document.getElementById('boxBars').style.display='block';">取消</button>
+          <button class="sec inline" onclick="aKs.forEach(x => document.getElementById('ie_'+x.k).value = 1000);" style="margin-bottom:10px;">⚡ 一键拉满 (1000)</button>
       </div>
       <div class="sub-tab-bar" style="margin-top:15px;">
           <div class="sub-tab active" onclick="switchSubTab(this, 'tabWorks', 'attrTabs')">发行作品</div>
@@ -214,6 +215,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       </div>
     </div>
   </div>
+          
 
   <!-- ================= API与系统存档 ================= -->
   <div id="pApi" class="tab-page">
@@ -905,6 +907,8 @@ window.loadGame = function(slotOverride){
       document.getElementById("gameMain").classList.add("active"); 
       document.getElementById("gameMain").style.display = "block";
       document.getElementById("topBar").style.display="flex"; 
+      updTimeUI();
+
   } catch(e) {
       alert("存档存在异常，读取失败！可能是旧版本数据不兼容。");
   } 
@@ -1032,6 +1036,8 @@ window.startGame = function(){
       document.getElementById("gameMain").classList.add("active"); 
       document.getElementById("gameMain").style.display = "block";
       document.getElementById("topBar").style.display="flex"; 
+      updTimeUI();
+
   } catch(e) {
       console.error(e);
       // 增强型报错：如果再出错，会直接把具体的错误代码打印在屏幕上，方便我们定位
@@ -1218,7 +1224,7 @@ function updAttr(){
     <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
     `; 
 
-    $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
+    $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="1000"></div>`}).join(''); 
     $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
     
     $("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
@@ -1232,7 +1238,7 @@ function updAttr(){
     
     $("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
 }
-window.saveAttr = function(){ aKs.forEach(function(x){ let v=parseInt($(`ie_${x.k}`).value)||1; ad.sk[x.k]=Math.min(100,Math.max(1,v)); }); $("boxEditAttr").style.display="none"; $("boxBars").style.display="block"; updAttr(); saveGame(); }
+window.saveAttr = function(){ aKs.forEach(function(x){ let v=parseInt($(`ie_${x.k}`).value)||1; ad.sk[x.k]=Math.min(1000,Math.max(1,v)); }); $("boxEditAttr").style.display="none"; $("boxBars").style.display="block"; updAttr(); saveGame(); }
 
 function renderMapCompany(){ if(ad.co === "独立"){ $("boxSignCompany").style.display = "block"; $("boxMyCompany").style.display = "none"; renderLbl(); } else { $("boxSignCompany").style.display = "none"; $("boxMyCompany").style.display = "block"; $("btnMapCompany").innerText = "🏢 我的公司"; } }
 window.meetPeople = function(){ if(!costEnergy(10)) return; advHour(24); let n = npcNames[Math.floor(Math.random()*npcNames.length)]+"(圈内前辈)"; conts.push({id:Date.now(), n:n, t:"工作人脉", h:[], affinity:0, isCohabiting:false}); $("logCompany").style.display="block"; $("logCompany").innerText = `🤝 结识了 ${n}，耗10精力，耗时1天。`; saveGame(); }
@@ -3967,7 +3973,7 @@ window.quickAction = function(type) {
     } else if(type === 'promo') {
         planInput.value = "这周疯狂跑电视台和电台打歌，疯狂刷脸增加曝光率！";
         // 如果有宣发期歌曲就自动打单最高的那首
-        let myTrks = trackPool.filter(x => x.isMe && x.type === "track" && x.weeks <= 12);
+        let myTrks = trackPool.filter(x => x.isMe && x.type === "track" );
         if(myTrks.length > 0) {
             let t = myTrks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0];
             promoAlbSong(t.id);
@@ -6673,7 +6679,7 @@ setInterval(() => {
 window.doTVPromo = function(showName){ 
     currentPromoShow = showName || "打歌节目";
     // 【限制12周】：只允许12周内的新歌跑通告
-    let myTrks = trackPool.filter(x => x.isMe && x.type === "track" && x.weeks <= 12).sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0)); 
+    let myTrks = trackPool.filter(x => x.isMe && x.type === "track" ).sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0)); 
     if(!myTrks.length) return alert("⚠️ 电视台拒绝了你！当前没有发行在 12 周以内的宣发期歌曲！"); 
     
     pickAction = "tvPromoFree"; 
@@ -7170,7 +7176,7 @@ window.updAttr = function() {
     <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
     `; 
 
-    document.getElementById("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="100"></div>`}).join(''); 
+    document.getElementById("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="1000"></div>`}).join(''); 
     document.getElementById("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
     
     document.getElementById("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
@@ -7605,7 +7611,7 @@ window.advTime = function(weeks, showMsg) {
 window.quickAction = function(type) {
     let planInput = document.getElementById("inSchedulePlan");
     if(type === 'promo') {
-        let myTrks = trackPool.filter(x => x.isMe && x.type === "track" && x.weeks <= 12);
+        let myTrks = trackPool.filter(x => x.isMe && x.type === "track" );
         if(myTrks.length === 0) return alert("⚠️ 你近期(12周内)没有发行任何新歌，没资格跑通告！");
         planInput.value = "这周疯狂跑电视台和电台打歌，疯狂刷脸增加曝光率！";
         promoAlbSong(myTrks.sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0))[0].id);
@@ -9030,8 +9036,7 @@ window.openAlbDetail = function(idx) {
                 <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="viewSongStats('${t.id}')">数据详情</button>
             </div>
             <div style="font-size:11px;color:#888;margin-top:4px;">全球: ${(t.stmGlobal||0).toLocaleString()} | 在榜 ${t.weeks||1} 周</div>
-            ${t.weeks <= 12 ? `<button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单</button>` : `<button class="inline" disabled style="margin-top:5px;font-size:11px;opacity:0.5;">已过宣发期</button>`}
-        </div>`;
+            <button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="promoAlbSong('${t.id}')">📺 跑现场打单</button>        </div>`;
     }).join('');
     
     // 注入调价面板
@@ -11777,17 +11782,33 @@ window.updAttr = function() {
             </div>`;
         }).join('');
         
-        tabAwards.innerHTML = `<p style="font-size:11px;color:#888;margin-bottom:10px;">重复获得的同类奖项已自动折叠显示。你可以手动删除不想要的奖项记录。</p>` + awdHtml;
+        tabAwards.innerHTML = `<button class="sec" style="margin-bottom:10px;" onclick="document.getElementById('awardDelPage').style.display='block';">🗑️ 进入奖项删除管理</button>` + awdHtml + `
+<div id="awardDelPage" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:#fff; padding:15px; z-index:10;">
+    <h3 style="margin-bottom:10px;">选择要删除的奖项</h3>
+    <button class="sec" onclick="document.getElementById('awardDelPage').style.display='none';" style="margin-bottom:10px;">返回</button>
+    <div id="awardDelList"></div>
+</div>`;
+
     }
 };
 
 window.deleteMyAward = function(awardKey) {
-    let delCountStr = prompt(`你想删除几个 "${awardKey}"？(输入数字，默认1个，输入ALL全删)`, "1");
-    if (!delCountStr) return;
-    
-    let delAll = delCountStr.toUpperCase() === "ALL";
-    let countToDelete = parseInt(delCountStr) || 1;
-    let deleted = 0;
+    if(!confirm("确定要删除 1 个 [" + awardKey + "] 记录吗？")) return;
+    for (let i = ad.awd.length - 1; i >= 0; i--) {
+        let a = ad.awd[i];
+        let pureName = a;
+        let match = a.match(/【.*?】/g);
+        if (match && match.length > 0) pureName = match.join(" ");
+        else if (a.includes("登顶") || a.includes("登台")) pureName = a.split("-")[1] || a;
+
+        if (pureName === awardKey) {
+            ad.awd.splice(i, 1);
+            break; // 删完一个就跳出
+        }
+    }
+    updAttr();
+    saveGame();
+};
 
     // 倒序遍历删除
     for (let i = ad.awd.length - 1; i >= 0; i--) {
@@ -12109,17 +12130,26 @@ window.renderChart = function() {
             let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
             let peakStr = peakVal ? `最高: #${peakVal} | 在榜: ${t.weeks||1}周` : `在榜: ${t.weeks||1}周`;
             
-            // 生成走势标识
-            let trendHtml = "";
-            if (t.weeks <= 1) {
-                trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+                    let trendHtml = "";
+        if (t.weeks <= 1) {
+            // 新曲：绿色 NEW
+            trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+        } else {
+            // 获取上周排名
+            let lastRank = t.trendChart && t.trendChart.length > 0 ? t.trendChart[t.trendChart.length - 1] : (t.lastW || currentRank);
+            let diff = lastRank - currentRank;
+            
+            if (diff > 0) {
+                // 上升：蓝色
+                trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
+            } else if (diff < 0) {
+                // 下降：红色
+                trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
             } else {
-                let lastRank = t.trendChart && t.trendChart.length > 0 ? t.trendChart[t.trendChart.length - 1] : (t.lastW || currentRank);
-                let diff = lastRank - currentRank;
-                if (diff > 0) trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
-                else if (diff < 0) trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
-                else trendHtml = `<span style="color:#888; font-weight:bold; font-size:10px;">-</span>`;
+                // 持平：灰色横杠
+                trendHtml = `<span style="color:#888888; font-weight:bold; font-size:10px;">-</span>`;
             }
+        }
 
             let detailBtn = (t.isMe && t.type === 'track') ? `<br><button class="sec inline" style="padding:2px 6px;font-size:10px;margin-top:4px;" onclick="viewSongStats('${t.id}')">查看歌曲详情</button>` : '';
 
@@ -12825,8 +12855,6 @@ window.renderMultiAlbumStudio = function() {
             promoDiv.style.cssText = "display:flex;gap:5px;margin-top:10px;border-top:1px dashed #ccc;padding-top:10px;";
             promoDiv.innerHTML = `
                 <button id="btn_hype_${idx}" class="sec inline" style="flex:1;font-size:11px;background:#fff8e8;color:#a67c00;" onclick="hypeCurrentAlbum(${idx})">🔥 预热造势</button>
-                <button class="sec inline" style="flex:1;font-size:11px;" onclick="relMultiAlbPre(${idx}, 'single')">🎵 发先行曲</button>
-                <button class="sec inline" style="flex:1;font-size:11px;" onclick="relMultiAlbPre(${idx}, 'promo')">📢 发宣传曲</button>
             `;
             btnArea.parentElement.parentElement.insertBefore(promoDiv, btnArea.parentElement);
         }
@@ -12845,6 +12873,50 @@ window.releaseMultiAlb = async function(idx) {
         });
     }
     await oldReleaseMultiAlbForScore(idx);
+};
+// ==================== 修复：只能发行第一首单曲的 Bug ====================
+
+var oldConfirmPickForSingleRel = window.confirmPick;
+window.confirmPick = async function() {
+    if (pickAction === "relSingleDirect") {
+        let price = parseFloat(document.getElementById("sgPrice").value) || 1;
+        
+        // 【核心修复】：tempIdx 存的是歌曲的 ID，我们需要先找出它在录音室(std)里真正的下标
+        let realIdx = std.findIndex(x => x.id === tempIdx);
+        
+        if(realIdx === -1) {
+            closeM('mPick');
+            return alert("⚠️ 找不到该歌曲，可能已经被发行或删除了！");
+        }
+        
+        // 用真正的下标去提取歌曲，而不是永远提取 0
+        let s = std.splice(realIdx, 1)[0];
+        if(!s) return;
+        s.released = true;
+        
+        // 补充属性防止报错
+        s.v = s.v || ad.sk.v || 50;
+        s.w = s.w || ad.sk.w || 50;
+        
+        let S_val = 1.0;
+        let tTrk = window.createEntity(s.n, ad.s, true, "track", s.g.join(), ad.st.f, s.w, s.v, time.y, time.m, time.w, false, s.ff, S_val);
+        tTrk.price = price;
+        tTrk.singleLabel = "单曲";
+        
+        trackPool.push(tTrk);
+        myWorks.push({id:tTrk.id, n:`${s.n} [单曲]`, slTotal:tTrk.slTotal, revenue:0});
+        
+        alert(`🚀 单曲《${s.n}》正式发行！\n首日预计全球流媒：${tTrk.stmGlobal_Day.toLocaleString()}`);
+        
+        closeM('mPick'); 
+        if(typeof updAttr === 'function') updAttr(); 
+        if(typeof renderStdMap === 'function') renderStdMap(); 
+        saveGame();
+        return;
+    }
+    
+    // 如果不是发单曲，就走原来的其他判定逻辑（如发先行曲、打单等）
+    return oldConfirmPickForSingleRel();
 };
 
 // ==================== 代码结束 ====================
