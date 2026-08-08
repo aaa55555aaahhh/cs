@@ -3059,38 +3059,15 @@ window.submitCustomNPC = async function() {
         }
     };
     
-    let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
-    
-    if (tk) {
-        let prompt = `请为一位新出道的歌手生成简短的背景故事。
-        姓名：${name}，艺名：${stageName}，性别：${gender}，粉丝名：${fanName||"无"}。
-        请提供一段50字左右的生平简介，并为TA创作一首出道单曲的名字。
-        返回严格的JSON格式：{"bio": "简介内容...", "debut_song": "歌曲名", "genre": "流行"}`;
-        
-        try {
-            let r = await api(prompt);
-            if (r) {
-                let match = r.match(/\{[\s\S]*\}/);
-                if (!match) throw new Error("AI 返回格式错误");
-                let j = JSON.parse(match[0]);
-                newNpc.bio = escapeHTML(j.bio);
-                let songName = escapeHTML(j.debut_song || "Debut Single");
-                let songGenre = j.genre || "流行";
-                
-                let newTrack = createEntity(songName, stageName, false, "track", songGenre, fans, 60, 60, time.y, time.m, time.w);
-                trackPool.push(newTrack);
-                
-                alert(`🎉 成功注入艺人【${stageName}】！\n📝 AI生成背景：${newNpc.bio}\n🎵 并且发行了出道作《${songName}》！`);
-            }
         } catch(e) {
             alert(`🎉 成功注入空壳艺人【${stageName}】！(AI生成失败，未产生出道作品)`);
         }
-    } else {
+    } else { // 👉 这里补上丢失的 else {
+                    
         alert(`🎉 成功注入空壳艺人【${stageName}】！(未连接API，作为白纸艺人等待后续发展)`);
     }
 
     worldArtists.push(newNpc);
-    
    }
 
 window.batchGenNpc = function() {
