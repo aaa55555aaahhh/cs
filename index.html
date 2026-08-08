@@ -4565,6 +4565,9 @@ window.advTime = function(weeks, showMsg){
         trackPool.forEach(function(t){
             if(!t.stmGlobal_Week) t.stmGlobal_Week = Math.floor(t.stmGlobal / 7) || 0;
             if(!t.stmUS_Week) t.stmUS_Week = Math.floor(t.stmUS / 7) || 0;
+            t.promoCountThisWeek = 0;
+
+
             
             // 记录真实达到的周播最高峰
             if(!t.peakWeeklyStm || t.stmGlobal_Week > t.peakWeeklyStm) {
@@ -9428,7 +9431,30 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 var oldUpdateAlbProjUI = window.updateAlbProjUI;
 window.updateAlbProjUI = function() {
-    oldUpdateAlbProjUI();
+    if(curAlbPj){ 
+        $("boxNewAlb").style.display="none"; 
+        $("boxWipAlb").style.display="block"; 
+        $("txtWipName").innerText = "💿 " + curAlbPj.n; 
+        $("txtWipCore").innerText = "内核: " + curAlbPj.core; 
+        $("txtWipHype").innerText = curAlbPj.hype.toFixed(2); 
+        $("txtWipPre").innerText = (curAlbPj.singleCount||0) + " 主打 / " + curAlbPj.preCount + " 宣传"; 
+        $("boxWipSongs").innerHTML = "<b>已选曲目:</b><br>" + curAlbPj.s.map(function(x){
+            let lbl = x.singleLabel ? ` <span style="color:#8e44ad;font-size:11px;">[${x.singleLabel}]</span>` : "";
+            return escapeHTML(x.n) + lbl + (x.released?" <span style='color:#c8a440'>(已发)</span>":"");
+        }).join('<br>'); 
+        
+        // 【新增】：在这个面板注入预热按钮（如果没有的话）
+        if(!document.getElementById("btnHypeWipAlbum")) {
+            $("txtWipName").insertAdjacentHTML('beforeend', 
+                `<button id="btnHypeWipAlbum" class="sec inline" style="float:right; font-size:11px; padding:4px 8px; margin-top:-4px;" onclick="hypeCurrentAlbum()">🔥 预热宣传</button>`
+            );
+        }
+    } else { 
+        $("boxNewAlb").style.display="block"; 
+        $("boxWipAlb").style.display="none"; 
+    } 
+};
+
     
     // 注入预热按钮
     let wipNameTag = document.getElementById("txtWipName");
@@ -9473,12 +9499,39 @@ document.addEventListener("DOMContentLoaded", function() {
 
 // 覆盖编辑面板
 var oldOpenEditNpcForSettings = window.openEditNpc;
+var oldOpenEditNpcForSettings = window.openEditNpc;
 window.openEditNpc = function(id) {
-    oldOpenEditNpcForSettings(id);
+    // 调用之前的基础面板
+    let tabs = document.getElementById('npcBoxTabs').parentElement.querySelectorAll('.sub-tab');
+    if(tabs.length > 1) {
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById("npcEditSec").classList.add("active");
+        document.getElementById("npcListSec").classList.remove("active");
+        document.getElementById("npcAddSec").classList.remove("active");
+    }
+
+    let npc = worldArtists.find(x => x.id === id); // 【修复点】：在这里正确定义 npc，防止未定义报错
+    if(!npc) return;
+
+    document.getElementById("eNpcOldName").value = npc.n; 
+    document.getElementById("eNpcName").value = npc.n;
+    document.getElementById("eNpcAge").value = npc.age;
+    document.getElementById("eNpcGender").value = npc.gender;
+    document.getElementById("eNpcFans").value = npc.fans;
+    
+    // 初始化头像状态
+    tempEditNpcAvatar = npc.avatar || null;
+    if(document.getElementById("eNpcAvatarPreview")) document.getElementById("eNpcAvatarPreview").src = tempEditNpcAvatar || "";
+    if(document.getElementById("eNpcAvatarInput")) document.getElementById("eNpcAvatarInput").value = "";
+
+    // 【修改点】：将性格和外貌融合为一个输入框
     let pInput = document.getElementById("eNpcPersonality");
     if(pInput) {
-        pInput.placeholder = "艺人综合设定";
-        pInput.previousElementSibling.innerText = "艺人设定:"; // 修改Label
+        pInput.placeholder = "艺人综合设定 (含性格、外貌特征等)";
+        if(pInput.previousElementSibling) pInput.previousElementSibling.innerText = "艺人综合设定:"; 
+        pInput.value = npc.personality || "";
+        
+        // 关系同步
         let rel = (npc.relations && npc.relations['player_self']) ? npc.relations['player_self'] : { p: "陌生", f: "陌生" };
         if(document.getElementById("eNpcPRel")) document.getElementById("eNpcPRel").value = rel.p;
         if(document.getElementById("eNpcFRel")) document.getElementById("eNpcFRel").value = rel.f;
@@ -10427,12 +10480,19 @@ window.promoAlbSong = function(id) {
     let t = trackPool.find(x => x.id === id);
     if(!t) return;
     
-    if((t.promoCount || 0) >= 5) {
-        return alert("⚠️ 这首歌的现场打单次数已达上限(5次)！频繁刷脸会让观众审美疲劳，请换一首歌宣发！");
+    // 【修改点】：取消打单次数限制，改为一首歌可以打单 12 周（即 12 * 7 = 84 次），但一天只能打一次。
+    if(t.weeks > 12) {
+        return alert("⚠️ 这首歌已经过了宣发期（超过12周），现在打榜已经没有意义了，请换一首新歌宣发！");
+    }
+    
+    // 新增：判断本周打单次数，防止一天内狂点（模拟一天一次，一周最多 7 次）
+    t.promoCountThisWeek = t.promoCountThisWeek || 0;
+    if (t.promoCountThisWeek >= 7) {
+        return alert("⚠️ 这首歌本周的现场打单通告已经排满了（一周最多7次）！请下周再来打榜。");
     }
     
     if(!costEnergy(10)) return;
-    advHour(24);
+    advHour(24); // 打单耗时一天，相当于一天只能打一次
     
     // 【核心机制】：发行时间新鲜感衰减
     // 前4周新鲜感为 1.0(100%)，之后每周递减 5%，最低跌至 0.2(20%) 的保底效果
@@ -10441,8 +10501,8 @@ window.promoAlbSong = function(id) {
         freshness = Math.max(0.2, 1.0 - ((t.weeks - 4) * 0.05));
     }
     
-    // 宣发次数边际递减
-    let promoDecay = Math.pow(0.65, t.promoCount || 0); 
+    // 宣发次数边际递减 (根据总次数衰减，防止后期无限膨胀)
+    let promoDecay = Math.pow(0.85, t.promoCount || 0); // 衰减系数调缓，因为次数变多了
     
     // 计算基础盘
     let baseBoost = (t.stmGlobal_Week * 7 || t.stmGlobal || 50000) * 0.15 * ad.Geffect;
@@ -10479,8 +10539,9 @@ window.promoAlbSong = function(id) {
     t.longViral = (t.longViral||0) + 4; 
     t.viralBoost = (t.viralBoost || 1.0) + 0.15; 
     t.promoCount = (t.promoCount || 0) + 1; 
+    t.promoCountThisWeek += 1; // 记录本周打单次数
     
-    alert(`📺 针对《${t.n}》的现场打单成功！\n全球流媒激增 ${extraStm.toLocaleString()}！\n(当前为第 ${t.promoCount} 次打单)\n(距离发行已过去 ${t.weeks} 周，新鲜感倍率保留: ${Math.floor(freshness*100)}%)${upgradeMsg}`); 
+    alert(`📺 针对《${t.n}》的现场打单成功！\n全球流媒激增 ${extraStm.toLocaleString()}！\n(当前为总计第 ${t.promoCount} 次打单)\n(距离发行已过去 ${t.weeks} 周，新鲜感倍率保留: ${Math.floor(freshness*100)}%)${upgradeMsg}`); 
     
     saveGame(); 
     
