@@ -1021,7 +1021,8 @@ window.startGame = function(){
       ad={
         r: rName, s: escapeHTML(inStageDom.value.trim()) || rName, g: escapeHTML(inGenderDom.value.trim()) || "保密",
         co:"独立", cot:"indie", m:50000, H:1.0, D:1.0, Elead:1.0, Kalbum:1.0, Geffect: 1.0,
-        st:{f:1000,h:10}, sk:{v:30,d:30,r:30,w:30,f:60,s:30,fa:30,va:30}, ws:[], awd:[], shows:[], contractEnd:0, energy: 100, maxEnergy: 100, lastTourMonth:0, bnaSubmissions: 0
+        st:{f:1000,h:10}, sk:{v:100,d:100,r:100,w:100,f:100,s:100,fa:100,va:100}
+, ws:[], awd:[], shows:[], contractEnd:0, energy: 100, maxEnergy: 100, lastTourMonth:0, bnaSubmissions: 0
       };
       trackPool=[]; myWorks=[]; curPj=null; prog=0; curAlbPj=null; historyAwards=[]; lib=[]; std=[]; worldArtists=[]; writers=[]; 
       conts=[{id:1,n:"妈妈",t:"家人",h:[],affinity:50,isCohabiting:false},{id:2,n:"爸爸",t:"家人",h:[],affinity:50,isCohabiting:false},{id:3,n:"经纪人",t:"工作伙伴",h:[],affinity:30,isCohabiting:false}];
@@ -1225,8 +1226,7 @@ function updAttr(){
     `; 
 
     $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="1000"></div>`}).join(''); 
-    $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${ad.sk[x.k]}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join(''); 
-    
+    $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${Math.min(100, ad.sk[x.k] / 10)}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join('');     
     $("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
         let t = trackPool.find(tr => tr.id === x.id);
         let cert = getCert(t ? t.slTotal : x.slTotal);
@@ -4348,8 +4348,7 @@ window.addReleasedSongToAlb = function() {
     
     pickAction = "addReleasedToWip"; 
     document.getElementById("mPickTitle").innerText = "📥 收录已发单曲"; 
-    document.getElementById("mPickExt").style.display="none"; 
-    document.getElementById("mPickList").innerHTML = availableTrks.map(x => `<div><input type="checkbox" id="pk_r_${x.id}" value="${x.id}"> ${escapeHTML(x.n)} <span style="font-size:10px;color:#888;">(已发)</span></div>`).join(''); 
+if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display="none";document.getElementById("mPickList").innerHTML = availableTrks.map(x => `<div><input type="checkbox" id="pk_r_${x.id}" value="${x.id}"> ${escapeHTML(x.n)} <span style="font-size:10px;color:#888;">(已发)</span></div>`).join(''); 
     document.getElementById("mPick").classList.add("open"); 
 };
 
@@ -5074,14 +5073,14 @@ window.submitCustomNPC = async function() {
         co: Math.random() > 0.35 && coList.length > 0 ? coList[Math.floor(Math.random() * coList.length)].n : "独立",
         personality: personality || npcTraits[Math.floor(Math.random() * npcTraits.length)],
         sk: {
-            v: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
-            d: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 15)),
-            r: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 20)),
-            w: Math.max(1, Math.min(100, Math.floor(Math.random()*50) + base - 20)),
-            f: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base)),
-            s: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 5)),
-            fa: Math.max(1, Math.min(100, Math.floor(Math.random()*30) + base - 10)),
-            va: Math.max(1, Math.min(100, Math.floor(Math.random()*40) + base - 10))
+            v: Math.max(1, Math.min(1000, Math.floor(Math.random()*300) + base - 100)),
+            d: Math.max(1, Math.min(1000, Math.floor(Math.random()*400) + base - 150)),
+            r: Math.max(1, Math.min(1000, Math.floor(Math.random()*400) + base - 200)),
+            w: Math.max(1, Math.min(1000, Math.floor(Math.random()*500) + base - 200)),
+            f: Math.max(1, Math.min(1000, Math.floor(Math.random()*300) + base)),
+            s: Math.max(1, Math.min(1000, Math.floor(Math.random()*300) + base - 50)),
+            fa: Math.max(1, Math.min(1000, Math.floor(Math.random()*300) + base - 100)),
+            va: Math.max(1, Math.min(1000, Math.floor(Math.random()*400) + base - 100))
         }
     };
     
@@ -5727,8 +5726,7 @@ window.renderMultiAlbumStudio = function() {
                 
             let selOptions = availTracks.length > 0 
                 ? availTracks.map(t => `<option value="${t.id}">${escapeHTML(t.n)}</option>`).join('')
-                : `<option value="">(录音室没有可收录的成品新歌)</option>`;
-
+: `<option value="">(没歌！请先去【地图-录音室】把刚写好的歌录制出来)</option>`;
             return `
             <div class="card" style="border:2px solid #f0e9d0; margin-bottom:15px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -6687,7 +6685,7 @@ window.relMultiAlbPre = function(albIdx, type) {
     pickAction = type === 'single' ? "relPreSingle" : "relPrePromo"; 
     
     document.getElementById("mPickTitle").innerText = type === 'single' ? "发行先行主打 (占主打顺位)" : "发行宣传单曲 (不占顺位)"; 
-    document.getElementById("mPickExt").style.display="block"; 
+if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display="block";
     document.getElementById("mPickList").innerHTML = avail.map(x => `<div><input type="radio" name="preR" value="${x.id}"> ${escapeHTML(x.n)}</div>`).join(''); 
     document.getElementById("mPick").classList.add("open"); 
 };
@@ -7635,7 +7633,7 @@ window.shootMV = function(tid, type){
 
 window.openRelSingle = function(sid){ 
     tempIdx = sid; pickAction = "relSingleDirect"; 
-    document.getElementById("mPickExt").style.display="block"; 
+if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display="block";
     document.getElementById("mPickTitle").innerText = "发行单曲定价"; 
     document.getElementById("mPickList").innerHTML=""; 
     document.getElementById("mPick").classList.add("open"); 
@@ -7647,7 +7645,7 @@ window.relPreSingle = function(type) {
     if(!avail.length) return alert("所有曲目都发过了！"); 
     pickAction = type === 'single' ? "relPreSingle" : "relPrePromo"; 
     document.getElementById("mPickTitle").innerText = type === 'single' ? "发行先行主打" : "发行宣传单曲"; 
-    document.getElementById("mPickExt").style.display="block"; 
+if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display="block";
     document.getElementById("mPickList").innerHTML = avail.map(x => `<div><input type="radio" name="preR" value="${x.id}"> ${escapeHTML(x.n)}</div>`).join(''); 
     document.getElementById("mPick").classList.add("open"); 
 };
@@ -12421,8 +12419,7 @@ window.openAddReleasedToMultiAlb = function(idx) {
     
     pickAction = "addReleasedToMultiAlb"; 
     document.getElementById("mPickTitle").innerText = "📥 收录已发单曲 (享发专回春红利)"; 
-    document.getElementById("mPickExt").style.display="none"; 
-    document.getElementById("mPickList").innerHTML = availableTrks.map(x => `
+ if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display="none";document.getElementById("mPickList").innerHTML = availableTrks.map(x => `
         <div style="padding:5px 0; border-bottom:1px solid #eee;">
             <input type="checkbox" value="${x.id}"> 
             <b>${escapeHTML(x.n)}</b> <span style="font-size:10px;color:#888;">(历史流媒:${(x.stmGlobal||0).toLocaleString()})</span>
