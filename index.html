@@ -2951,13 +2951,66 @@ window.saveNpcEdit = function() {
     let gender = document.getElementById("eNpcGender").value.trim() || "保密";
     let fans = parseInt(document.getElementById("eNpcFans").value) || 0;
     
-               let npc = worldArtists.find(x => x.n === oldName);
+    let npc = worldArtists.find(x => x.n === oldName);
     if(!npc) return alert("未找到该艺人！");
-    npc.n = newName; npc.age = age; npc.gender = gender; npc.fans = fans;
+    
+    // 1. 同步修改性格与外貌和关系（整合所有旧补丁）
+    let pInput = document.getElementById("eNpcPersonality");
+    if(pInput && pInput.value.trim() !== "") npc.personality = pInput.value.trim();
+    
+    let aInput = document.getElementById("eNpcAppearance");
+    if(aInput) npc.appearance = aInput.value.trim();
+    
+    if (!npc.relations) npc.relations = {};
+    let pRelVal = document.getElementById("eNpcPRel") ? document.getElementById("eNpcPRel").value : "陌生";
+    let fRelVal = document.getElementById("eNpcFRel") ? document.getElementById("eNpcFRel").value : "陌生";
+    npc.relations['player_self'] = { p: pRelVal, f: fRelVal };
+    
+    // ================= 核心修复：全局名字同步 =================
+    if (oldName !== newName) {
+        // 替换排行榜里所有他唱的歌的主唱名字
+        trackPool.forEach(t => {
+            if (t.artist === oldName) t.artist = newName;
+            // 如果他在别人的歌里 feat (合作)了，也要把 feat 的名字改掉
+            if (t.ff && t.ff.includes(oldName)) {
+                t.ff = t.ff.split(',').map(x => x.trim() === oldName ? newName : x.trim()).join(', ');
+            }
+        });
+        
+        // 同理替换录音室和词曲库里的 feat 名字
+        let fixFeat = function(arr) {
+            arr.forEach(s => {
+                if (s.ff && s.ff.includes(oldName)) {
+                    s.ff = s.ff.split(',').map(x => x.trim() === oldName ? newName : x.trim()).join(', ');
+                }
+            });
+        };
+        fixFeat(lib);
+        fixFeat(std);
+    }
+    // =========================================================
+
+    // 真正赋值新名字和基础属性
+    npc.n = newName; 
+    npc.age = age; 
+    npc.gender = gender; 
+    npc.fans = fans;
     if(tempEditNpcAvatar) npc.avatar = tempEditNpcAvatar;
-    alert("✅ 修改成功！"); renderNpcList(); saveGame();
+    
+    alert("✅ 修改成功！艺人的全局信息已同步更新！"); 
+    
+    // 刷新各处UI
+    renderNpcList(); 
+    if(typeof updateFeatList === 'function') updateFeatList(); // 强制刷新合作下拉框
+    if(typeof updatePeakRanks === 'function') updatePeakRanks(); // 刷新大盘
+    saveGame();
+    
+    // 返回列表页面
     let tabs = document.getElementById('npcBoxTabs').parentElement.querySelectorAll('.sub-tab');
-    tabs.forEach(t => t.classList.remove('active')); tabs[0].classList.add('active');
+    if(tabs && tabs.length > 0) {
+        tabs.forEach(t => t.classList.remove('active')); 
+        tabs[0].classList.add('active');
+    }
     document.getElementById("npcEditSec").classList.remove("active");
     document.getElementById("npcListSec").classList.add("active");
 }
