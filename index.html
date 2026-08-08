@@ -2640,18 +2640,6 @@ window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t
     
     return t;
 };
-        if(ad.stageBuff.god) {
-            if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); setTimeout(() => alert(`🌟 科切拉神级红利爆发！新作品口碑过硬，流媒暴涨 60%！`), 500); } 
-            else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); setTimeout(() => alert(`📉 神级期待遭反噬！新作品口碑平庸，流媒暴跌 60%，大量脱粉！`), 500); }
-            ad.stageBuff.god = false; 
-        } else if(ad.stageBuff.bad) {
-            t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8); setTimeout(() => alert(`💩 灾难现场余波未平！路人偏见导致新歌初始流媒缩水 20%！`), 500);
-            ad.stageBuff.bad = false; 
-        }
-        t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
-    }
-    return t;
-};
 // ==================== 时间系统卡死与老存档修复补丁 ====================
 
 // 1. 修复时间推演函数，自动兼容并修复老存档的残缺时间数据
