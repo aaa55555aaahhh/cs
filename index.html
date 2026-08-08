@@ -9455,16 +9455,6 @@ window.updateAlbProjUI = function() {
     } 
 };
 
-    
-    // 注入预热按钮
-    let wipNameTag = document.getElementById("txtWipName");
-    if(wipNameTag && curAlbPj && !document.getElementById("btnHypeAlbum")) {
-        wipNameTag.insertAdjacentHTML('beforeend', 
-            `<button id="btnHypeAlbum" class="sec inline" style="float:right; font-size:11px; padding:2px 8px; margin-top:-2px;" onclick="hypeCurrentAlbum()">🔥 预热宣传</button>`
-        );
-    }
-};
-
 window.hypeCurrentAlbum = function() {
     if(!curAlbPj) return;
     if(!costEnergy(10)) return;
