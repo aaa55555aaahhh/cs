@@ -12830,6 +12830,24 @@ window.confirmPick = async function() {
     // 如果不是发单曲，就走原来的其他判定逻辑（如发先行曲、打单等）
     return oldConfirmPickForSingleRel();
 };
+// ==================== 修复：一键拉满导致进度条撑爆页面的 BUG ====================
+var oldUpdAttrForBarFix = window.updAttr;
+window.updAttr = function() {
+    // 先执行原版所有渲染
+    if (oldUpdAttrForBarFix) oldUpdAttrForBarFix();
+    
+    // 强制接管属性条的渲染，加入除以10和最高100%的限制
+    let boxBars = document.getElementById("boxBars");
+    if (boxBars && ad && ad.sk) {
+        boxBars.innerHTML = aKs.map(function(x){
+            // 将 1000 的数值压缩回 100% 的进度条宽度范围内
+            let pct = Math.min(100, (ad.sk[x.k] || 0) / 10);
+            return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${pct}%"></div></div><b>${ad.sk[x.k]}</b></div>`;
+        }).join('');
+    }
+};
+// 立即执行一次刷新恢复界面
+setTimeout(() => { if(typeof updAttr === 'function') updAttr(); }, 800);
 
 // ==================== 代码结束 ====================
 </script>
