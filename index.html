@@ -11789,6 +11789,92 @@ window.generateAiSchedule = async function() {
     // 如果不是颁奖月或没填API，走正常逻辑
     oldGenerateAiScheduleForAwards();
 };
+<!-- 【修复：电台榜增加“我的歌曲”页签，允许为出榜歌曲注水】 -->
+<script>
+// 重写电台APP渲染，加入“全美TOP50”与“我的所有歌曲”双页签
+window.renderRadioApp = function(tab = 'all') {
+    // 确保都有电台数据
+    trackPool.forEach(t => {
+        if(t.type === 'track' && t.radioAud === undefined) {
+            t.radioAud = ((t.stmUS_Week || 100000) / 400000) * ((t.Spub || 50) / 50);
+            if(t.radioAud < 0) t.radioAud = 0;
+        }
+    });
+
+    let html = `
+    <div class="sub-tab-bar" style="justify-content:center; margin-bottom:15px;">
+        <div class="sub-tab ${tab === 'all' ? 'active' : ''}" onclick="renderRadioApp('all')">📻 全美电台TOP50</div>
+        <div class="sub-tab ${tab === 'mine' ? 'active' : ''}" onclick="renderRadioApp('mine')">🎵 我的所有歌曲</div>
+    </div>
+    <div style="background:#fefcf5;padding:10px;border-radius:8px;margin-bottom:10px;">
+        <p style="font-size:11px;color:#666;">全美电台听众数 (Radio Audience) 是 B榜排名的核心支柱。电台基数不受出榜影响，随时可以打榜。</p>
+    </div>
+    <div style="max-height:50vh;overflow-y:auto;">
+    `;
+
+    let displayList = [];
+    if (tab === 'all') {
+        // 显示全美前50
+        displayList = trackPool.filter(x => x.type === "track").sort((a, b) => (b.radioAud || 0) - (a.radioAud || 0)).slice(0, 50);
+    } else {
+        // 显示玩家的所有单曲
+        displayList = trackPool.filter(x => x.type === "track" && x.isMe).sort((a, b) => (b.radioAud || 0) - (a.radioAud || 0));
+    }
+
+    if(displayList.length === 0) {
+        html += `<p style="text-align:center;color:#888;">暂无电台数据或歌曲</p>`;
+    } else {
+        html += displayList.map((t, i) => {
+            let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #8b5cf6;' : 'background:#fff;';
+            let aud = (t.radioAud || 0).toFixed(2);
+            let payolaBtn = t.isMe 
+                ? `<button class="sec inline" style="padding:4px 8px;font-size:11px;color:#8b5cf6;border-color:#8b5cf6;" onclick="buyRadioPayola('${t.id}', '${tab}')">💰 花钱打榜(+15M)</button>` 
+                : ``;
+            return `
+            <div class="card" style="padding:10px;margin-bottom:5px;border:1px solid #eee;${isMe}display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <b style="font-size:14px;">${i+1}. ${escapeHTML(t.n)}</b><br>
+                    <span style="font-size:11px;color:#888;">${escapeHTML(t.artist)}</span>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:13px;font-weight:bold;color:#8b5cf6;">${aud} M</div>
+                    <div style="margin-top:4px;">${payolaBtn}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    html += `</div>`;
+    document.getElementById("mInfoTitle").innerText = "美国电台榜 (US Radio)";
+    document.getElementById("mInfoContent").innerHTML = html;
+    document.getElementById("mInfo").classList.add("open");
+};
+
+// 重写电台注水(Payola)功能，接收 tab 参数防止注水后跳回榜单首页
+window.buyRadioPayola = function(id, tab = 'all') {
+    let t = trackPool.find(x => x.id === id);
+    if(!t) return;
+    
+    let cost = 500000; 
+    let isCompanyPaying = (ad.co !== "独立" && ad.dealType === "7/3"); // 7/3 分成公司全包
+    if (isCompanyPaying) cost = 0;
+    
+    if (ad.m < cost) return alert(`资金不足！买通主流电台DJ需要 $500,000`);
+    
+    ad.m -= cost;
+    t.radioAud = (t.radioAud || 0) + 15.0; 
+    t.radioBought = (t.radioBought || 0) + 1;
+    t.stmUS_Week += 200000; t.stmGlobal_Week += 250000; t.slTotal += 500;
+    
+    let payStr = isCompanyPaying ? "【公司全额公关垫资】" : "你花费了 $500,000 美金";
+    alert(`💰 资本的力量！${payStr}公关电台。\n《${t.n}》本周电台听众直接暴涨 15.00M！`);
+    
+    // 渲染当前页签
+    renderRadioApp(tab); 
+    saveGame();
+};
+</script>
+
 
 // ==================== 代码结束 ====================
 </script>
