@@ -11671,7 +11671,7 @@ window.openEditNpc = function(id) {
     }
 };
 // 重写 openApp 里的榜单部分，不再注入专辑日增榜
-var oldOpenAppForDaily = window.openApp;
+var oldOpenAppForDaily_fix = window.openApp;
 window.openApp = function(appId) {
     if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
         curChartPlatform = appId;
@@ -11682,14 +11682,14 @@ window.openApp = function(appId) {
         // 隐藏掉因为老代码可能注入的专辑日增榜
         let tabAlbDaily = document.getElementById("tabChartAlbumDaily");
         if(tabAlbDaily) tabAlbDaily.style.display = "none";
-    } else {
-        oldOpenAppForDaily(appId);
+       } else {
+        oldOpenAppForDaily_fix(appId);
     }
 };
 // 重写档案面板里渲染奖项的部分
-var oldUpdAttrForAwards = window.updAttr;
+var oldUpdAttrForAwards_fix = window.updAttr;
 window.updAttr = function() {
-    if (oldUpdAttrForAwards) oldUpdAttrForAwards();
+    if (oldUpdAttrForAwards_fix) oldUpdAttrForAwards_fix();
     
     let tabAwards = document.getElementById("tabAwards");
     if(tabAwards) {
@@ -11754,7 +11754,7 @@ window.deleteMyAward = function(awardKey) {
     updAttr();
     saveGame();
 };
-var oldGenerateAiScheduleForAwards = window.generateAiSchedule;
+var oldGenerateAiScheduleForAwards_fix = window.generateAiSchedule;
 window.generateAiSchedule = async function() {
     let isAwardMonth = [2,5,8,11].includes(time.m);
     
@@ -11786,8 +11786,8 @@ window.generateAiSchedule = async function() {
         }
     }
     
-    // 如果不是颁奖月或没填API，走正常逻辑
-    oldGenerateAiScheduleForAwards();
+       // 如果不是颁奖月或没填API，走正常逻辑
+    oldGenerateAiScheduleForAwards_fix();
 };
 // 重写电台APP渲染，加入“全美TOP50”与“我的所有歌曲”双页签
 window.renderRadioApp = function(tab = 'all') {
@@ -11892,7 +11892,7 @@ window.syncReviewScores = function() {
 };
 
 // ==================== 2. 更改风控查水表的惩罚逻辑 ====================
-var oldAdvTimeForAudits = window.advTime;
+var oldAdvTimeForAudits_fix = window.advTime;
 window.advTime = function(weeks, showMsg) {
     // 在推演前进行一轮 Spotify 风控清洗
     trackPool.forEach(t => {
@@ -11937,7 +11937,7 @@ window.advTime = function(weeks, showMsg) {
         }
     });
 
-    oldAdvTimeForAudits(weeks, showMsg);
+    oldAdvTimeForAudits_fix(weeks, showMsg);
 };
 // ==================== 终极修补：修复专辑数据显示、无限打单与 B榜比例条 ====================
 
