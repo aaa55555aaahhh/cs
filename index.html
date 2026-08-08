@@ -11811,25 +11811,6 @@ window.deleteMyAward = function(awardKey) {
     updAttr();
     saveGame();
 };
-
-    // 倒序遍历删除
-    for (let i = ad.awd.length - 1; i >= 0; i--) {
-        let a = ad.awd[i];
-        let pureName = a;
-        let match = a.match(/【.*?】/g);
-        if (match && match.length > 0) pureName = match.join(" ");
-        else if (a.includes("登顶") || a.includes("登台")) pureName = a.split("-")[1] || a;
-
-        if (pureName === awardKey) {
-            ad.awd.splice(i, 1);
-            deleted++;
-            if (!delAll && deleted >= countToDelete) break;
-        }
-    }
-    alert(`✅ 成功删除了 ${deleted} 个该奖项记录！`);
-    updAttr();
-    saveGame();
-};
 var oldGenerateAiScheduleForAwards_fix = window.generateAiSchedule;
 window.generateAiSchedule = async function() {
     let isAwardMonth = [2,5,8,11].includes(time.m);
