@@ -2610,36 +2610,6 @@ window.renderMarketApp = function() {
 window.buySong = function(i) { let s = marketSongs[i]; if(ad.m < s.price) return alert("资金不足！"); ad.m -= s.price; marketSongs.splice(i,1); lib.push({id:"lb_"+Date.now(), n:s.n, g:s.g, c:"外购获得", core: s.core}); alert(`成功购买《${s.n}》！`); updAttr(); renderMarketApp(); renderLib(); saveGame(); };
 
     
-let originalCreateEntity = window.createEntity;
-window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
-    // 递归锁：如果检测到已经在执行中，说明发生了死循环，直接熔断并走底层原始逻辑，不再触发拦截
-    if (window._isCreatingEntityLock) {
-        return originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
-    }
-    
-    window._isCreatingEntityLock = true;
-    let t;
-    try {
-        t = originalCreateEntity(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
-        
-        if(isMe && ad.stageBuff) {
-            if(ad.stageBuff.god) {
-                if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); setTimeout(() => alert(`🌟 科切拉神级红利爆发！新作品口碑过硬，流媒暴涨 60%！`), 500); } 
-                else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); setTimeout(() => alert(`📉 神级期待遭反噬！新作品口碑平庸，流媒暴跌 60%，大量脱粉！`), 500); }
-                ad.stageBuff.god = false; 
-            } else if(ad.stageBuff.bad) {
-                t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8); setTimeout(() => alert(`💩 灾难现场余波未平！路人偏见导致新歌初始流媒缩水 20%！`), 500);
-                ad.stageBuff.bad = false; 
-            }
-            t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
-        }
-    } finally {
-        // 确保无论发生什么错误，锁都会被释放
-        window._isCreatingEntityLock = false;
-    }
-    
-    return t;
-};
 // ==================== 时间系统卡死与老存档修复补丁 ====================
 
 // 1. 修复时间推演函数，自动兼容并修复老存档的残缺时间数据
@@ -5430,27 +5400,6 @@ window.advTime = function(weeks, showMsg) {
     updatePeakRanks();
 };
 
-// 2. 修复 NPC 初始发歌数值过低的问题
-var oldCreateEntityForNPC = window.createEntity;
-window.createEntity = function(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept=false, feat="", S_val=1.0, chain=1.0, trackOrderMod=1.0) {
-    let t = oldCreateEntityForNPC(name, artist, isMe, type, gnr, fans, C, V, t_y, t_m, t_w, isConcept, feat, S_val, chain, trackOrderMod);
-    
-    // 如果是 NPC 发单曲，强制拉高基础日增，防止一上来就只有 4 位数
-    if (!isMe && type === "track") {
-        let baseFans = fans || 100000;
-        // NPC 的初始日播按照粉丝量的 5%~15% 加上基础热度计算，最低不低于 100 万日增
-        let npcDaily = Math.floor(baseFans * (Math.random() * 0.10 + 0.05) * 5) + 1000000 + Math.floor(Math.random() * 2000000);
-        
-        t.stmGlobal_Day = npcDaily;
-        t.stmGlobal_Week = t.stmGlobal_Day * 7;
-        t.stmUS_Day = Math.floor(t.stmGlobal_Day * 0.4);
-        t.stmUS_Week = t.stmUS_Day * 7;
-        t.stmGlobal = t.stmGlobal_Week;
-        t.stmUS = t.stmUS_Week;
-        t.slTotal = Math.floor(t.stmGlobal / 150);
-    }
-    return t;
-};
 // ==================== 补丁：修复专辑与单曲销量割裂，引入 TEA 折算机制 ====================
 
 var oldUpdatePeakRanksForTEA = window.updatePeakRanks;
@@ -7008,11 +6957,11 @@ if (!window._createEntitySafeguardApplied) {
             // 执行 科切拉/大舞台 Buff 修正
             if(isMe && ad.stageBuff) {
                 if(ad.stageBuff.god) {
-                    if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); } 
-                    else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); }
+                    if(t.Spub >= 70) { t.stmGlobal = Math.floor(t.stmGlobal * 1.6); t.stmUS = Math.floor(t.stmUS * 1.6); setTimeout(() => alert(`🌟 科切拉神级红利爆发！新作品口碑过硬，流媒暴涨 60%！`), 500); } 
+                    else { t.stmGlobal = Math.floor(t.stmGlobal * 0.4); t.stmUS = Math.floor(t.stmUS * 0.4); ad.st.f -= Math.floor(ad.st.f * 0.1); setTimeout(() => alert(`📉 神级期待遭反噬！新作品口碑平庸，流媒暴跌 60%，大量脱粉！`), 500); }
                     ad.stageBuff.god = false; 
                 } else if(ad.stageBuff.bad) {
-                    t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8);
+                    t.stmGlobal = Math.floor(t.stmGlobal * 0.8); t.stmUS = Math.floor(t.stmUS * 0.8); setTimeout(() => alert(`💩 灾难现场余波未平！路人偏见导致新歌初始流媒缩水 20%！`), 500);
                     ad.stageBuff.bad = false; 
                 }
                 t.stmGlobal_Day = Math.floor(t.stmGlobal/7); t.stmUS_Day = Math.floor(t.stmUS/7); t.stmGlobal_Week = t.stmGlobal; t.stmUS_Week = t.stmUS; t.slTotal = Math.floor(t.stmGlobal/150); 
