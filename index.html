@@ -11487,19 +11487,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     <div class="card" style="padding:10px;margin:0;border:1px solid #ff0000;background:#fff0f5;">
                         <b style="font-size:14px;color:#991b1b;">🤖 廉价机器脚本刷榜</b>
-                        <p style="font-size:11px;color:#888;margin:3px 0;">低成本暴涨数据，不模拟真人行为，IP极度畸形。<br>增量：极大 | 成本：$5万 | <b style="color:#ff0000;">风控风险：极高 (+40%)</b></p>
+                        <p style="font-size:11px;color:#888;margin:3px 0;">低成本暴涨数据，不模拟真人行为，IP极度畸形。<br>增量：极大 | 成本：$100万 | <b style="color:#ff0000;">风控风险：极高 (+40%)</b></p>
                         <button class="red" onclick="doWatering('bot')" style="margin:0;font-size:12px;padding:6px;">使用机器刷单 (陷害首选)</button>
                     </div>
 
                     <div class="card" style="padding:10px;margin:0;border:1px solid #c8a440;background:#fff8e8;">
                         <b style="font-size:14px;color:#a67c00;">🧑‍💻 高质量账号农场</b>
-                        <p style="font-size:11px;color:#888;margin:3px 0;">模拟真人作息与随机播放，数据相对自然，唱片公司常用手段。<br>增量：中高 | 成本：$20万 | <b style="color:#e6683c;">风控风险：中等 (+15%)</b></p>
+                        <p style="font-size:11px;color:#888;margin:3px 0;">模拟真人作息与随机播放，数据相对自然，唱片公司常用手段。<br>增量：中高 | 成本：$500万 | <b style="color:#e6683c;">风控风险：中等 (+15%)</b></p>
                         <button class="sec" onclick="doWatering('farm')" style="margin:0;font-size:12px;padding:6px;border:1px solid #c8a440;">雇佣账号农场</button>
                     </div>
 
                     <div class="card" style="padding:10px;margin:0;border:1px solid #25d366;background:#f0fdf4;">
                         <b style="font-size:14px;color:#166534;">📻 批量僵尸歌单入驻</b>
-                        <p style="font-size:11px;color:#888;margin:3px 0;">花钱买第三方水军歌单位置，属于软性造势，不易被封杀。<br>增量：较低 | 成本：$8万 | <b style="color:#25d366;">风控风险：极低 (+5%)</b></p>
+                        <p style="font-size:11px;color:#888;margin:3px 0;">花钱买第三方水军歌单位置，属于软性造势，不易被封杀。<br>增量：较低 | 成本：$200万 | <b style="color:#25d366;">风控风险：极低 (+5%)</b></p>
                         <button class="sec" onclick="doWatering('playlist')" style="margin:0;font-size:12px;padding:6px;border:1px solid #25d366;color:#166534;">购买水军歌单</button>
                     </div>
                 </div>
@@ -11641,6 +11641,153 @@ window.advTime = function(weeks, showMsg) {
     });
 
     oldAdvTimeForAudits(weeks, showMsg);
+};
+<!-- 【修复1】修复 `npc is not defined` 报错 -->
+<script>
+// 找到旧的覆盖函数并修正
+var oldOpenEditNpcForSettings = window.openEditNpc;
+window.openEditNpc = function(id) {
+    oldOpenEditNpcForSettings(id);
+    let npc = worldArtists.find(x => x.id === id); // 修复点：定义 npc
+    let pInput = document.getElementById("eNpcPersonality");
+    if(npc && pInput) {
+        pInput.placeholder = "艺人综合设定";
+        pInput.previousElementSibling.innerText = "艺人设定:"; // 修改Label
+        let rel = (npc.relations && npc.relations['player_self']) ? npc.relations['player_self'] : { p: "陌生", f: "陌生" };
+        if(document.getElementById("eNpcPRel")) document.getElementById("eNpcPRel").value = rel.p;
+        if(document.getElementById("eNpcFRel")) document.getElementById("eNpcFRel").value = rel.f;
+    }
+};
+</script>
+
+<!-- 【修复2】删掉“专辑日增榜” -->
+<script>
+// 重写 openApp 里的榜单部分，不再注入专辑日增榜
+var oldOpenAppForDaily = window.openApp;
+window.openApp = function(appId) {
+    if(['BB', 'Spot', 'Sale', 'Daily'].includes(appId)) {
+        curChartPlatform = appId;
+        document.getElementById('mChartTitle').innerText = appId === 'BB' ? '📊 Billboard' : appId === 'Spot' ? '🎵 Spotify' : appId === 'Sale' ? '📈 销量榜' : '📉 日增榜';
+        document.getElementById('mChart').classList.add('open');
+        if(appId === 'Daily') switchChartType('daily');
+        else switchChartType('track');
+        // 隐藏掉因为老代码可能注入的专辑日增榜
+        let tabAlbDaily = document.getElementById("tabChartAlbumDaily");
+        if(tabAlbDaily) tabAlbDaily.style.display = "none";
+    } else {
+        oldOpenAppForDaily(appId);
+    }
+};
+</script>
+
+<!-- 【修复3】奖项合并 xN 展示与删除奖项功能 -->
+<script>
+// 重写档案面板里渲染奖项的部分
+var oldUpdAttrForAwards = window.updAttr;
+window.updAttr = function() {
+    if (oldUpdAttrForAwards) oldUpdAttrForAwards();
+    
+    let tabAwards = document.getElementById("tabAwards");
+    if(tabAwards) {
+        if (!ad.awd || ad.awd.length === 0) {
+            tabAwards.innerHTML = "无获奖记录";
+            return;
+        }
+        
+        // 统计奖项
+        let awdCounts = {};
+        ad.awd.forEach(a => {
+            // 尝试提取出纯奖项名，比如把 "2026年2月 狂揽：【格莱美 - 年度专辑】" 变成 "【格莱美 - 年度专辑】"
+            let pureName = a;
+            let match = a.match(/【.*?】/g);
+            if (match && match.length > 0) {
+                pureName = match.join(" "); // 取出所有的括号内容作为统一名称
+            } else if (a.includes("登顶") || a.includes("登台")) {
+                pureName = a.split("-")[1] || a;
+            }
+            
+            if (!awdCounts[pureName]) awdCounts[pureName] = { count: 0, raw: a };
+            awdCounts[pureName].count++;
+        });
+
+        let awdHtml = Object.keys(awdCounts).map(k => {
+            let item = awdCounts[k];
+            let displayTxt = item.count > 1 ? `${k} <b style="color:#c8a440;">x${item.count}</b>` : k;
+            return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px dashed #eee;">
+                <span>🏆 ${displayTxt}</span>
+                <button class="red inline" style="padding:2px 6px; font-size:10px;" onclick="deleteMyAward('${k}')">删除</button>
+            </div>`;
+        }).join('');
+        
+        tabAwards.innerHTML = `<p style="font-size:11px;color:#888;margin-bottom:10px;">重复获得的同类奖项已自动折叠显示。你可以手动删除不想要的奖项记录。</p>` + awdHtml;
+    }
+};
+
+window.deleteMyAward = function(awardKey) {
+    let delCountStr = prompt(`你想删除几个 "${awardKey}"？(输入数字，默认1个，输入ALL全删)`, "1");
+    if (!delCountStr) return;
+    
+    let delAll = delCountStr.toUpperCase() === "ALL";
+    let countToDelete = parseInt(delCountStr) || 1;
+    let deleted = 0;
+
+    // 倒序遍历删除
+    for (let i = ad.awd.length - 1; i >= 0; i--) {
+        let a = ad.awd[i];
+        let pureName = a;
+        let match = a.match(/【.*?】/g);
+        if (match && match.length > 0) pureName = match.join(" ");
+        else if (a.includes("登顶") || a.includes("登台")) pureName = a.split("-")[1] || a;
+
+        if (pureName === awardKey) {
+            ad.awd.splice(i, 1);
+            deleted++;
+            if (!delAll && deleted >= countToDelete) break;
+        }
+    }
+    alert(`✅ 成功删除了 ${deleted} 个该奖项记录！`);
+    updAttr();
+    saveGame();
+};
+</script>
+
+<!-- 【修复4】AI 记事奖项剧情与“人美心善”让奖功能 -->
+<script>
+var oldGenerateAiScheduleForAwards = window.generateAiSchedule;
+window.generateAiSchedule = async function() {
+    let isAwardMonth = [2,5,8,11].includes(time.m);
+    
+    if (isAwardMonth && document.getElementById("apiToken") && document.getElementById("apiToken").value) {
+        let inputPlan = document.getElementById("inSchedulePlan").value.trim();
+        let tk = document.getElementById("apiToken").value;
+        
+        document.getElementById("txtAiScheduleResult").innerText = "正在生成颁奖典礼专属剧情(红毯->提名->颁奖)...";
+        document.getElementById("boxAiScheduleResult").style.display = "block";
+        
+        let prompt = `你是《星路制作人》的AI系统。玩家“${ad.s}”本周参加了大型音乐颁奖典礼。
+请生成一段颁奖典礼剧情，包含三个阶段：
+1. 红毯环节（玩家的造型和媒体反应）
+2. 提名公布环节（紧张感）
+3. 获奖环节（宣布玩家获奖或陪跑）
+字数控制在150字左右。如果玩家的想法是“让奖/觉得德不配位”，请在结尾写玩家当场把奖杯分享给另一位提名歌手，并上了新闻被全网夸赞“人美心善”。
+玩家的想法：“${inputPlan}”`;
+
+        let result = await api(prompt);
+        if(result) {
+            let addHtml = "";
+            if (inputPlan.includes("让奖") || inputPlan.includes("配不上") || inputPlan.includes("德不配位")) {
+                addHtml = `<br><br><span style="color:#e91e63;font-weight:bold;">💖 【娱乐头条】：“人美心善！${ad.s} 颁奖典礼大格局让奖，分享荣誉感动全网！” (粉丝大涨)</span>`;
+                ad.st.f += Math.floor(Math.random() * 50000 + 50000);
+            }
+            document.getElementById("txtAiScheduleResult").innerHTML = result + addHtml;
+            if(costEnergy(10)) { advTime(1, false); updAttr(); saveGame(); }
+            return;
+        }
+    }
+    
+    // 如果不是颁奖月或没填API，走正常逻辑
+    oldGenerateAiScheduleForAwards();
 };
 
 // ==================== 代码结束 ====================
