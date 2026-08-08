@@ -727,7 +727,7 @@ window.checkLoginPwd = function() {
 
     // 使用 Try-Catch 捕获可能的本地存储禁用报错（如无痕模式或容量溢出），防止代码卡死中断
     try {
-        localStorage.setItem(LOGIN_STORAGE_KEY, inputPwd);
+        localStorage.setItem("starPro_login_pwd", inputPwd);
         localStorage.setItem("starPro_is_unlocked", "true"); 
     } catch (e) {
         console.warn("无法保存免密凭证，可能浏览器禁用了本地缓存，但允许单次登录。");
@@ -5115,8 +5115,7 @@ window.submitCustomNPC = async function() {
         } catch(e) {
             alert(`🎉 成功注入空壳艺人【${stageName}】！(AI生成失败，未产生出道作品)`);
         }
-    }
-                    
+    } else {
         alert(`🎉 成功注入空壳艺人【${stageName}】！(未连接API，作为白纸艺人等待后续发展)`);
     }
 
