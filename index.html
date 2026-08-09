@@ -9213,21 +9213,24 @@ window.mainMenuLoad = function() {
     }
 };
 
-// 3. 斩断登录界面的多次事件绑定导致的卡死
+// 3. 斩断登录界面的多次事件绑定导致的卡死（安全修复版）
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value;
     
     if (inputPwd !== "123456") {
-        alert("密码错误，请重新输入！");
+        // 使用浏览器原生弹窗，防止被游戏UI劫持导致报错卡死
+        window.confirm("密码错误，请重新输入！"); 
         return;
     }
+    
     try {
         localStorage.setItem("starPro_login_pwd", inputPwd);
         localStorage.setItem("starPro_is_unlocked", "true"); 
-    } catch (e) {}
+    } catch (e) {
+        console.log("本地缓存已被禁用");
+    }
     
-    alert("登录成功！进入大厅。");
-
+    // 绕过 alert，直接执行页面切换逻辑，防止卡死
     document.getElementById("loginPage").classList.remove("active");
     document.getElementById("loginPage").style.display = "none";
     
@@ -9236,6 +9239,11 @@ window.checkLoginPwd = function() {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
+    
+    // 稍后弹窗提示
+    setTimeout(() => {
+        window.confirm("登录成功！进入大厅。");
+    }, 100);
 };
 // ==================== 核心文字转义工具 ====================
 function escapeHTML(str) { 
