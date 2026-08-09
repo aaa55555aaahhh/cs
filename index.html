@@ -12873,6 +12873,112 @@ window.updAttr = function() {
 };
 // 立即执行一次刷新恢复界面
 setTimeout(() => { if(typeof updAttr === 'function') updAttr(); }, 800);
+// ==================== 终极修补：解决 Null Style 报错与两步走输入 ====================
+
+// 1. 彻底覆盖报错的 updateAlbProjUI 函数，加入极为严苛的安全判定
+window.updateAlbProjUI = function() {
+    if(curAlbPj) {
+        if(document.getElementById("boxNewAlb")) document.getElementById("boxNewAlb").style.display = "none";
+        if(document.getElementById("boxWipAlb")) document.getElementById("boxWipAlb").style.display = "block";
+        if(document.getElementById("txtWipName")) document.getElementById("txtWipName").innerText = "💿 " + curAlbPj.n;
+        if(document.getElementById("txtWipCore")) document.getElementById("txtWipCore").innerText = "内核: " + curAlbPj.core;
+        if(document.getElementById("txtWipHype")) document.getElementById("txtWipHype").innerText = curAlbPj.hype.toFixed(2);
+        if(document.getElementById("txtWipPre")) document.getElementById("txtWipPre").innerText = (curAlbPj.singleCount || 0) + " 主打 / " + curAlbPj.preCount + " 宣传";
+        
+        let wipBox = document.getElementById("boxWipSongs");
+        if(wipBox) {
+            wipBox.innerHTML = "<b>已选曲目:</b><br>" + curAlbPj.s.map(function(x){
+                let lbl = x.singleLabel ? ` <span style="color:#8e44ad;font-size:11px;">[${x.singleLabel}]</span>` : "";
+                return escapeHTML(x.n) + lbl + (x.released ? " <span style='color:#c8a440'>(已发)</span>" : "");
+            }).join('<br>');
+        }
+        
+        // 确保预热按钮存在
+        let txtWipName = document.getElementById("txtWipName");
+        if(txtWipName && !document.getElementById("btnHypeWipAlbum")) {
+            txtWipName.insertAdjacentHTML('beforeend', 
+                `<button id="btnHypeWipAlbum" class="sec inline" style="float:right; font-size:11px; padding:4px 8px; margin-top:-4px;" onclick="hypeCurrentAlbum()">🔥 预热宣传</button>`
+            );
+        }
+    } else {
+        if(document.getElementById("boxNewAlb")) document.getElementById("boxNewAlb").style.display = "block";
+        if(document.getElementById("boxWipAlb")) document.getElementById("boxWipAlb").style.display = "none";
+    }
+};
+
+// 2. 多专辑中心彻底改为弹窗式的“两步走输入”
+window.createNewAlbumPj = function() {
+    if(!costEnergy(10)) return;
+    
+    // 第一步：填专辑名字
+    gamePrompt("新专立项 (1/2)", "请输入新专辑的名称：", "未命名专辑", function(aName){
+        if(!aName || aName.trim() === "") return;
+        
+        // 必须设置短暂延迟，防止两个 gamePrompt 弹窗动画抢夺焦点导致输入框消失
+        setTimeout(() => {
+            // 第二步：填内核
+            gamePrompt("新专立项 (2/2)", "请输入新专的概念内核（选填，留空则为无）：", "", function(aCore){
+                if(!ad.multiAlbPjs) ad.multiAlbPjs = [];
+                ad.multiAlbPjs.push({
+                    id: "alb_m_" + Date.now(),
+                    n: aName.trim(),
+                    g: ["流行"], 
+                    core: aCore.trim() || "无",
+                    s: [], 
+                    hype: 1.0, 
+                    singleCount: 0
+                });
+                alert(`📁 成功建立专辑档案：${aName}！`);
+                if(typeof renderMultiAlbumStudio === 'function') renderMultiAlbumStudio();
+                saveGame();
+            });
+        }, 400);
+    });
+};
+
+// 3. 单曲创作中心彻底改为弹窗式的“两步走输入”
+window.startWrite = function() { 
+    if(curPj) return alert("⚠️ 有正在进行的企划，请先完成！"); 
+    if(!costEnergy(10)) return; 
+    
+    // 第一步：歌名
+    gamePrompt("单曲创作 (1/2)", "请输入你要创作的单曲名称：", "Demo", function(sName){
+        if(!sName || sName.trim() === "") return;
+        
+        setTimeout(() => {
+            // 第二步：内核
+            gamePrompt("单曲创作 (2/2)", "请输入歌曲概念内核（选填）：", "", function(sCore){
+                
+                let featType = document.getElementById("inFeatType") ? document.getElementById("inFeatType").value : "Feat.";
+                let ff = document.getElementById("inFeat") ? document.getElementById("inFeat").value : ""; 
+                
+                if(featType === "Solo") ff = ""; 
+                else if(ff !== "") sName += ` (${featType} ${ff})`; 
+                
+                if(selG.length === 0) selG.push("流行");
+
+                curPj = {type: "write", n: sName, g: [...selG], c: "", core: sCore || "无", ff: ff}; 
+                prog = 0; 
+                
+                if(document.getElementById("txtProg")) document.getElementById("txtProg").innerText = "0%"; 
+                if(document.getElementById("barProg")) document.getElementById("barProg").style.width = "0%"; 
+                if(document.getElementById("boxWriteProgress")) document.getElementById("boxWriteProgress").style.display = "block"; 
+                if(document.getElementById("btnStartWriteProj")) document.getElementById("btnStartWriteProj").style.display = "none"; 
+                
+                // 清理表单
+                if(document.getElementById("inSName")) document.getElementById("inSName").value = "";
+                if(document.getElementById("inFeat")) document.getElementById("inFeat").value = "";
+                
+                selG = [];
+                let sTags = document.querySelectorAll("#boxSGenre .g-tag");
+                sTags.forEach(tag => tag.classList.remove('selected'));
+
+                alert(`企划立项：${sName}。已扣除10精力。`); 
+                saveGame(); 
+            });
+        }, 400);
+    });
+};
 
 // ==================== 代码结束 ====================
 </script>
