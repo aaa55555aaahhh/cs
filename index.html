@@ -7869,23 +7869,22 @@ window.confirmPerformance = function() {
 // ==================== 终极修补：美观密码页与正确的大厅控制 ====================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 隐藏主游戏界面
-    let gameMain = document.getElementById('gameMain');
-    if(gameMain) { gameMain.classList.remove('active'); gameMain.style.display = 'none'; }
-    
+    // 检查是否已经免密解锁过
     let isUnlocked = localStorage.getItem("starPro_is_unlocked");
     
     if (isUnlocked === "true") {
-        // 已经免密过，直接隐藏密码页，显示创建大厅
-        document.getElementById('loginPage').style.display = 'none';
-        document.getElementById('createPage').style.display = 'block';
+        // 已经免密过，直接显示创建/读档大厅，隐藏密码页
+        let lp = document.getElementById('loginPage');
+        if(lp) { lp.style.display = 'none'; lp.classList.remove('active'); }
+        
+        let cp = document.getElementById('createPage');
+        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
     } else {
-        // 没免密，显示密码页，隐藏创建大厅
-        document.getElementById('loginPage').style.display = 'flex';
-        document.getElementById('createPage').style.display = 'none';
+        // 没免密，显示密码页，其他先不强制设为 none，因为 css 默认就是 none
+        let lp = document.getElementById('loginPage');
+        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
     }
 });
-
 
 // 手动读取存档逻辑
 window.mainMenuLoad = function() {
@@ -9334,30 +9333,6 @@ document.addEventListener("DOMContentLoaded", function() {
             `<p style="font-size:10px;color:#888;margin-bottom:10px;">(例：0.15代表每发一张专辑有15%概率出豪华版)</p>`);
     }
 });
-var oldUpdateAlbProjUI = window.updateAlbProjUI;
-window.updateAlbProjUI = function() {
-    if(curAlbPj){ 
-        if($("boxNewAlb")) $("boxNewAlb").style.display="none"; 
-        if($("boxWipAlb")) $("boxWipAlb").style.display="block"; 
-        if($("txtWipName")) $("txtWipName").innerText = "💿 " + curAlbPj.n; 
-        if($("txtWipCore")) $("txtWipCore").innerText = "内核: " + curAlbPj.core; 
-        if($("txtWipHype")) $("txtWipHype").innerText = curAlbPj.hype.toFixed(2); 
-        if($("txtWipPre")) $("txtWipPre").innerText = (curAlbPj.singleCount||0) + " 主打 / " + curAlbPj.preCount + " 宣传"; 
-            let lbl = x.singleLabel ? ` <span style="color:#8e44ad;font-size:11px;">[${x.singleLabel}]</span>` : "";
-            return escapeHTML(x.n) + lbl + (x.released?" <span style='color:#c8a440'>(已发)</span>":"");
-        }).join('<br>'); 
-        
-        // 【新增】：在这个面板注入预热按钮（如果没有的话）
-        if(!document.getElementById("btnHypeWipAlbum")) {
-            $("txtWipName").insertAdjacentHTML('beforeend', 
-                `<button id="btnHypeWipAlbum" class="sec inline" style="float:right; font-size:11px; padding:4px 8px; margin-top:-4px;" onclick="hypeCurrentAlbum()">🔥 预热宣传</button>`
-            );
-        }
-    } else { 
-        $("boxNewAlb").style.display="block"; 
-        $("boxWipAlb").style.display="none"; 
-    } 
-};
 
 window.hypeCurrentAlbum = function() {
     if(!curAlbPj) return;
