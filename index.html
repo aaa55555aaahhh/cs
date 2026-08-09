@@ -4675,23 +4675,6 @@ window.doTVPromo = function(showName){
     document.getElementById("mPick").classList.add("open"); 
 };
 
-// ==================== 补丁：立项后自动清空输入框与标签 ====================
-
-    // 【核心修复】：立项成功后，自动清空所有相关输入框
-    $("inSName").value = "";
-    if($("inFeat")) $("inFeat").value = "";
-    if($("inSCustom")) $("inSCustom").value = "";
-    if($("inSCore")) $("inSCore").value = "";
-    if($("selFeatHelper")) $("selFeatHelper").value = ""; // 清空大盘选择器
-    
-    // 清空选中的曲风标签UI状态
-    selG = [];
-    let sTags = document.getElementById("boxSGenre").querySelectorAll('.g-tag');
-    sTags.forEach(tag => tag.classList.remove('selected'));
-
-    alert(`企划立项：${n}。已扣除10精力。`); 
-    saveGame(); 
-}
 
 // 2. 重写专辑立项逻辑，加入清空功能
 window.startAlbum = function(){ 
