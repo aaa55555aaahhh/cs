@@ -10979,19 +10979,18 @@ window.renderChart = function() {
         t._chartPts = 0; t._chartStr = "";
 
         if (curChartPlatform === 'BB') {
-
             if (isAlbum) {
-                       // 算出专辑的成分比例
-        let totalVal = t._chartPts < 1 ? 1 : t._chartPts;
-        t._pctSales = Math.round((pureSales / totalVal) * 100);
-        t._pctStm = Math.round((sea / totalVal) * 100);
-        t._pctRadio = 0; // 专辑没有电台点数
-    } else {
                 // 专辑：纯实销 + 流媒折算
                 let pureSales = Math.floor(baseStm / 1500) * (t.price || 10); 
                 let sea = Math.floor(baseStm / 1500);
                 t._chartPts = pureSales + sea;
                 t._chartStr = t._chartPts.toLocaleString() + " EAU";
+                
+                // 算出专辑的成分比例
+                let totalVal = t._chartPts < 1 ? 1 : t._chartPts;
+                t._pctSales = Math.round((pureSales / totalVal) * 100);
+                t._pctStm = Math.round((sea / totalVal) * 100);
+                t._pctRadio = 0; // 专辑没有电台点数
             } else {
                 // 单曲：严格控制 B榜 拟真点数
                 let stmUSWeek = t.stmUS_Week || 0;
@@ -11008,7 +11007,6 @@ window.renderChart = function() {
                 
                 let totalPts = ptsSales + ptsStm + ptsRadio;
                 
-                // 【核心修复】：删除原来那个 pts < 1 赋予随机数的代码，直接 Math.floor
                 t._bbPtsExact = Math.floor(totalPts);
                 // 强制修正异常数据
                 if(isNaN(t._bbPtsExact) || t._bbPtsExact < 0) t._bbPtsExact = 0;
@@ -11017,7 +11015,7 @@ window.renderChart = function() {
                 t._chartStr = t._chartPts.toLocaleString() + " Pts";
             }
         } 
-        else if (curChartPlatform === 'Sale') {
+         else if (curChartPlatform === 'Sale') {
             let totalSales = Math.floor((t.stmGlobal||0) / 150); 
             if (curChTime === 'Day') t._chartPts = Math.floor((t.stmGlobal_Day||0) / 150);
             else if (curChTime === 'Week') t._chartPts = Math.floor((t.stmGlobal_Week||0)/150);
