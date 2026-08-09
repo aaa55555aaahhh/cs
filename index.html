@@ -13573,6 +13573,212 @@ window.generateVarietyPost = function() {
         return { type: "drama", title: `🔥 【代表作硬碰硬】${artA.n} VS ${artB.n} 巅峰实绩对决！`, desc: content };
     }
 };
+// ==================== 终极修复：真实榜单流动性、淘汰规则与聚合数据 ====================
+
+// 1. 修复：月榜/年榜/十年榜数据一模一样的问题 (修复 NaN 累加错误)
+var superAdvTimeForAggregation = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    trackPool.forEach(t => {
+        if (t.type === "track" || t.type === "album") {
+            // 确保这些变量不为 undefined，否则 += 会变成 NaN，导致 UI 强行回退显示周榜
+            if (typeof t.stmGlobal_Month === 'undefined' || isNaN(t.stmGlobal_Month)) t.stmGlobal_Month = 0;
+            if (typeof t.stmUS_Month === 'undefined' || isNaN(t.stmUS_Month)) t.stmUS_Month = 0;
+            if (typeof t.stmGlobal_Year === 'undefined' || isNaN(t.stmGlobal_Year)) t.stmGlobal_Year = 0;
+            if (typeof t.stmUS_Year === 'undefined' || isNaN(t.stmUS_Year)) t.stmUS_Year = 0;
+        }
+    });
+
+    superAdvTimeForAggregation(weeks, showMsg);
+
+    // 修复 NPC 无法触发短视频回春的 Bug，并让新歌首月更抗跌，老歌加速死亡
+    trackPool.forEach(t => {
+        if (t.type === "track" && t.weeks > 0) {
+            // NPC 也拥有病毒爆红的几率
+            let isMegaHit = t.slTotal >= 5000000; 
+            let baseViral = (isMegaHit ? 0.015 : 0.003); 
+            let decayFactor = Math.max(0.05, 1.0 - (t.weeks * 0.02)); 
+            let triggerChance = (t.viralChance || baseViral) * decayFactor; 
+            
+            if(!t.longViral && Math.random() < triggerChance && t.weeks > 3) {
+                t.longViral = Math.floor(Math.random() * 8) + 4; 
+                t.viralBoost = (t.viralBoost || 1.0) + (Math.random() * 0.2 + 0.1); 
+                t.viralChance = triggerChance * 0.2; 
+            }
+
+            // 让大盘底线呈现弹性的波动，而不是固定的死板数字 (上下 25% 浮动)
+            let baseInput = document.getElementById("customMarketBase");
+            let baseVal = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+            let elasticBase = baseVal * (0.75 + Math.random() * 0.5); // 弹性浮动
+
+            if(t.stmGlobal_Week < elasticBase && t.weeks <= 20) {
+                t.stmGlobal_Week = Math.floor(elasticBase + Math.random() * (elasticBase * 0.1));
+            }
+        }
+    });
+};
+
+// 2. 修复：彻底重做渲染函数，恢复走势指示器，并引入真实的 Recurrent (规则淘汰) 机制
+window.renderChart = function() {
+    let box = document.getElementById("mChartContent");
+    if(!trackPool || trackPool.length === 0) { 
+        box.innerHTML = "<p style='text-align:center;'>暂无数据</p>"; 
+        return; 
+    }
+    
+    let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+    let list = trackPool.filter(x => isAlbum ? x.type === 'album' : x.type === 'track');
+    
+    // 计算点数
+    list.forEach(t => {
+        let stmGlobal = t.stmGlobal_Week || Math.floor(t.stmGlobal/7) || 0;
+        let stmUS = t.stmUS_Week || Math.floor(t.stmUS/7) || 0;
+        
+        if(curChTime === 'Day') { stmGlobal = t.stmGlobal_Day || 0; stmUS = t.stmUS_Day || 0; }
+        else if(curChTime === 'Week') { stmGlobal = t.stmGlobal_Week || 0; stmUS = t.stmUS_Week || 0; }
+        else if(curChTime === 'Month') { stmGlobal = t.stmGlobal_Month || 0; stmUS = t.stmUS_Month || 0; }
+        else if(curChTime === 'Year') { stmGlobal = t.stmGlobal_Year || 0; stmUS = t.stmUS_Year || 0; }
+        else if(curChTime === 'Decade') { stmGlobal = t.stmGlobal || 0; stmUS = t.stmUS || 0; }
+        
+        let isUS = (curChReg === 'US');
+        let baseStm = isUS ? stmUS : stmGlobal;
+        t._chartPts = 0; t._chartStr = "";
+
+        if (curChartPlatform === 'BB') {
+            let stmUSWeek = t.stmUS_Week || 0;
+            let pureSales = Math.floor((t.stmGlobal_Week || 0) / 150) * (t.price || 1); 
+            let radio = t.radioAud || 0;
+            let pStream = stmUSWeek * 0.7; 
+            let aStream = stmUSWeek * 0.3;
+            
+            if (isAlbum) {
+                t._chartPts = Math.floor((pureSales/150) + (pStream/1250) + (aStream/2500));
+                t._chartStr = t._chartPts.toLocaleString() + " EAU";
+            } else {
+                let pts = (pureSales * 10) + (pStream / 125) + (aStream / 375) + (radio * 333);
+                t._chartPts = Math.floor(pts);
+                
+                // 细化计算百分比用于条状图
+                t._pctSales = Math.round(((pureSales * 10) / Math.max(1, pts)) * 100) || 0;
+                t._pctStm = Math.round((((pStream / 125) + (aStream / 375)) / Math.max(1, pts)) * 100) || 0;
+                t._pctRadio = Math.round(((radio * 333) / Math.max(1, pts)) * 100) || 0;
+            }
+        } 
+        else if (curChartPlatform === 'Spot' || curChartPlatform === 'Daily') {
+            t._chartPts = Math.floor(baseStm); 
+            t._chartStr = t._chartPts.toLocaleString() + " 播放";
+        } 
+        else if (curChartPlatform === 'Sale') {
+            if (curChTime === 'Day') t._chartPts = Math.floor((t.stmGlobal_Day || 0) / 150);
+            else if (curChTime === 'Week') t._chartPts = Math.floor((t.stmGlobal_Week||0)/150);
+            else t._chartPts = Math.floor((t.stmGlobal||0)/150);
+            t._chartStr = `${t._chartPts.toLocaleString()} 张`;
+        }
+    });
+    
+    // 按点数大排序
+    list.sort((a,b) => b._chartPts - a._chartPts);
+    
+    // 🔥 核心机制：Recurrent 规则淘汰过滤！
+    // 只有排完序后，才能判断这首歌本周排在第几名，从而决定是否从榜单上消失
+    let finalList = [];
+    let recurrentCount = 0;
+    
+    for (let i = 0; i < list.length; i++) {
+        let t = list[i];
+        let theoreticalRank = i + 1 - recurrentCount; 
+        
+        // B榜规则：>20周且跌出前50，或>52周且跌出前25，强制飞榜！
+        let isRecurrent = false;
+        if (!isAlbum && curChTime === 'Week') {
+            if (t.weeks > 20 && theoreticalRank > 50) isRecurrent = true;
+            if (t.weeks > 52 && theoreticalRank > 25) isRecurrent = true;
+        }
+        
+        if (isRecurrent) {
+            recurrentCount++; // 淘汰的歌不占排名
+            continue; // 直接跳过，不渲染这首歌，实现真正的 OUT！
+        }
+        
+        // 赋予实际排名
+        t._displayRank = theoreticalRank;
+        finalList.push(t);
+    }
+    
+    let maxDisplay = (curChartPlatform === 'BB' && isAlbum) ? 200 : 100;
+    
+    // 渲染 UI (完美找回消失的 趋势箭头 和 B榜彩色条)
+    box.innerHTML = finalList.slice(0, maxDisplay).map((t) => {
+        let currentRank = t._displayRank;
+        let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
+        
+        let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
+        let peakStr = peakVal ? `最高: #${peakVal} | 在榜: ${t.weeks||1}周` : `在榜: ${t.weeks||1}周`;
+        let detailBtn = (t.isMe && t.type === 'track') ? `<br><button class="sec inline" style="padding:2px 6px;font-size:10px;margin-top:4px;" onclick="viewSongStats('${t.id}')">查看歌曲详情</button>` : '';
+        
+        // 🔥 找回：走势指示器
+        let trendHtml = "";
+        if (t.weeks <= 1) {
+            trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+        } else {
+            // 如果上周因为规则飞榜了(OUT)，这周重新杀回来，显示 RE
+            let lastRank = (t.trendChart && t.trendChart.length > 0) ? t.trendChart[t.trendChart.length - 1] : t.lastW;
+            if (lastRank > 100 || !lastRank) {
+                trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">RE</span>`;
+            } else {
+                let diff = lastRank - currentRank;
+                if (diff > 0) trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
+                else if (diff < 0) trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
+                else trendHtml = `<span style="color:#888; font-weight:bold; font-size:10px;">-</span>`;
+            }
+        }
+        
+        // BB 榜专属渲染：分数条和电台
+        if (curChartPlatform === 'BB' && !isAlbum) {
+            let barHtml = `
+            <div style="display:flex; width:100%; height:4px; margin-top:4px; border-radius:2px; overflow:hidden;">
+                <div style="width:${t._pctStm}%; background:#25d366;" title="流媒"></div>
+                <div style="width:${t._pctSales}%; background:#0055ff;" title="实销"></div>
+                <div style="width:${t._pctRadio}%; background:#8b5cf6;" title="电台"></div>
+            </div>`;
+            return `
+            <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+                <div style="width:45px; text-align:center; padding-right:10px;">
+                    <b style="color:#333;font-size:17px;display:block;">${currentRank}</b>
+                    ${trendHtml}
+                </div>
+                <div style="flex:1;">
+                    <b>${escapeHTML(t.n)}</b><br>
+                    <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)} | ${peakStr}</span>
+                    ${barHtml}
+                    ${detailBtn}
+                </div>
+                <div style="text-align:right;font-size:12px;width:75px;">
+                    <b style="color:#c8a440;">${t._chartPts.toLocaleString()} Pts</b><br>
+                    <span style="font-size:10px;color:#888;">(电台: ${(t.radioAud||0).toFixed(1)}M)</span>
+                </div>
+            </div>`;
+        } 
+        // 其他榜单通用渲染
+        else {
+            return `
+            <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
+                <div style="width:45px; text-align:center; padding-right:10px;">
+                    <b style="color:#333;font-size:17px;display:block;">${currentRank}</b>
+                    ${trendHtml}
+                </div>
+                <div style="flex:1;">
+                    <b style="font-size:14px;">${escapeHTML(t.n)}</b><br>
+                    <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)} | ${peakStr}</span>
+                    ${detailBtn}
+                </div>
+                <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">
+                    ${t._chartStr}
+                </div>
+            </div>`;
+        }
+    }).join('') || "<p style='text-align:center;color:#888;'>暂无数据</p>";
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
