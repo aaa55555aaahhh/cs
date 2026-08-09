@@ -10901,15 +10901,15 @@ window.confirmPick = async function() {
         
         let idsToAdd = Array.from(checkboxes).map(c => c.value);
         let addedCount = 0;
-        
+
         idsToAdd.forEach(id => {
             let t = trackPool.find(x => x.id === id);
             if(t && !curAlbPj.s.some(s => s.id === t.id)) {
-                // 构造一个简化版的 song 对象推入专辑
-                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad.sk.v||50, w: ad.sk.w||50 });
+                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 });
                 addedCount++;
             }
         });
+
         
         alert(`✅ 成功将 ${addedCount} 首已发行的单曲收录进本张专辑！`);
         closeM('mPick'); updateAlbProjUI(); saveGame();
@@ -12300,17 +12300,16 @@ window.confirmPick = async function() {
         if (checkboxes.length === 0) return alert("未勾选任何歌曲！");
         
         let addedCount = 0;
-        checkboxes.forEach(chk => {
+              checkboxes.forEach(chk => {
             let t = trackPool.find(x => x.id === chk.value);
             if(t && !alb.s.some(s => s.id === t.id)) {
                 alb.s.push({ 
                     n: t.n, id: t.id, released: true, 
-                    singleLabel: t.singleLabel || "先行主打", v: ad.sk.v||50, w: ad.sk.w||50 
+                    singleLabel: t.singleLabel || "先行主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 
                 });
                 addedCount++;
             }
-        });
-        
+        });        
         alert(`✅ 成功将 ${addedCount} 首单曲收录进本张专辑！\n它们以前积累的流媒将折算为这张专辑的历史销量，并在全专发行时获得逆跌大回春！`);
         closeM('mPick'); renderMultiAlbumStudio(); saveGame();
         return;
