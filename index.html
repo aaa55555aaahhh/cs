@@ -12149,7 +12149,7 @@ window.confirmPick = async function() {
         idsToAdd.forEach(id => {
             let t = trackPool.find(x => x.id === id);
             if(t && !curAlbPj.s.some(s => s.id === t.id)) {
-                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad.sk.v||50, w: ad.sk.w||50 });
+                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 });
                 addedCount++;
             }
         });
@@ -12169,7 +12169,7 @@ window.confirmPick = async function() {
         
         let S_val = 1.0;
         // 注意：此处不再调用旧的 createEntity 代理方法，防止死循环
-        let tTrk = window.createEntity(s.n, ad.s, true, "track", s.g.join(), ad.st.f, ad.sk.w, ad.sk.v, time.y, time.m, time.w, false, s.ff, S_val);
+            let tTrk = window.createEntity(s.n, ad.s, true, "track", s.g.join(), ad.st.f, ad?.sk?.w||50, ad?.sk?.v||50, time.y, time.m, time.w, false, s.ff, S_val);
         tTrk.price = price;
         tTrk.singleLabel = "单曲";
         
@@ -13285,20 +13285,63 @@ window.saveAttr = function(){
 // ==================== 2. 核心大修：时间推演 (新规衰减、大盘控制、NPC发歌) ====================
 var exOldAdvTimeFor2026Rules = window.advTime;
 window.advTime = function(weeks, showMsg) {
-    // 1. 触发 NPC 自动回归发歌 (修复 NPC 僵死问题)
+    // 1. 触发 NPC 自动回归发歌与豪华版 (修复 NPC 僵死问题)
     let npcRate = ad.npcRate || 1.0;
+    let npcDeluxeRate = ad.npcDeluxe || 0.15; // 豪华版概率
     let comebackChance = 0.05 * npcRate * weeks; 
+    
     worldArtists.forEach(npc => {
-        if (!npc.isMe && Math.random() < comebackChance) {
-            let isAlbum = Math.random() < 0.3;
-            let g = gs[Math.floor(Math.random() * gs.length)];
-            if (isAlbum) {
-                let alb = window.createEntity(ts[Math.floor(Math.random()*ts.length)]+" "+ts[Math.floor(Math.random()*ts.length)], npc.n, false, "album", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w);
-                let trk = window.createEntity(ts[Math.floor(Math.random()*ts.length)], npc.n, false, "track", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w);
-                trackPool.push(alb, trk);
-                if (posts && posts.mom && Math.random() < 0.2) posts.mom.unshift({ t: `📢 [回归] ${npc.n} 发行新专辑`, c: `等了这么久终于回归了！概念绝美，大家快去听！` });
-            } else {
-                trackPool.push(window.createEntity(ts[Math.floor(Math.random()*ts.length)], npc.n, false, "track", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w));
+        if (!npc.isMe) {
+            // 安全读取属性，防止旧NPC没有sk对象导致报错卡死
+            let n_w = npc?.sk?.w || 60;
+            let n_v = npc?.sk?.v || 60;
+            
+            // 判定是否回归发歌
+            if (Math.random() < comebackChance) {
+                let isAlbum = Math.random() < 0.35; // 35%概率发专
+                let g = gs[Math.floor(Math.random() * gs.length)];
+                
+                if (isAlbum) {
+                    let albName = ts[Math.floor(Math.random()*ts.length)] + " " + ts[Math.floor(Math.random()*ts.length)];
+                    let alb = window.createEntity(albName, npc.n, false, "album", g, npc.fans, n_w, n_v, time.y, time.m, time.w);
+                    let trk = window.createEntity(ts[Math.floor(Math.random()*ts.length)], npc.n, false, "track", g, npc.fans, n_w, n_v, time.y, time.m, time.w);
+                    
+                    if (alb && trk) {
+                        trackPool.push(alb, trk);
+                        if (posts && posts.mom && Math.random() < 0.2) {
+                            posts.mom.unshift({ t: `📢 [回归] ${npc.n} 发行新专辑`, c: `等了这么久终于回归了！新专概念绝美，大家快去听！` });
+                        }
+                    }
+                } else {
+                    let trk = window.createEntity(ts[Math.floor(Math.random()*ts.length)], npc.n, false, "track", g, npc.fans, n_w, n_v, time.y, time.m, time.w);
+                    if(trk) trackPool.push(trk);
+                }
+            }
+            
+            // 判定是否有现有专辑追加发行【豪华版】(Deluxe)
+            if (Math.random() < (comebackChance * npcDeluxeRate)) {
+                let npcAlbs = trackPool.filter(t => !t.isMe && t.type === 'album' && t.artist === npc.n && !t.n.includes("Deluxe"));
+                if (npcAlbs.length > 0) {
+                    // 随机挑一张最近的专辑追加豪华版
+                    let targetAlb = npcAlbs[npcAlbs.length - 1];
+                    targetAlb.n += " (Deluxe)";
+                    // 发行豪华版带来额外流媒和销量
+                    let deluxeBoost = Math.floor((targetAlb.stmGlobal || 100000) * 0.3) + 500000;
+                    targetAlb.stmGlobal += deluxeBoost;
+                    targetAlb.slTotal += Math.floor(deluxeBoost / 1500);
+                    
+                    // 伴随发行一首加曲单曲
+                    let g = targetAlb.gnr || "流行";
+                    let extraTrk = window.createEntity(ts[Math.floor(Math.random()*ts.length)], npc.n, false, "track", g, npc.fans, n_w, n_v, time.y, time.m, time.w);
+                    if(extraTrk) {
+                        extraTrk.stmGlobal = Math.floor(deluxeBoost * 0.4);
+                        extraTrk.stmGlobal_Day = Math.floor(extraTrk.stmGlobal/7);
+                        trackPool.push(extraTrk);
+                    }
+                    if (posts && posts.mom && Math.random() < 0.3) {
+                        posts.mom.unshift({ t: `🌟 [加曲] ${npc.n} 发行豪华版专辑`, c: `神专加推豪华版！新加的曲目也太好听了吧，赶紧买买买！` });
+                    }
+                }
             }
         }
     });
