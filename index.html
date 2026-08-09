@@ -4677,33 +4677,6 @@ window.doTVPromo = function(showName){
 
 // ==================== 补丁：立项后自动清空输入框与标签 ====================
 
-// 1. 重写单曲立项逻辑，加入清空功能
-window.startWrite = function(){ 
-    if(curPj) return alert("有正在进行的企划！"); 
-    if(!costEnergy(10)) return; 
-    
-    gamePrompt("单曲创作 (1/2)", "请输入单曲名称：", "Demo", function(sName){
-        if(!sName) return;
-        gamePrompt("单曲创作 (2/2)", "请输入歌曲概念内核（选填）：", "", function(sCore){
-            let featType = document.getElementById("inFeatType") ? document.getElementById("inFeatType").value : "Feat.";
-            let ff = document.getElementById("inFeat") ? document.getElementById("inFeat").value : ""; 
-            if(featType === "Solo") ff = ""; 
-            else if(ff !== "") sName += ` (${featType} ${ff})`; 
-            
-            if(selG.length === 0) selG.push("流行");
-
-            curPj = {type: "write", n: sName, g: [...selG], c: "", core: sCore || "无", ff: ff}; 
-            prog=0; 
-            document.getElementById("txtProg").innerText="0%"; 
-            document.getElementById("barProg").style.width="0%"; 
-            document.getElementById("boxWriteProgress").style.display="block"; 
-            document.getElementById("btnStartWriteProj").style.display="none"; 
-            
-            alert(`企划立项：${sName}。已扣除10精力。`); 
-            saveGame(); 
-        });
-    });
-}
     // 【核心修复】：立项成功后，自动清空所有相关输入框
     $("inSName").value = "";
     if($("inFeat")) $("inFeat").value = "";
