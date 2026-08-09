@@ -13778,6 +13778,184 @@ window.renderChart = function() {
         }
     }).join('') || "<p style='text-align:center;color:#888;'>暂无数据</p>";
 };
+// 1. 修复：自定义奖项时增加下拉选项与自定义输入框
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let selCatGenre = document.getElementById("selCatGenre");
+        if (selCatGenre) {
+            selCatGenre.innerHTML = `
+                <option value="ALL">🌍 不限曲风 (ALL)</option>
+                <option value="流行">🎵 流行 (Pop)</option>
+                <option value="HipHop">🎤 说唱 (HipHop)</option>
+                <option value="R&B">🎷 R&B/灵魂乐</option>
+                <option value="摇滚">🎸 摇滚 (Rock)</option>
+                <option value="乡村">🤠 乡村 (Country)</option>
+                <option value="舞曲">🕺 舞曲/电子 (Dance/Electronic)</option>
+                <option value="CUSTOM">✍️ 自定义曲风...</option>
+            `;
+            // 当选择自定义时，显示输入框
+            selCatGenre.insertAdjacentHTML('afterend', `<input type="text" id="inCustomCatGenre" placeholder="请输入自定义曲风名称" style="display:none; margin-top:5px; font-size:12px;">`);
+            selCatGenre.addEventListener('change', function() {
+                if (this.value === 'CUSTOM') {
+                    document.getElementById("inCustomCatGenre").style.display = 'block';
+                } else {
+                    document.getElementById("inCustomCatGenre").style.display = 'none';
+                }
+            });
+        }
+    }, 1000);
+});
+
+var oldSaveCategoryAdd = window.saveCategoryAdd;
+window.saveCategoryAdd = function() {
+    let genreSelect = document.getElementById("selCatGenre").value;
+    if (genreSelect === 'CUSTOM') {
+        let customVal = document.getElementById("inCustomCatGenre").value.trim();
+        if (!customVal) return alert("请输入自定义曲风！");
+        // 临时把 select 的 value 改掉骗过原版函数
+        let opt = document.createElement("option");
+        opt.value = customVal;
+        document.getElementById("selCatGenre").appendChild(opt);
+        document.getElementById("selCatGenre").value = customVal;
+    }
+    oldSaveCategoryAdd();
+};
+
+// 2. 修复：找回单曲榜丢失的【注水】按钮
+var fixRenderChartForWatering = window.renderChart;
+window.renderChart = function() {
+    fixRenderChartForWatering(); 
+    
+    // 强制追加注水按钮
+    if (curChType === 'track' || curChType === 'daily') {
+        let chartRows = document.querySelectorAll("#mChartContent > div");
+        let trks = trackPool.filter(x => x.type === "track");
+        
+        // 我们知道原版渲染是按照 _chartPts 排序的，重新对其映射
+        trks.sort((a,b) => (b._chartPts || 0) - (a._chartPts || 0));
+        
+        chartRows.forEach((row, i) => {
+            let t = trks[i]; // 当前行的实体
+            if (t) {
+                let rightDiv = row.lastElementChild;
+                if (rightDiv && !rightDiv.innerHTML.includes("openWateringUI")) {
+                    rightDiv.insertAdjacentHTML('beforeend', `
+                    <div style="margin-top:4px;">
+                        <button class="sec inline" style="padding:2px 6px;font-size:10px;background:#111;color:#fff;border:none;" onclick="openWateringUI('${t.id}')">💧 操纵</button>
+                    </div>`);
+                }
+            }
+        });
+    }
+};
+
+// 3. 限制：预热造势增加 5 次上限
+window.preheatSong = function(songName) {
+    let s = std.find(x => x.n === songName);
+    if(s) {
+        s.preheatCount = (s.preheatCount || 0) + 1;
+        if(s.preheatCount > 5) return alert("⚠️ 该歌曲的预热造势已达上限 (5次)，再发物料粉丝就要逆反了！");
+    }
+    
+    if(!costEnergy(5)) return;
+    ad.st.f += Math.floor(Math.random() * 5000 + 1000);
+    advHour(2);
+    alert(`📢 预热造势成功！\n你的新歌预告登上了热搜，粉丝们期待值拉满！`);
+    saveGame();
+};
+
+window.hypeCurrentAlbum = function(idx) {
+    let alb = (idx !== undefined && ad.multiAlbPjs) ? ad.multiAlbPjs[idx] : window.curAlbPj;
+    if(!alb) return alert("未找到企划数据！");
+    
+    alb.hypeCount = (alb.hypeCount || 0) + 1;
+    if (alb.hypeCount > 5) return alert("⚠️ 专辑预热宣发已达上限 (5次)！过度营销会引起反感，请尽快发行！");
+    
+    pickAction = "hypeAlbumOptions";
+    window.tempHypeAlb = alb;
+    
+    document.getElementById("mPickTitle").innerText = "🔥 预热宣传";
+    if(document.getElementById("mPickExt")) document.getElementById("mPickExt").style.display = "none";
+    
+    let html = `<div style="padding:8px 0; border-bottom:1px solid #eee;"><input type="radio" name="hypeR" value="ALBUM" checked> <b>预热整张专辑</b> <span style="font-size:10px;color:#888;">(提升全专爆发力)</span></div>`;
+    alb.s.forEach(s => {
+        html += `<div style="padding:8px 0; border-bottom:1px solid #eee;"><input type="radio" name="hypeR" value="${s.id}"> 剧透单曲物料：<b>${escapeHTML(s.n)}</b></div>`;
+    });
+    
+    document.getElementById("mPickList").innerHTML = html;
+    document.getElementById("mPick").classList.add("open");
+};
+
+// 4. 修复：首日倍率穿透，强行压制极其离谱的数值
+var oldUpdatePeakRanksForCap = window.updatePeakRanks;
+window.updatePeakRanks = function() {
+    let baseInput = document.getElementById("customMarketBase");
+    let targetBase = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    let maxAllowedWeekly = targetBase * 7 * 3.5; // 绝对不允许超过大盘底线的 3.5 倍！
+    
+    trackPool.forEach(t => {
+        if (t.type === 'track') {
+            if (t.stmGlobal_Week > maxAllowedWeekly) {
+                t.stmGlobal_Week = Math.floor(maxAllowedWeekly - Math.random()*500000);
+                t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+                t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+                t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+            }
+        }
+    });
+
+    // 这里顺便彻底修复 Peak 更新滞后导致的错位问题，强制重新计算BB榜点数后再排位！
+    trackPool.forEach(t => {
+        if (t.type === 'track') {
+            let stmUSWeek = t.stmUS_Week || 0;
+            let pureSales = Math.floor((t.stmGlobal_Week || 0) / 150); 
+            let radio = t.radioAud || 0;
+            let paidStream = stmUSWeek * 0.7; 
+            let adStream = stmUSWeek * 0.3;
+            // 2026 BB新算法
+            let ptsSales = pureSales * 4; 
+            let ptsStm = (paidStream / 1000) * 35 + (adStream / 2500) * 16; 
+            let ptsRadio = radio * 45;
+            t._bbPtsExact = Math.floor(ptsSales + ptsStm + ptsRadio);
+        }
+    });
+    
+    oldUpdatePeakRanksForCap();
+};
+
+// 5. 修复：专辑成功发售后，清空依然显示“策划中”或可以重复发行的BUG
+var oldReleaseAlbumClean = window.releaseAlbum;
+if(oldReleaseAlbumClean) {
+    window.releaseAlbum = async function() {
+        await oldReleaseAlbumClean();
+        // 强制清空
+        curAlbPj = null;
+        if(typeof updateAlbProjUI === 'function') updateAlbProjUI();
+    };
+}
+
+var oldReleaseMultiAlbClean = window.releaseMultiAlb;
+if(oldReleaseMultiAlbClean) {
+    window.releaseMultiAlb = async function(idx) {
+        await oldReleaseMultiAlbClean(idx);
+        // 如果上面原版没有删干净，这里强制复检
+        if (ad.multiAlbPjs && ad.multiAlbPjs[idx] && ad.multiAlbPjs[idx].st === "已发") {
+             ad.multiAlbPjs.splice(idx, 1);
+        }
+        if(typeof renderMultiAlbumStudio === 'function') renderMultiAlbumStudio();
+    };
+}
+
+// 6. 修复：写歌时选合作歌手无法正常显示的层级问题
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let featSelect = document.getElementById("selFeatHelper");
+        if(featSelect) {
+            featSelect.style.display = "block"; // 确保可见
+            if(typeof updateFeatList === 'function') updateFeatList();
+        }
+    }, 1000);
+});
 
 // ==================== 代码结束 ====================
 </script>
