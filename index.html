@@ -4682,25 +4682,28 @@ window.startWrite = function(){
     if(curPj) return alert("有正在进行的企划！"); 
     if(!costEnergy(10)) return; 
     
-    let n = escapeHTML($("inSName").value) || "Demo"; 
-    let featType = document.getElementById("inFeatType") ? document.getElementById("inFeatType").value : "Feat.";
-    let ff = escapeHTML($("inFeat")?$("inFeat").value:"") || ""; 
-    
-    if(featType === "Solo") { ff = ""; } // 独唱清空合唱歌手
-    else if(ff !== "") { n += ` (${featType} ${ff})`; }
-    
-    let core = escapeHTML(document.getElementById("inSCore") ? document.getElementById("inSCore").value : "");
-    let customGenre = $("inSCustom").value.trim();
-    if(customGenre) selG.push(customGenre);
-    if(selG.length === 0) selG.push("流行"); // 保底曲风
+    gamePrompt("单曲创作 (1/2)", "请输入单曲名称：", "Demo", function(sName){
+        if(!sName) return;
+        gamePrompt("单曲创作 (2/2)", "请输入歌曲概念内核（选填）：", "", function(sCore){
+            let featType = document.getElementById("inFeatType") ? document.getElementById("inFeatType").value : "Feat.";
+            let ff = document.getElementById("inFeat") ? document.getElementById("inFeat").value : ""; 
+            if(featType === "Solo") ff = ""; 
+            else if(ff !== "") sName += ` (${featType} ${ff})`; 
+            
+            if(selG.length === 0) selG.push("流行");
 
-    curPj = {type: "write", n: n, g: [...selG], c: escapeHTML($("inSCustom").value), core: core, ff: ff}; 
-    prog=0; 
-    $("txtProg").innerText="0%"; 
-    $("barProg").style.width="0%"; 
-    $("boxWriteProgress").style.display="block"; 
-    $("btnStartWriteProj").style.display="none"; 
-    
+            curPj = {type: "write", n: sName, g: [...selG], c: "", core: sCore || "无", ff: ff}; 
+            prog=0; 
+            document.getElementById("txtProg").innerText="0%"; 
+            document.getElementById("barProg").style.width="0%"; 
+            document.getElementById("boxWriteProgress").style.display="block"; 
+            document.getElementById("btnStartWriteProj").style.display="none"; 
+            
+            alert(`企划立项：${sName}。已扣除10精力。`); 
+            saveGame(); 
+        });
+    });
+}
     // 【核心修复】：立项成功后，自动清空所有相关输入框
     $("inSName").value = "";
     if($("inFeat")) $("inFeat").value = "";
@@ -5767,27 +5770,24 @@ window.renderMultiAlbumStudio = function() {
 // 新建文件夹
 window.createNewAlbumPj = function() {
     if(!costEnergy(10)) return;
-    gamePrompt("新专立项", "请输入新专辑的名称和概念（空格隔开，如：1989 流行变革）", "未命名专辑", function(val){
-        if(!val) return;
-        let parts = val.split(' ');
-        let aName = parts[0] || "Album";
-        let aCore = parts[1] || "无";
-        
-        ad.multiAlbPjs.push({
-            id: "alb_m_" + Date.now(),
-            n: aName,
-            g: ["流行"], // 默认主流行，可被单曲成分影响
-            core: aCore,
-            s: [], 
-            hype: 1.0, 
-            singleCount: 0
+    // 第一步：输入专辑名
+    gamePrompt("新专立项 (1/2)", "请输入新专辑的名称：", "未命名专辑", function(aName){
+        if(!aName) return;
+        // 第二步：输入概念内核
+        gamePrompt("新专立项 (2/2)", "请输入新专的概念内核（选填，留空则为无）：", "", function(aCore){
+            ad.multiAlbPjs.push({
+                id: "alb_m_" + Date.now(),
+                n: aName.trim(),
+                g: ["流行"], 
+                core: aCore.trim() || "无",
+                s: [], hype: 1.0, singleCount: 0
+            });
+            alert(`📁 成功建立专辑档案：${aName}！`);
+            renderMultiAlbumStudio();
+            saveGame();
         });
-        alert(`📁 成功建立专辑档案：${aName}！`);
-        renderMultiAlbumStudio();
-        saveGame();
     });
 };
-
 // 收录进指定专辑
 window.addTrkToMultiAlb = function(idx) {
     let sel = document.getElementById("sel_m_trk_" + idx);
@@ -9381,13 +9381,12 @@ document.addEventListener("DOMContentLoaded", function() {
 var oldUpdateAlbProjUI = window.updateAlbProjUI;
 window.updateAlbProjUI = function() {
     if(curAlbPj){ 
-        $("boxNewAlb").style.display="none"; 
-        $("boxWipAlb").style.display="block"; 
-        $("txtWipName").innerText = "💿 " + curAlbPj.n; 
-        $("txtWipCore").innerText = "内核: " + curAlbPj.core; 
-        $("txtWipHype").innerText = curAlbPj.hype.toFixed(2); 
-        $("txtWipPre").innerText = (curAlbPj.singleCount||0) + " 主打 / " + curAlbPj.preCount + " 宣传"; 
-        $("boxWipSongs").innerHTML = "<b>已选曲目:</b><br>" + curAlbPj.s.map(function(x){
+        if($("boxNewAlb")) $("boxNewAlb").style.display="none"; 
+        if($("boxWipAlb")) $("boxWipAlb").style.display="block"; 
+        if($("txtWipName")) $("txtWipName").innerText = "💿 " + curAlbPj.n; 
+        if($("txtWipCore")) $("txtWipCore").innerText = "内核: " + curAlbPj.core; 
+        if($("txtWipHype")) $("txtWipHype").innerText = curAlbPj.hype.toFixed(2); 
+        if($("txtWipPre")) $("txtWipPre").innerText = (curAlbPj.singleCount||0) + " 主打 / " + curAlbPj.preCount + " 宣传"; 
             let lbl = x.singleLabel ? ` <span style="color:#8e44ad;font-size:11px;">[${x.singleLabel}]</span>` : "";
             return escapeHTML(x.n) + lbl + (x.released?" <span style='color:#c8a440'>(已发)</span>":"");
         }).join('<br>'); 
@@ -11049,7 +11048,14 @@ window.renderChart = function() {
         t._chartPts = 0; t._chartStr = "";
 
         if (curChartPlatform === 'BB') {
+
             if (isAlbum) {
+                       // 算出专辑的成分比例
+        let totalVal = t._chartPts < 1 ? 1 : t._chartPts;
+        t._pctSales = Math.round((pureSales / totalVal) * 100);
+        t._pctStm = Math.round((sea / totalVal) * 100);
+        t._pctRadio = 0; // 专辑没有电台点数
+    } else {
                 // 专辑：纯实销 + 流媒折算
                 let pureSales = Math.floor(baseStm / 1500) * (t.price || 10); 
                 let sea = Math.floor(baseStm / 1500);
@@ -11990,85 +11996,104 @@ window.renderAlb = function() {
     }
 };
 
-// 3. 修复：恢复 Billboard 单曲榜的三色构成比例条
+// 3. 修复：恢复 Billboard 榜单的三色构成比例条 (已兼容专辑榜与单曲榜)
 var oldRenderChartForBBMix = window.renderChart;
 window.renderChart = function() {
     // 调一次原版的渲染以获取走势箭头
     oldRenderChartForBBMix();
     
-    // 如果当前打开的是 Billboard，且是单曲榜或日增，追加覆盖处理比例条
-    if (curChartPlatform === 'BB' && (curChType === 'track' || curChType === 'daily')) {
+    // 如果当前打开的是 Billboard，追加覆盖处理比例条
+    if (curChartPlatform === 'BB' && ['track', 'daily', 'album', 'album_daily'].includes(curChType)) {
         let isUS = (curChReg === 'US');
-        let trks = trackPool.filter(x => x.type === "track");
+        let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+        let trks = trackPool.filter(x => isAlbum ? x.type === "album" : x.type === "track");
         
         trks.forEach(t => {
+            let stmGlobal = t.stmGlobal_Week || Math.floor(t.stmGlobal/7) || 0;
             let stmUS = t.stmUS_Week || Math.floor(t.stmUS/7) || 0;
-            let pureSales = Math.floor((t.stmGlobal_Week || 0) / 150) * (t.price || 1); 
-            let radio = t.radioAud || 0;
-            
-            // 点数公式换算与分布
-            let ptsSales = pureSales / 150;
-            let ptsStm = stmUS / 15000;
-            let ptsRadio = radio * 3;
-            
-            let totalPts = ptsSales + ptsStm + ptsRadio;
-            if (totalPts < 1) totalPts = 1;
-            t._bbPtsExact = Math.floor(totalPts);
-            
-            t._pctSales = Math.round((ptsSales / totalPts) * 100);
-            t._pctStm = Math.round((ptsStm / totalPts) * 100);
-            t._pctRadio = Math.round((ptsRadio / totalPts) * 100);
-            
-            // Payola 检测
-            if (t.isMe && t._pctRadio > 50 && totalPts > 100 && !t.radioScandal) {
-                posts.mom.unshift({ 
-                    t: `🔥 【惊天丑闻】${ad.s} 电台Payola实锤！`, 
-                    c: `大家快看B榜构成！《${t.n}》电台占比居然高达 ${t._pctRadio}%！流媒和销量全在下水道，全靠资本塞钱给电台洗脑，太恶心了！` 
-                });
-                t.radioScandal = true;
-                ad.st.f -= Math.floor(ad.st.f * 0.05);
+            if(curChTime === 'Day') { stmGlobal = t.stmGlobal_Day || 0; stmUS = t.stmUS_Day || 0; }
+            else if(curChTime === 'Week') { stmGlobal = t.stmGlobal_Week || 0; stmUS = t.stmUS_Week || 0; }
+            else if(curChTime === 'Decade') { stmGlobal = t.stmGlobal || 0; stmUS = t.stmUS || 0; }
+
+            let baseStm = isUS ? stmUS : stmGlobal;
+
+            if (isAlbum) {
+                // 专辑成分计算：纯实销 + 流媒折算(SEA)
+                let pureSales = Math.floor(baseStm / 1500) * (t.price || 10); 
+                let sea = Math.floor(baseStm / 1500); // 假设1500流媒=1专辑销量
+                
+                let totalPts = pureSales + sea;
+                if (totalPts < 1) totalPts = 1;
+                t._bbPtsExact = Math.floor(totalPts);
+                
+                // 占比计算
+                t._pctSales = Math.round((pureSales / totalPts) * 100);
+                t._pctStm = Math.round((sea / totalPts) * 100);
+                t._pctRadio = 0; // 专辑榜不计电台
+            } else {
+                // 单曲成分计算：实销 + 流媒 + 电台
+                let pureSales = Math.floor((t.stmGlobal_Week || 0) / 150) * (t.price || 1); 
+                let radio = t.radioAud || 0;
+                
+                let ptsSales = pureSales / 150;
+                let ptsStm = stmUS / 15000;
+                let ptsRadio = radio * 3;
+                
+                let totalPts = ptsSales + ptsStm + ptsRadio;
+                if (totalPts < 1) totalPts = 1;
+                t._bbPtsExact = Math.floor(totalPts);
+                
+                t._pctSales = Math.round((ptsSales / totalPts) * 100);
+                t._pctStm = Math.round((ptsStm / totalPts) * 100);
+                t._pctRadio = Math.round((ptsRadio / totalPts) * 100);
+                
+                // Payola 检测 (单曲专属)
+                if (t.isMe && t._pctRadio > 50 && totalPts > 100 && !t.radioScandal) {
+                    posts.mom.unshift({ 
+                        t: `🔥 【惊天丑闻】${ad.s} 电台Payola实锤！`, 
+                        c: `大家快看B榜构成！《${t.n}》电台占比居然高达 ${t._pctRadio}%！流媒和销量全在下水道，全靠资本塞钱给电台洗脑，太恶心了！` 
+                    });
+                    t.radioScandal = true;
+                    ad.st.f -= Math.floor(ad.st.f * 0.05);
+                }
             }
         });
         
         trks.sort((a,b) => b._bbPtsExact - a._bbPtsExact);
         
         let box = document.getElementById("mChartContent");
-        box.innerHTML = trks.slice(0, 100).map((t, i) => {
+        let maxDisplay = isAlbum ? 200 : 100;
+        
+        box.innerHTML = trks.slice(0, maxDisplay).map((t, i) => {
             let currentRank = i + 1;
             let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #c8a440;' : 'background:#fff;';
             let peakVal = (curChReg === 'US') ? t.peakB : t.peakS;
             let peakStr = peakVal ? `最高: #${peakVal} | 在榜: ${t.weeks||1}周` : `在榜: ${t.weeks||1}周`;
             
-                    let trendHtml = "";
-        if (t.weeks <= 1) {
-            // 新曲：绿色 NEW
-            trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
-        } else {
-            // 获取上周排名
-            let lastRank = t.trendChart && t.trendChart.length > 0 ? t.trendChart[t.trendChart.length - 1] : (t.lastW || currentRank);
-            let diff = lastRank - currentRank;
-            
-            if (diff > 0) {
-                // 上升：蓝色
-                trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
-            } else if (diff < 0) {
-                // 下降：红色
-                trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
+            let trendHtml = "";
+            if (t.weeks <= 1) {
+                trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
             } else {
-                // 持平：灰色横杠
-                trendHtml = `<span style="color:#888888; font-weight:bold; font-size:10px;">-</span>`;
+                let lastRank = t.trendChart && t.trendChart.length > 0 ? t.trendChart[t.trendChart.length - 1] : (t.lastW || currentRank);
+                let diff = lastRank - currentRank;
+                if (diff > 0) trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▲ ${diff}</span>`;
+                else if (diff < 0) trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`;
+                else trendHtml = `<span style="color:#888888; font-weight:bold; font-size:10px;">-</span>`;
             }
-        }
 
-            let detailBtn = (t.isMe && t.type === 'track') ? `<br><button class="sec inline" style="padding:2px 6px;font-size:10px;margin-top:4px;" onclick="viewSongStats('${t.id}')">查看歌曲详情</button>` : '';
+            let detailBtn = (t.isMe && t.type === 'track') ? `<br><button class="sec inline" style="padding:2px 6px;font-size:10px;margin-top:4px;" onclick="viewSongStats('${t.id}')">查看单曲详情</button>` : '';
 
-            // 三色比例进度条
+            // 三色比例进度条 (如果是专辑，_pctRadio为0，会自动隐藏紫色电台条)
             let barHtml = `
             <div style="display:flex; width:100%; height:4px; margin-top:4px; border-radius:2px; overflow:hidden;">
                 <div style="width:${t._pctStm}%; background:#25d366;" title="流媒 ${t._pctStm}%"></div>
                 <div style="width:${t._pctSales}%; background:#0055ff;" title="实销 ${t._pctSales}%"></div>
-                <div style="width:${t._pctRadio}%; background:#8b5cf6;" title="电台 ${t._pctRadio}%"></div>
+                ${t._pctRadio > 0 ? `<div style="width:${t._pctRadio}%; background:#8b5cf6;" title="电台 ${t._pctRadio}%"></div>` : ''}
             </div>`;
+
+            let statsStr = isAlbum 
+                ? `<span style="font-size:10px;color:#888;">🎧流媒${t._pctStm}% 🛒实销${t._pctSales}%</span>`
+                : `<span style="font-size:10px;color:#888;">🎧${t._pctStm}% 🛒${t._pctSales}% 📻${t._pctRadio}%</span>`;
 
             return `
             <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${isMe}">
@@ -12083,8 +12108,8 @@ window.renderChart = function() {
                     ${barHtml}
                 </div>
                 <div style="text-align:right;font-size:12px;width:75px;">
-                    <b style="color:#c8a440;">${t._bbPtsExact.toLocaleString()} Pts</b><br>
-                    <span style="font-size:10px;color:#888;">🎧${t._pctStm}% 🛒${t._pctSales}% 📻${t._pctRadio}%</span>
+                    <b style="color:#c8a440;">${t._bbPtsExact.toLocaleString()} ${isAlbum ? 'EAU' : 'Pts'}</b><br>
+                    ${statsStr}
                 </div>
             </div>`;
         }).join('') || "<p style='text-align:center;color:#888;'>暂无数据</p>";
