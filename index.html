@@ -12908,6 +12908,459 @@ window.startWrite = function() {
     });
 };
 
+// 1. 修复：NPC 不回归、发歌慢的问题
+// 修改时间推演逻辑中的 NPC 回归机制
+var oldAdvTimeForNpcComeback = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    oldAdvTimeForNpcComeback(weeks, showMsg);
+    
+    // 获取用户设置的 NPC 回归倍率
+    let npcRate = ad.npcRate || 1.0;
+    
+    // 基础概率：每周大约有 5% 的概率会有 NPC 发歌 (一年约2.5次)，受到 npcRate 乘数影响
+    let comebackChance = 0.05 * npcRate * weeks; 
+    
+    // 遍历所有 NPC
+    worldArtists.forEach(npc => {
+        if (!npc.isMe && Math.random() < comebackChance) {
+            // 触发回归！
+            let isAlbum = Math.random() < 0.3; // 30% 概率发专辑，70% 概率发单曲
+            let g = gs[Math.floor(Math.random() * gs.length)];
+            
+            if (isAlbum) {
+                let albName = ts[Math.floor(Math.random() * ts.length)] + " " + ts[Math.floor(Math.random() * ts.length)];
+                let alb = window.createEntity(albName, npc.n, false, "album", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w);
+                trackPool.push(alb);
+                
+                // 专辑顺带一首主打歌
+                let trkName = ts[Math.floor(Math.random() * ts.length)];
+                let trk = window.createEntity(trkName, npc.n, false, "track", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w);
+                trackPool.push(trk);
+                
+                // 记录在全网动态里
+                if (posts && posts.mom && Math.random() < 0.2) {
+                    posts.mom.unshift({ t: `📢 [回归] ${npc.n} 发行新专辑`, c: `等了这么久终于回归了！新专辑《${albName}》概念绝美，大家快去听！` });
+                }
+            } else {
+                let trkName = ts[Math.floor(Math.random() * ts.length)];
+                let trk = window.createEntity(trkName, npc.n, false, "track", g, npc.fans, npc.sk.w, npc.sk.v, time.y, time.m, time.w);
+                trackPool.push(trk);
+            }
+        }
+        
+        // 发行豪华版的概率
+        let deluxeChance = ad.npcDeluxe || 0.15;
+        if (Math.random() < (deluxeChance * weeks / 4)) { // 分摊到每周
+            let npcAlbs = trackPool.filter(t => t.artist === npc.n && t.type === 'album' && !t.n.includes('Deluxe'));
+            if (npcAlbs.length > 0) {
+                let targetAlb = npcAlbs[Math.floor(Math.random() * npcAlbs.length)];
+                targetAlb.n += " (Deluxe)";
+                targetAlb.stmGlobal += Math.floor(targetAlb.stmGlobal * 0.2); // 粗略涨点流媒
+                targetAlb.stmGlobal_Week += Math.floor(targetAlb.stmGlobal_Week * 0.5);
+                targetAlb.slTotal += Math.floor((targetAlb.stmGlobal * 0.2) / 1500);
+            }
+        }
+    });
+};
+
+// 2. 修复：本地空间存储不足 (强制压缩图片并限制大小)
+// 覆盖原版的 processAvatarUpload
+window.processAvatarUpload = function(file, callback) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            // 极限压缩到 100x100，并且降低质量到 0.6，防止存档爆掉
+            const MAX_SIZE = 100; 
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+                if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+            } else {
+                if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+            }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            callback(canvas.toDataURL('image/jpeg', 0.6)); // 降低画质防爆档
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+// 3. 修复：设定奖项时风格除了 ALL 没有其他选项
+// 动态注入曲风选项到弹窗
+document.addEventListener("DOMContentLoaded", function() {
+    let selCatGenre = document.getElementById("selCatGenre");
+    if(selCatGenre) {
+        // 先保留 ALL
+        let html = `<option value="ALL">🌍 不限曲风 (ALL)</option>`;
+        // 再注入基础曲风 gs
+        gs.forEach(g => {
+            html += `<option value="${g}">${g}</option>`;
+        });
+        selCatGenre.innerHTML = html;
+    }
+});
+
+// 4. 修复：大盘选择合作歌手时显示零人
+// 确保在初始化或者修改后，正确刷新下拉列表
+window.updateFeatList = function() {
+    let h = `<option value="">+ 从大盘快捷选择歌手添加入列...</option>`; 
+    let arr = [...worldArtists]; // 使用解构防止引用污染
+    arr.sort(function(a,b){return (b.fans || 0) - (a.fans || 0)}).slice(0, 30).forEach(function(x){ 
+        h+=`<option value="${escapeHTML(x.n)}">${escapeHTML(x.n)} (粉:${((x.fans || 0)/10000).toFixed(0)}w)</option>`; 
+    }); 
+    let selObj = document.getElementById("selFeatHelper");
+    if(selObj) selObj.innerHTML = h; 
+};
+
+// 立即触发一次，确保进入游戏后列表不是空的
+setTimeout(() => {
+    if(typeof updateFeatList === 'function') updateFeatList();
+}, 1000);
+// ==================== 补丁：大盘控制、属性上限与实绩盘点升级 ====================
+
+// 1. 属性扩展至 1000：一键拉满及保存逻辑
+window.saveAttr = function(){ 
+    aKs.forEach(function(x){ 
+        let v = parseInt(document.getElementById(`ie_${x.k}`).value) || 1; 
+        ad.sk[x.k] = Math.min(1000, Math.max(1, v)); // 强制上限到1000
+    }); 
+    document.getElementById("boxEditAttr").style.display="none"; 
+    document.getElementById("boxBars").style.display="block"; 
+    updAttr(); 
+    saveGame(); 
+}
+
+// 2. 真实大盘控制：首日3倍、首周2倍、首月1.5倍，之后稳定浮动
+var oldAdvTimeForStrictBaseFluctuate = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    oldAdvTimeForStrictBaseFluctuate(weeks, showMsg);
+    
+    let baseInput = document.getElementById("customMarketBase");
+    let targetBase = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    
+    if(trks.length > 0) {
+        let currentTopWeekly = Math.max(1, trks[0].stmGlobal_Week || 1);
+        
+        trks.forEach((t) => {
+            // 根据歌曲的在榜周数决定突破限制的倍数
+            let limitMultiplier = 1.0;
+            if (t.weeks <= 1) limitMultiplier = 3.0;      // 首日/首周可突破 3 倍
+            else if (t.weeks <= 2) limitMultiplier = 2.0; // 次周可突破 2 倍
+            else if (t.weeks <= 4) limitMultiplier = 1.5; // 首月可突破 1.5 倍
+            else limitMultiplier = 1.0 + (Math.random() * 0.2 - 0.1); // 稳定期正常浮动
+            
+            let maxAllowedWeekly = (targetBase * 7) * limitMultiplier;
+            
+            // 如果某首歌当前周流媒超出了它的容许上限，强制压回上限
+            if (t.stmGlobal_Week > maxAllowedWeekly) {
+                t.stmGlobal_Week = Math.floor(maxAllowedWeekly);
+                t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+                t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+                t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+            }
+        });
+    }
+};
+
+// 3. 实绩盘点增强：盘点10亿/20亿歌曲，百亿专辑，独立奖项统计，最高5首乐评均分
+function getHardCoreStatsTop5(artistName, isMe) {
+    let allWorks = trackPool.filter(t => t.artist === artistName || (isMe && t.isMe));
+    let tracks = allWorks.filter(t => t.type === 'track');
+    let albums = allWorks.filter(t => t.type === 'album');
+    
+    // 最高商业流媒 5 首
+    let top5Stm = [...tracks].sort((a,b) => (b.stmGlobal||0) - (a.stmGlobal||0)).slice(0, 5);
+    // 最高乐评 5 首
+    let top5Art = [...tracks].sort((a,b) => (b.Spub||0) - (a.Spub||0)).slice(0, 5);
+
+    let stmListText = top5Stm.map((t, i) => `${i+1}.《${t.n}》(${(t.stmGlobal/1000000).toFixed(1)}M)`).join(' | ') || "无";
+    let artListText = top5Art.map((t, i) => `${i+1}.《${t.n}》(${(t.Spub||0).toFixed(1)}分)`).join(' | ') || "无";
+    
+    let stmSumTop5 = top5Stm.reduce((sum, t) => sum + (t.stmGlobal||0), 0);
+    // 这里不再是所有歌曲的均分，而是最高5首的乐评均分
+    let artAvgTop5 = top5Art.length > 0 ? (top5Art.reduce((sum, t) => sum + (t.Spub||0), 0) / top5Art.length).toFixed(1) : 0;
+    
+    // 突破流媒盘点
+    let songs10B = tracks.filter(t => t.stmGlobal >= 1000000000).length; // 十亿
+    let songs20B = tracks.filter(t => t.stmGlobal >= 2000000000).length; // 二十亿
+    let albums50B = albums.filter(a => a.stmGlobal >= 5000000000).length; // 50亿
+    let albums100B = albums.filter(a => a.stmGlobal >= 10000000000).length; // 100亿
+    
+    // 奖项独立盘点 (区分格莱美、全英等)
+    let awdStrs = isMe ? ad.awd : historyAwards.filter(msg => msg.includes("：" + artistName) || msg.includes(artistName + "《"));
+    let grammy = awdStrs.filter(s => s.includes("格莱美")).length;
+    let brits = awdStrs.filter(s => s.includes("全英音乐奖")).length;
+    let aoty = awdStrs.filter(s => s.includes("年度专辑") || s.includes("最佳专辑")).length;
+    let totalAwd = awdStrs.length;
+
+    return { 
+        top5Stm, top5Art, stmListText, artListText, stmSumTop5, artAvgTop5, 
+        songs10B, songs20B, albums50B, albums100B, 
+        grammy, brits, aoty, totalAwd 
+    };
+}
+
+// 4. 重写发帖系统，融入新的数据统计
+window.generateVarietyPost = function() {
+    let rand = Math.random();
+    let allArtistsList = [...worldArtists, { id: 'player_self', n: ad.s, isMe: true, sk: ad.sk }];
+    let targetArt = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+    
+    if (rand < 0.40) {
+        let stats = getHardCoreStatsTop5(targetArt.n, targetArt.isMe);
+        let title = `📊 【代表作盘点】${targetArt.n} 生涯脱水核心数据汇总`;
+        let content = `👑 【商业爆款】：\n突破 10 亿流媒单曲：${stats.songs10B} 首\n突破 20 亿流媒单曲：${stats.songs20B} 首\n突破 50 亿流媒专辑：${stats.albums50B} 张\n突破 100 亿流媒专辑：${stats.albums100B} 张\n\n🎵 【最高5首神曲乐评均分】：${stats.artAvgTop5} 分\n\n🏆 【重大奖项盘点】：\n总大奖数：${stats.totalAwd} 座\n(含 格莱美：${stats.grammy} 座，全英音乐奖：${stats.brits} 座，年度大专：${stats.aoty} 座)\n\n(谁还敢说TA没有代表作？粉丝速来控评！)`;
+        return { type: "data", title: title, desc: content };
+    } 
+    else if (rand < 0.70) {
+        let sk = targetArt.sk || { f: 50, s: 50, fa: 50 };
+        return { type: "promo", title: `🎵 【按头安利】入坑 ${targetArt.n} 必听神曲`, desc: `近期一直在单曲循环，这音色和旋律真的没谁了！强烈安利给大家！` };
+    } 
+    else {
+        let artA = targetArt;
+        let artB = allArtistsList[Math.floor(Math.random() * allArtistsList.length)];
+        if(artA.n === artB.n) return null;
+
+        let sA = getHardCoreStatsTop5(artA.n, artA.isMe);
+        let sB = getHardCoreStatsTop5(artB.n, artB.isMe);
+        
+        let winA = 0, winB = 0;
+        let stmWin = "", artWin = "", awdWin = "";
+
+        if (sA.songs20B > sB.songs20B) { winA++; stmWin = `${artA.n}一胜`; }
+        else if (sB.songs20B > sA.songs20B) { winB++; stmWin = `${artB.n}一胜`; }
+        else { stmWin = `平局`; }
+        
+        if (sA.artAvgTop5 > sB.artAvgTop5 + 5) { winA++; artWin = `${artA.n}一胜`; }
+        else if (sB.artAvgTop5 > sA.artAvgTop5 + 5) { winB++; artWin = `${artB.n}一胜`; }
+        else { artWin = `平局`; }
+        
+        if (sA.grammy > sB.grammy) { winA++; awdWin = `${artA.n}一胜`; }
+        else if (sB.grammy > sA.grammy) { winB++; awdWin = `${artB.n}一胜`; }
+        else { awdWin = `平局`; }
+
+        let content = `直接对比双方的【最高巅峰代表作和顶级大奖】打脸！\n\n`;
+        content += `【👑 第一局：超大爆曲数量对抗】\n`;
+        content += `破20亿单曲数：${artA.n} (${sA.songs20B}首) 🆚 ${artB.n} (${sB.songs20B}首)\n`;
+        content += `👉 结果判定：${stmWin}\n\n`;
+        
+        content += `【🎵 第二局：TOP5神曲均分对抗】\n`;
+        content += `最高5首乐评均分：${artA.n} (${sA.artAvgTop5}分) 🆚 ${artB.n} (${sB.artAvgTop5}分)\n`;
+        content += `👉 结果判定：${artWin}\n\n`;
+        
+        content += `【🏆 第三局：格莱美底蕴对抗】\n`;
+        content += `格莱美数：${artA.n} (${sA.grammy}座) 🆚 ${artB.n} (${sB.grammy}座)\n`;
+        content += `👉 结果判定：${awdWin}\n\n`;
+
+        let title = `🔥 【代表作硬碰硬】${artA.n} VS ${artB.n} 巅峰实绩对决！`;
+        return { type: "drama", title: title, desc: content };
+    }
+};
+// ==================== 补丁：AI生成艺人、个人设定整合、推翻专辑与演唱会多选 ====================
+
+// 1. 在自建艺人面板注入 AI 一键生成功能与个人设定整合
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let npcAddSec = document.getElementById("npcAddSec");
+        if (npcAddSec) {
+            // 将原来的手动注入表单前面，插入 AI 生成器
+            let manualBox = npcAddSec.querySelector(".card");
+            if (manualBox && !document.getElementById("aiNpcKeywords")) {
+                manualBox.insertAdjacentHTML('beforebegin', `
+                <div class="card" style="padding:10px;background:#e0f2fe;margin-bottom:10px;border:1px solid #bae6fd;">
+                    <b style="font-size:14px;color:#0369a1;">🤖 AI 快捷生成艺人</b>
+                    <p style="font-size:11px;color:#0284c7;margin:3px 0;">只需输入几个关键词，AI将自动补全下方所有信息并生成符合人设的初始数值。</p>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <input id="aiNpcKeywords" placeholder="如: 欧美颓废摇滚男 / 韩国清冷系女团门面" style="margin:0;flex:1;font-size:12px;padding:8px;">
+                        <button class="sec inline" style="margin:0;background:#0284c7;color:#fff;border:none;" onclick="aiAutoFillNpc()">AI生成设定</button>
+                    </div>
+                </div>`);
+                
+                // 将性格和外貌替换为综合的“个人设定”
+                let pInput = document.getElementById("aNpcPersonality");
+                if (pInput) {
+                    pInput.id = "aNpcSetting";
+                    pInput.placeholder = "综合个人设定 (如：高冷孤傲，金发碧眼高挑)";
+                } else {
+                    let stageNameInput = document.getElementById("aNpcStageName");
+                    if(stageNameInput) {
+                        stageNameInput.insertAdjacentHTML('afterend', `<input id="aNpcSetting" placeholder="综合个人设定 (性格与外貌，选填)" style="margin-top:8px;">`);
+                    }
+                }
+            }
+        }
+    }, 800);
+});
+
+// 2. AI 自动填充艺人逻辑
+window.aiAutoFillNpc = async function() {
+    let tk = document.getElementById("apiToken") ? document.getElementById("apiToken").value : "";
+    let keywords = document.getElementById("aiNpcKeywords").value.trim();
+    if (!tk) return alert("请先在【系统】设置并连接 API 才能使用 AI 生成！");
+    if (!keywords) return alert("请输入生成关键词！");
+    
+    let btn = event.target;
+    btn.innerText = "生成中..."; btn.disabled = true;
+    
+    let prompt = `根据玩家提供的关键词：“${keywords}”，设计一个娱乐圈艺人的基础档案。
+    要求返回严格的JSON格式：
+    {"real_name":"真实姓名(英文或符合设定的名字)","stage_name":"艺名","gender":"男/女/其他","fan_name":"粉丝群体名","setting":"综合个人设定(包含性格和外貌特征描述,约20字)","fans":初始粉丝数(纯数字,几万到几百万不等)}
+    注意：不要返回任何其他说明文字，只需返回JSON！`;
+    
+    try {
+        let r = await api(prompt);
+        if (r) {
+            let match = r.match(/\{[\s\S]*\}/);
+            if (match) {
+                let j = JSON.parse(match[0]);
+                document.getElementById("aNpcName").value = j.real_name || "";
+                document.getElementById("aNpcStageName").value = j.stage_name || "";
+                document.getElementById("aNpcGender").value = j.gender || "未知";
+                document.getElementById("aNpcFanName").value = j.fan_name || "";
+                document.getElementById("aNpcFans").value = j.fans || 50000;
+                if(document.getElementById("aNpcSetting")) document.getElementById("aNpcSetting").value = j.setting || "";
+                alert("✅ AI 生成完毕！确认信息无误后，点击【单体注入大盘】即可投放该艺人！");
+            } else {
+                throw new Error("JSON解析失败");
+            }
+        }
+    } catch(e) {
+        alert("⚠️ AI 生成失败，请检查 API 连接或重试！");
+    } finally {
+        btn.innerText = "AI生成设定"; btn.disabled = false;
+    }
+};
+
+// 重写注入逻辑读取新设定的 Setting
+var oldSubmitCustomNPCForSetting = window.submitCustomNPC;
+window.submitCustomNPC = async function() {
+    // 拦截并把 aNpcSetting 的值临时赋给 aNpcPersonality 以兼容旧代码
+    let settingInput = document.getElementById("aNpcSetting");
+    if (settingInput && !document.getElementById("aNpcPersonality")) {
+        let hiddenP = document.createElement("input");
+        hiddenP.type = "hidden";
+        hiddenP.id = "aNpcPersonality";
+        hiddenP.value = settingInput.value;
+        document.body.appendChild(hiddenP);
+    }
+    await oldSubmitCustomNPCForSetting();
+};
+
+// 3. 增强：推翻正在策划期的专辑 (止损并返还未发单曲)
+window.scrapMultiAlb = function(idx) {
+    let alb = ad.multiAlbPjs[idx];
+    if (!alb) return;
+    
+    if(!confirm(`⚠️ 确定要彻底推翻并废弃专辑企划《${alb.n}》吗？\n当前收录的 ${alb.s.length} 首歌曲中：\n- 未发行的歌曲将退回【录音室】\n- 已发行的先行曲将作为独立单曲继续保留在大盘中\n该企划文件夹将被永久销毁！`)) return;
+    
+    let returnedCount = 0;
+    // 剥离歌曲：未发行的退回录音室
+    if(alb.s && alb.s.length > 0) {
+        alb.s.forEach(song => {
+            if (!song.released) {
+                std.push(song);
+                returnedCount++;
+            }
+        });
+    }
+    
+    // 扣除违约/止损金
+    let penalty = Math.floor(ad.m * 0.1);
+    if(penalty > 500000) penalty = 500000;
+    ad.m -= penalty;
+    
+    // 删除企划
+    ad.multiAlbPjs.splice(idx, 1);
+    
+    alert(`🗑️ 专辑企划已成功推翻废弃！\n扣除前期筹备止损费用 $${penalty.toLocaleString()}。\n有 ${returnedCount} 首未发行的成品已安全退回录音室。`);
+    
+    renderMultiAlbumStudio();
+    renderStdMap();
+    updAttr();
+    saveGame();
+};
+
+// 兼容单轨制专辑推翻
+window.scrapAlb = function() {
+    if(!curAlbPj) return;
+    if(!confirm(`⚠️ 确定要彻底推翻并废弃专辑企划《${curAlbPj.n}》吗？未发行歌曲将退回录音室，已发行先行曲将独立保留。`)) return;
+    
+    let returnedCount = 0;
+    if(curAlbPj.s) { 
+        curAlbPj.s.forEach(song => { 
+            if(!song.released) { std.push(song); returnedCount++; } 
+        }); 
+    }
+    
+    let penalty = Math.floor(ad.m * 0.1);
+    if(penalty > 500000) penalty = 500000;
+    ad.m -= penalty;
+    
+    alert(`🗑️ 专辑企划已推翻！止损扣除 $${penalty.toLocaleString()}。\n退回 ${returnedCount} 首未发行曲目。`);
+    
+    curAlbPj = null; 
+    updateAlbProjUI(); 
+    updAttr(); 
+    renderStdMap(); 
+    saveGame(); 
+};
+
+// 4. 完善演唱会多选歌单功能 (确保 checkbox 勾选限制与结算)
+window.checkSetlistLimit = function() {
+    let chks = document.querySelectorAll(".setlist-chk:checked");
+    document.getElementById("txtSetlistCount").innerText = `已选: ${chks.length}`;
+    if(chks.length > performContext.maxSongs) {
+        alert(`根据当前规模，最多只能选择 ${performContext.maxSongs} 首歌曲表演！\n如需表演更多歌曲，请选择更高级别的巡演/舞台规模！`);
+        event.target.checked = false;
+        document.getElementById("txtSetlistCount").innerText = `已选: ${chks.length - 1}`;
+    } else {
+        // 实时更新已选 ID
+        window.setlistSelectedIds = Array.from(chks).map(c => c.value);
+    }
+};
+
+window.selectAllFiltered = function() {
+    let chks = document.querySelectorAll(".setlist-chk");
+    let count = 0;
+    chks.forEach(chk => {
+        if(chk.parentElement.style.display !== "none" && count < performContext.maxSongs) {
+            chk.checked = true;
+            count++;
+        } else {
+            chk.checked = false;
+        }
+    });
+    window.setlistSelectedIds = Array.from(document.querySelectorAll(".setlist-chk:checked")).map(c => c.value);
+    document.getElementById("txtSetlistCount").innerText = `已选: ${window.setlistSelectedIds.length}`;
+};
+
+window.filterSetlist = function() {
+    let fIdx = document.getElementById("selSetlistFilter").value;
+    let chks = document.querySelectorAll(".setlist-chk");
+    
+    if (fIdx === "ALL") {
+        chks.forEach(chk => chk.parentElement.style.display = "flex");
+    } else {
+        let targetAlb = albs[parseInt(fIdx)];
+        if(!targetAlb) return;
+        chks.forEach(chk => {
+            let isMatch = targetAlb.s.some(s => s.id === chk.value || s.n === chk.parentElement.querySelector("b").innerText);
+            chk.parentElement.style.display = isMatch ? "flex" : "none";
+            if (!isMatch) chk.checked = false; // 隐藏的取消勾选
+        });
+    }
+    window.checkSetlistLimit();
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
