@@ -1239,8 +1239,13 @@ window.openInviteList = function() {
         listHTML += `<li style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #eee;"><div style="flex:1;"><b>${nameStr}</b><br><span style="font-size:11px;color:#888;">${escapeHTML(friend.t)}</span></div><div style="display:flex; flex-wrap:wrap; gap:5px; max-width:200px; justify-content:flex-end;"><button class="inline sec" onclick="interactWithFriend(${idx}, 'message')">发消息(+1)</button><button class="inline sec" onclick="interactWithFriend(${idx}, 'invite')">邀请来家(+2)</button>${!friend.isCohabiting ? `<button class="inline sec" onclick="interactWithFriend(${idx}, 'visit')">去他家玩</button>` : ''}<div class="romance-btns">${renderRomanceButtons(friend, idx)}</div></div></li>`; 
     }); 
     listHTML += '</ul>'; 
-    document.getElementById('friend-list-container').innerHTML = listHTML; 
-    document.getElementById('mFriendList').classList.add('open'); 
+    let container = document.getElementById('friend-list-container');
+    if(container) {
+        container.innerHTML = listHTML; 
+        document.getElementById('mFriendList').classList.add('open'); 
+    } else {
+        console.warn("未找到好友列表容器 friend-list-container");
+    }
 }
 function renderRomanceButtons(friend, idx) { 
     if (friend.isCohabiting) return `<button class="inline" disabled style="background:#e5f6e5;color:#2e7d32;">已同居</button>`; 
