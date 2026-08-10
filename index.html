@@ -15848,6 +15848,42 @@ window.updAttr = function() {
         console.warn("被拦截的渲染异常：", e);
     }
 };
+// ==================== 紧急修复：彻底拦截并修复 updAttr 的 reading 'v' 报错 ====================
+var superSafeUpdAttrFix = window.updAttr;
+window.updAttr = function() {
+    // 1. 如果大盘还没初始化玩家档案 ad，直接阻断渲染
+    if (typeof ad === 'undefined' || !ad) {
+        return;
+    }
+    
+    // 2. 如果存在档案，但丢失了八维属性（比如旧档兼容问题），强行补全默认属性
+    if (typeof ad.sk === 'undefined' || !ad.sk) {
+        ad.sk = { v:50, d:50, r:50, w:50, f:50, s:50, fa:50, va:50 };
+    }
+    
+    // 3. 逐个检查八项能力，补全所有缺失的单项能力，防止 reading 报错
+    if (typeof aKs !== 'undefined' && Array.isArray(aKs)) {
+        aKs.forEach(x => {
+            if (typeof ad.sk[x.k] === 'undefined' || ad.sk[x.k] === null || isNaN(ad.sk[x.k])) {
+                ad.sk[x.k] = 50;
+            }
+        });
+    }
+
+    // 4. 执行原版的渲染逻辑，并用 try-catch 包裹，确保即使某一层 UI 出错，也不会导致整个游戏瘫痪
+    try {
+        if (typeof superSafeUpdAttrFix === 'function') {
+            superSafeUpdAttrFix();
+        }
+    } catch(e) {
+        console.warn("已拦截底层渲染异常 (无视即可)：", e);
+    }
+};
+
+// 全局兜底清理可能卡死的定时器引起的 UI 报错
+setTimeout(() => {
+    if (typeof updAttr === 'function') updAttr();
+}, 1500);
 
 // ==================== 代码结束 ====================
 </script>
