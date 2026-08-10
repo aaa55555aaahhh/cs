@@ -15158,305 +15158,256 @@ window.viewSongStats = function(songId) {
         descBox.insertAdjacentHTML('beforeend', waterBtnHtml);
     }
 };
-// ==================== 终极扩展 6.1：修复错乱、称号重构、单体导出与 Diss嘲讽系统 ====================
+// ==================== 终极修复：称号/巡演总结移至底部，重置地图与Diss写歌面板 ====================
 
-// 1. 紧急修复：创建奖项表单的 HTML 结构错乱 Bug
+// 1. 将称号与巡演总结放到“发行作品”同一级的底部标签页中
 document.addEventListener("DOMContentLoaded", function() {
     setTimeout(() => {
-        let catFormSelect = document.getElementById("selCatForm");
-        let songTypeSelect = document.getElementById("selCatSongType");
-        // 发现错乱嵌套，进行强制拆解和重组
-        if (catFormSelect && songTypeSelect && catFormSelect.contains(songTypeSelect)) {
-            let parent = catFormSelect.parentElement;
-            // 重新构建这部分表单
-            let correctHtml = `
-                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定形式 (独唱/合唱):</label>
-                <select id="selCatForm" style="font-size:12px;margin-bottom:5px;">
-                    <option value="ALL">🤝 不限形式 (独唱合唱皆可)</option>
-                    <option value="solo">🎤 仅限独唱 (Solo)</option>
-                    <option value="collab">👯 仅限合作/合唱 (Collab)</option>
-                </select>
-                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定歌曲类型 (Vocal/唱跳/Rap):</label>
-                <select id="selCatSongType" style="font-size:12px;margin-bottom:5px;">
-                    <option value="ALL">🌟 不限类型 (ALL)</option>
-                    <option value="Vocal">🎤 仅限 Vocal 歌曲</option>
-                    <option value="唱跳">🕺 仅限 唱跳 歌曲</option>
-                    <option value="Rapper">🎧 仅限 Rapper 歌曲</option>
-                </select>
-            `;
-            // 找到这段错乱的起点替换掉
-            let box = catFormSelect.parentElement;
-            // 简单粗暴：把原有的选项移出来，或者直接重新赋内联HTML
-            catFormSelect.innerHTML = `
-                <option value="ALL">🤝 不限形式 (独唱合唱皆可)</option>
-                <option value="solo">🎤 仅限独唱 (Solo)</option>
-                <option value="collab">👯 仅限合作/合唱 (Collab)</option>
-            `;
-            // 把被吃进去的 select 移到外面
-            catFormSelect.insertAdjacentHTML('afterend', `
-                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定歌曲类型 (Vocal/唱跳/Rap):</label>
-                <select id="selCatSongType" style="font-size:12px;margin-bottom:5px;">
-                    <option value="ALL">🌟 不限类型 (ALL)</option>
-                    <option value="Vocal">🎤 仅限 Vocal 歌曲</option>
-                    <option value="唱跳">🕺 仅限 唱跳 歌曲</option>
-                    <option value="Rapper">🎧 仅限 Rapper 歌曲</option>
-                </select>
+        let attrTabBar = document.querySelector("#pAttr .sub-tab-bar");
+        let attrTabsBox = document.getElementById("attrTabs");
+        
+        if (attrTabBar && attrTabsBox && !document.getElementById("tabTitles")) {
+            // 在原有的“发行作品”、“奖项履历”后面追加新的标签
+            attrTabBar.insertAdjacentHTML('beforeend', `
+                <div class="sub-tab" onclick="switchSubTab(this, 'tabTitles', 'attrTabs')">👑 称号一览</div>
+                <div class="sub-tab" onclick="switchSubTab(this, 'tabTourStats', 'attrTabs')">🏟️ 巡演总结</div>
             `);
-            let oldSongType = catFormSelect.querySelector("#selCatSongType");
-            if (oldSongType) oldSongType.remove();
-            let oldLabels = catFormSelect.querySelectorAll("label");
-            oldLabels.forEach(l => l.remove());
+            
+            // 追加对应的子页面
+            attrTabsBox.insertAdjacentHTML('beforeend', `
+                <div id="tabTitles" class="sub-page" style="font-size:13px;max-height:250px;overflow-y:auto;background:#fefcf5;padding:10px;border-radius:8px;border:1px solid #eee;">
+                    <b style="color:#c8a440;">竞争中目标：</b><br><span id="txtTitlesActive">无</span><br><br>
+                    <b style="color:#e6683c;">竞争成功 (已获得)：</b><br><span id="txtTitlesAchieved">无</span><br><br>
+                    <button class="sec" style="font-size:12px;padding:6px;width:100%;" onclick="checkTitles()">🏅 判定/结算竞争胜利</button>
+                </div>
+                <div id="tabTourStats" class="sub-page" style="font-size:13px;max-height:250px;overflow-y:auto;background:#f0f9ff;padding:10px;border-radius:8px;border:1px solid #bae6fd;">
+                    总计动员人数：<b style="color:#0369a1;font-size:16px;"><span id="txtTourAttendance">0</span> 人</b><br><br>
+                    累计巡演票房：<b style="color:#e6683c;font-size:16px;">$<span id="txtTourBoxOffice">0</span></b>
+                </div>
+            `);
         }
-
-        // 屏蔽作品库导入导出按钮，防止崩溃
-        let myWorksExportBtn = Array.from(document.querySelectorAll("button")).find(b => b.innerText.includes("导出我的作品库"));
-        if(myWorksExportBtn) {
-            myWorksExportBtn.innerText = "❌ 作品库导出已关闭 (防爆档)";
-            myWorksExportBtn.disabled = true;
-            myWorksExportBtn.style.opacity = "0.5";
-        }
+        
+        // 删掉之前错误放在上方的旧框
+        let oldBoxTitles = document.getElementById("boxTitles");
+        let oldBoxTourStats = document.getElementById("boxTourStats");
+        if(oldBoxTitles) oldBoxTitles.remove();
+        if(oldBoxTourStats) oldBoxTourStats.remove();
     }, 1000);
 });
 
-// ==================== 2. 彻底重构个人主页 (称号系统与巡演统计生效) ====================
-// 直接覆盖渲染，不再使用劫持
-var trueOriginalUpdAttr = window.updAttr;
+// 重写 updAttr 确保新标签页里的数据被更新
+var patchUpdAttrForTabs = window.updAttr;
 window.updAttr = function() {
-    trueOriginalUpdAttr(); // 跑完原版后，我们来确保 DOM 存在
-    
-    // 初始化数据结构
+    patchUpdAttrForTabs();
     if (typeof ad.titles === 'undefined') ad.titles = { active: [], achieved: [] };
     if (typeof ad.tourStats === 'undefined') ad.tourStats = { totalBoxOffice: 0, totalAttendance: 0 };
     
-    let boxBasic = document.getElementById("boxBasic");
-    if(boxBasic) {
-        // 如果没有这两个面板，就注入
-        if(!document.getElementById("boxTitles")) {
-            boxBasic.insertAdjacentHTML('afterend', `
-            <div id="boxTitles" style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:8px; border:1px solid #eee;">
-                <b style="font-size:13px; color:#c8a440;">👑 称号与地位</b>
-                <div style="font-size:12px; margin-top:5px;">
-                    <span style="color:#666;">竞争目标：</span><span id="txtTitlesActive">无</span><br>
-                    <span style="color:#666;">已得头衔：</span><span id="txtTitlesAchieved" style="color:#e6683c; font-weight:bold;">无</span>
-                </div>
-                <button class="sec inline" style="margin-top:5px; font-size:11px;" onclick="checkTitles()">🏅 结算竞争地位</button>
-            </div>
-            <div id="boxTourStats" style="margin-top:10px; padding:10px; background:#f0f9ff; border-radius:8px; border:1px solid #bae6fd;">
-                <b style="font-size:13px; color:#0369a1;">🏟️ 巡演生涯总结</b>
-                <div style="font-size:12px; margin-top:5px;">
-                    累计票房: <b style="color:#111;">$<span id="txtTourBoxOffice">0</span></b><br>
-                    动员总人数: <b style="color:#111;"><span id="txtTourAttendance">0</span> 人</b>
-                </div>
-            </div>`);
-        }
-        
-        // 更新数据
+    if (document.getElementById("txtTitlesActive")) {
         document.getElementById("txtTitlesActive").innerText = ad.titles.active.length > 0 ? ad.titles.active.join(', ') : "称霸全网";
-        document.getElementById("txtTitlesAchieved").innerText = ad.titles.achieved.length > 0 ? ad.titles.achieved.join(', ') : "暂无头衔";
+        document.getElementById("txtTitlesAchieved").innerText = ad.titles.achieved.length > 0 ? ad.titles.achieved.join(', ') : "空空如也";
         document.getElementById("txtTourBoxOffice").innerText = ad.tourStats.totalBoxOffice.toLocaleString();
         document.getElementById("txtTourAttendance").innerText = ad.tourStats.totalAttendance.toLocaleString();
     }
 };
 
-window.checkTitles = function() {
-    let genderType = ad.g.includes("女") ? "女" : (ad.g.includes("男") ? "男" : "综合");
-    let topTitle = genderType === "女" ? "世女一" : (genderType === "男" ? "世男一" : "世一");
-    let fiveTitle = genderType === "女" ? "女五大" : (genderType === "男" ? "男五大" : "综合五大");
-    
-    // 全方位断层判定：粉丝、流媒、巡演票房、冠单都要第一
-    let maxNpcFans = 0, maxNpcStm = 0;
-    worldArtists.forEach(npc => {
-        if(npc.fans > maxNpcFans) maxNpcFans = npc.fans;
-        let stm = trackPool.filter(t => t.artist === npc.n).reduce((s, t) => s + (t.stmGlobal||0), 0);
-        if (stm > maxNpcStm) maxNpcStm = stm;
-    });
-    let myStm = trackPool.filter(t => t.isMe).reduce((s, t) => s + (t.stmGlobal||0), 0);
-    
-    if (ad.st.f > maxNpcFans * 1.5 && myStm > maxNpcStm * 1.5 && ad.tourStats.totalBoxOffice > 50000000) {
-        if (!ad.titles.achieved.includes(topTitle)) {
-            ad.titles.achieved.push(topTitle);
-            alert(`👑 绝对碾压！你成功在各方面断层其他艺人，加冕【${topTitle}】称号！`);
-        } else alert(`你已经是不可撼动的【${topTitle}】了！`);
-    } else if (ad.st.f > maxNpcFans * 0.5 && myStm > maxNpcStm * 0.5) {
-        if (!ad.titles.achieved.includes(fiveTitle)) {
-            ad.titles.achieved.push(fiveTitle);
-            alert(`🎉 恭喜跻身【${fiveTitle}】之列！继续努力实现断层登顶吧！`);
-        } else alert("数据尚未形成绝对断层，继续努力登顶！");
-    } else {
-        alert("你还需要更多的实绩积累才能参与顶级称号的角逐。");
-    }
-    updAttr(); saveGame();
-};
-
-// ==================== 3. 艺人详情：追加单体导出功能 ====================
-var baseOpenNpcDetail = window.openNpcDetail;
-window.openNpcDetail = function(id) {
-    baseOpenNpcDetail(id); // 调原版渲染
-    
-    let npc = worldArtists.find(x => x.id === id);
-    if(npc && document.getElementById("mInfoContent")) {
-        // 在最底下的操作区加一个导出按钮
-        let exportHtml = `
-        <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ccc; text-align:center;">
-            <button class="sec" style="font-size:12px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;" onclick="exportSingleNpc('${npc.id}')">
-                📤 导出该艺人 (分享为单体 JSON)
-            </button>
-        </div>`;
-        document.getElementById("mInfoContent").insertAdjacentHTML('beforeend', exportHtml);
-    }
-};
-
-window.exportSingleNpc = function(id) {
-    let npc = worldArtists.find(x => x.id === id);
-    if(!npc) return;
-    
-    let dataObj = { type: 'worldArtists', worldArtists: [npc] }; // 打包成数组兼容导入
-    let jsonStr = JSON.stringify(dataObj, null, 2);
-    let blob = new Blob([jsonStr], { type: "application/json" });
-    let url = URL.createObjectURL(blob);
-    
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = `星路制作人_艺人_${npc.n}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    alert(`✅ 已成功导出艺人【${npc.n}】的数据！`);
-};
-
-// ==================== 4. 社交互动重写：@互撕/相爱系统生效 ====================
-// 只要打开微博/X/Ins，强制注入@输入框
-var baseOpenAppForAt = window.openApp;
-window.openApp = function(appId) {
-    baseOpenAppForAt(appId);
-    if(['Wb', 'X', 'Ins'].includes(appId)) {
-        let postArea = document.getElementById("mTextPost");
-        if (postArea && !document.getElementById("inSocialAt")) {
-            let insertBox = `
-            <div style="margin-top:10px; padding:10px; background:#f9f9f9; border:1px solid #ddd; border-radius:6px;">
-                <b style="font-size:12px;color:#0055ff;">@ 圈内互动 / 喊话</b><br>
-                <input type="text" id="inSocialAt" placeholder="输入要 @ 的艺人名字 (不@留空)" style="margin:5px 0; font-size:12px; padding:6px;">
-                <select id="selSocialAttitude" style="font-size:12px; padding:6px; margin:0;">
-                    <option value="love">💕 相亲相爱 (和平互动)</option>
-                    <option value="hate">🔥 霸气互撕 (开战拉踩)</option>
-                    <option value="ai">🤖 AI判定态度</option>
-                </select>
-            </div>`;
-            // 插入在发布按钮的上方
-            let postBtn = Array.from(postArea.querySelectorAll("button")).find(b => b.innerText === "发布");
-            if(postBtn) postBtn.insertAdjacentHTML('beforebegin', insertBox);
-        }
-    }
-};
-
-// 拦截发布按钮，处理 @ 逻辑
-var basePostSocialForAt = window.postSocial;
-window.postSocial = function() {
-    let atNameInput = document.getElementById("inSocialAt");
-    let atName = atNameInput ? atNameInput.value.trim() : "";
-    
-    if (atName) {
-        let attitude = document.getElementById("selSocialAttitude").value;
-        let text = document.getElementById("mTextInput").value || "分享了一条动态";
+// 2. 彻底修复地图界面：强制注入训练营与咖啡馆
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let pMapButtons = document.querySelectorAll("#pMap .card > button.sec");
+        let pMapMainCard = document.querySelector("#pMap .card");
         
-        let npc = worldArtists.find(a => a.n === atName || a.n.includes(atName));
-        if (npc) {
-            let isHate = attitude === 'hate' || (attitude === 'ai' && Math.random() < 0.5);
-            
-            // 确保关系表存在
-            if(!npc.relations) npc.relations = {};
-            if(!npc.relations['player_self']) npc.relations['player_self'] = { p: "陌生", f: "陌生" };
-            
-            if (isHate) {
-                // 互撕：发帖并上热搜
-                if(typeof pushToTrend === 'function') pushToTrend(`🔥 爆 # ${ad.s} 公开手撕 ${npc.n}`, `正主亲自下场开撕！内娱欧美圈大地震，两家粉丝已经把各大榜单屠了！`);
-                npc.relations['player_self'].p = "坏血";
-                npc.relations['player_self'].f = "互撕";
-                alert(`🔥 宣战成功！你艾特了 ${npc.n} 并霸气开撕！\n你的动态已空降热搜，你们现在的关系变为了【坏血/互撕】！`);
-            } else {
-                // 相亲相爱
-                if(typeof pushToTrend === 'function') pushToTrend(`✨ # ${ad.s} 与 ${npc.n} 神仙友谊`, `正主互动啦！这两人是什么神仙友谊，画面太美好了！粉丝不要再打架了！`);
-                npc.relations['player_self'].p = "好朋友";
-                alert(`💕 互动成功！你亲切地艾特了 ${npc.n}，网友纷纷点赞神仙友谊！\n无论粉丝怎么撕，你们的正主关系已经变为了【好朋友】！`);
+        if (pMapButtons.length > 0 && !document.getElementById("btnMapTrain")) {
+            // 在“我的家”按钮后面追加
+            let homeBtn = Array.from(pMapButtons).find(b => b.innerText.includes("我的家"));
+            if (homeBtn) {
+                homeBtn.insertAdjacentHTML('afterend', `
+                    <button class="sec" id="btnMapTrain" onclick="showMap('mapTrain')">🏋️ 训练营</button>
+                    <button class="sec" id="btnMapCafe" onclick="showMap('mapCafe')">☕ 咖啡馆</button>
+                `);
             }
-        } else {
-            return alert("找不到你 @ 的艺人！请检查名字是否输入正确。");
+            
+            // 追加隐藏的页面内容
+            if (pMapMainCard) {
+                pMapMainCard.insertAdjacentHTML('beforeend', `
+                    <div id="mapTrain" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
+                        <h3 class="tg">🏋️ 秘密训练营</h3>
+                        <p style="font-size:12px;color:#888;margin-bottom:10px;">耗时半天，消耗30精力提升八维属性。</p>
+                        <select id="selTrainAttr" style="font-size:12px; margin-bottom:10px;">
+                            <option value="v">唱功 (Vocal)</option><option value="d">舞蹈 (Dance)</option>
+                            <option value="r">说唱 (Rap)</option><option value="w">创作 (Write)</option>
+                            <option value="f">颜值保养 (Face)</option><option value="s">台风 (Stage)</option>
+                            <option value="fa">时尚感 (Fashn)</option><option value="va">综艺感 (Varity)</option>
+                        </select>
+                        <button onclick="doTrain()">投入训练</button>
+                    </div>
+                    <div id="mapCafe" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
+                        <h3 class="tg">☕ 星光咖啡馆</h3>
+                        <p style="font-size:12px;color:#888;margin-bottom:10px;">一杯冰美式 $500，恢复40精力。</p>
+                        <button class="sec" onclick="buyCafe('takeaway')">打包带走 (可存入手机背包)</button>
+                        <button onclick="buyCafe('dinein')">在店里喝 (有概率偶遇NPC/私生饭)</button>
+                    </div>
+                `);
+            }
         }
-    }
+    }, 1200);
+});
+
+// 让 showMap 兼容这两个新页面
+var patchShowMap = window.showMap;
+window.showMap = function(id) {
+    let maps = ["mapStudio","mapLabel","mapHome","mapShows","mapAwards","mapMV","mapFashion","mapTV","mapTour","mapTrain","mapCafe"];
+    maps.forEach(m => { if(document.getElementById(m)) document.getElementById(m).style.display="none"; });
+    if(document.getElementById(id)) document.getElementById(id).style.display="block"; 
     
-    basePostSocialForAt(); // 走原版扣精力、发动态逻辑
+    // 兼容原版的特殊渲染
+    if(id=='mapStudio') renderStdMap(); if(id=='mapLabel') renderLbl(); if(id=='mapShows') renderShows(); 
+    if(id=='mapAwards') { renderAwardRegistry(); renderAwardsMap(); } 
+    if(id=='mapMV') renderMVMap(); 
 };
 
-// ==================== 5. Diss曲/成绩里程碑 嘲讽与感恩系统 (时间推演中触发) ====================
-var baseAdvTimeForMilestones = window.advTime;
-window.advTime = function(weeks, showMsg) {
-    baseAdvTimeForMilestones(weeks, showMsg);
-    
-    if (!posts || !posts.mom) return;
+// 3. 彻底修复写歌面板 (Diss 与 宗教曲风) - 强制覆盖所有旧的两步走代码
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        // 删掉之前可能冲突的面板
+        if(document.getElementById("mWriteSongUI")) document.getElementById("mWriteSongUI").remove();
+        
+        // 重新注入全新面板
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal" id="mWriteSongUI" style="z-index:9999;">
+            <div class="modal-box" style="max-height:85vh; overflow-y:auto;">
+                <button class="modal-x" onclick="closeM('mWriteSongUI')">X</button>
+                <h3 class="tg" style="text-align:center;margin-bottom:15px;">🎵 单曲企划与创作</h3>
+                
+                <label style="font-size:12px;font-weight:bold;">1. 歌曲名称:</label>
+                <div class="ai-input-group">
+                    <input id="inNewSongName" placeholder="输入歌名" style="margin-bottom:0;">
+                    <button class="sec" onclick="aiGenName('song', 'inNewSongName')">AI 取名</button>
+                </div>
+                
+                <label style="font-size:12px;font-weight:bold;margin-top:10px;display:block;">2. 概念内核 (选填):</label>
+                <input id="inNewSongCore" placeholder="如: 重生 / 复仇 / 心碎" style="margin-bottom:10px;">
+                
+                <label style="font-size:12px;font-weight:bold;margin-top:5px;display:block;">3. 选择主曲风:</label>
+                <select id="inNewSongGenre" style="font-size:12px;margin-bottom:10px;">
+                    <option value="流行">流行 (Pop)</option>
+                    <option value="HipHop">说唱 (HipHop)</option>
+                    <option value="R&B">R&B / 灵魂乐</option>
+                    <option value="摇滚">摇滚 (Rock)</option>
+                    <option value="乡村">乡村 (Country)</option>
+                    <option value="舞曲">舞曲 (Dance)</option>
+                    <option value="宗教">🙏 宗教 (Gospel / Religion) [被电台封杀]</option>
+                </select>
 
-    trackPool.forEach(t => {
-        // ========== 1. 对手发 Diss 曲嘲讽我们 ==========
-        if (!t.isMe && t.weeks === 1 && Math.random() < 0.05) {
-            let npc = worldArtists.find(a => a.n === t.artist);
-            if (npc && npc.relations && npc.relations['player_self']) {
+                <label style="font-size:12px;font-weight:bold;display:block;">4. 表演与歌曲类型:</label>
+                <select id="inNewSongType" style="font-size:12px;margin-bottom:10px;" onchange="toggleDissUI()">
+                    <option value="Vocal">🎤 纯享 Vocal</option>
+                    <option value="唱跳">🕺 动感唱跳 (Vocal & Dance)</option>
+                    <option value="Rapper">🎧 饶舌 Rapper</option>
+                    <option value="Diss">🔥 针对性 Diss Track</option>
+                </select>
+                
+                <div id="dissTargetBox" style="display:none; padding:10px; background:#fff0f5; border:1px solid #ff0000; border-radius:6px; margin-bottom:10px;">
+                    <label style="font-size:12px;color:#ff0000;font-weight:bold;">⚔️ 选择你要 Diss 的目标:</label>
+                    <p style="font-size:10px;color:#888;">必须在人际关系网中为【坏血】或【讨厌】关系才可选择！</p>
+                    <select id="inDissTarget" style="margin-top:5px; font-size:12px; border-color:#ff0000;"></select>
+                </div>
+
+                <label style="font-size:12px;font-weight:bold;display:block;">5. 合作歌手 (Feat.):</label>
+                <select id="inNewSongFeat" style="font-size:12px;margin-bottom:15px;"></select>
+
+                <button onclick="confirmStartWrite()">✍️ 确立企划并投入创作 (耗10精)</button>
+            </div>
+        </div>
+        `);
+    }, 1500);
+});
+
+// 强制覆盖点击“创作新曲”按钮的逻辑
+window.startWrite = function() {
+    if(curPj) return alert("⚠️ 有正在进行的企划，请先完成！"); 
+    
+    // 初始化填表
+    document.getElementById("inNewSongName").value = "";
+    document.getElementById("inNewSongCore").value = "";
+    document.getElementById("inNewSongType").value = "Vocal";
+    document.getElementById("dissTargetBox").style.display = "none";
+    
+    // 渲染合作歌手
+    let featOpts = `<option value="">(无，我独自Solo)</option>`;
+    let allArtists = [...worldArtists].sort((a,b) => (b.fans||0) - (a.fans||0));
+    allArtists.forEach(npc => {
+        featOpts += `<option value="${escapeHTML(npc.n)}">${escapeHTML(npc.n)} (粉:${(npc.fans/10000).toFixed(0)}w)</option>`;
+    });
+    document.getElementById("inNewSongFeat").innerHTML = featOpts;
+    
+    document.getElementById("mWriteSongUI").classList.add("open");
+};
+
+// Diss菜单联动
+window.toggleDissUI = function() {
+    let type = document.getElementById("inNewSongType").value;
+    let dissBox = document.getElementById("dissTargetBox");
+    let dissSel = document.getElementById("inDissTarget");
+    
+    if (type === "Diss") {
+        let hateOpts = "";
+        worldArtists.forEach(npc => {
+            if (npc.relations && npc.relations['player_self']) {
                 let rel = npc.relations['player_self'].p;
                 if (rel === "讨厌" || rel === "坏血") {
-                    posts.mom.unshift({ 
-                        t: `🔥 【爆】${t.artist} 新歌《${t.n}》疑似疯狂 Diss ${ad.s}！`, 
-                        c: `歌词太狠了！全网吃瓜群众都沸腾了，这首歌明里暗里全是在骂 ${ad.s} 啊！不知道 ${ad.s} 会不会写歌 Diss 回去？` 
-                    });
+                    hateOpts += `<option value="${escapeHTML(npc.n)}">${escapeHTML(npc.n)} (关系:${rel})</option>`;
                 }
             }
+        });
+        
+        if (hateOpts === "") {
+            alert("⚠️ 你目前没有任何处于【讨厌】或【坏血】关系的仇人！无法创作 Diss Track！");
+            document.getElementById("inNewSongType").value = "Rapper";
+            return;
         }
-
-        // ========== 2. 玩家/NPC 歌曲成绩里程碑（发贴炫耀/嘲讽） ==========
-        if (t.type === 'track') {
-            // 定义各大里程碑标志位，防止重复发帖
-            if (!t.milestonePosted) t.milestonePosted = {};
-            
-            // 黄金认证 (50万)
-            if (t.slTotal >= 500000 && !t.milestonePosted.gold) {
-                t.milestonePosted.gold = true;
-                if (t.isMe) {
-                    posts.mom.unshift({ t: `🏆 [捷报] 《${t.n}》达成黄金认证！`, c: `感谢粉丝们的支持，这首作品拿下了金唱片！我们会继续努力！` });
-                }
-            }
-            // 白金认证 (100万)
-            if (t.slTotal >= 1000000 && !t.milestonePosted.plat) {
-                t.milestonePosted.plat = true;
-                if (t.isMe) {
-                    posts.mom.unshift({ t: `💿 [狂欢] 《${t.n}》白金唱片达成！`, c: `谁说我不行？白金销量教做人！感谢大家送来的成绩，对家粉可以闭嘴了！` });
-                }
-            }
-            // 流媒破 10 亿
-            if (t.stmGlobal >= 1000000000 && !t.milestonePosted.b1) {
-                t.milestonePosted.b1 = true;
-                if (t.isMe) {
-                    posts.mom.unshift({ t: `🎉 [十亿俱乐部] 《${t.n}》流媒破 1,000,000,000！`, c: `进入十亿神曲俱乐部！这种实打实的数据，某些只会在榜单上上蹿下跳的人是羡慕不来的~` });
-                }
-            }
-            // 流媒破 20 亿
-            if (t.stmGlobal >= 2000000000 && !t.milestonePosted.b2) {
-                t.milestonePosted.b2 = true;
-                if (t.isMe) {
-                    posts.mom.unshift({ t: `👑 [二十亿封神] 《${t.n}》成为跨时代神曲！`, c: `20亿播放量！感恩大家！顺便给黑子们上一课：艺术大过天，好的作品就是能流芳百世，你们继续酸吧！` });
-                }
-            }
-            
-            // ========== 3. 玩家 Diss 曲拿到好成绩的专属“骑脸嘲讽” ==========
-            if (t.isMe && t.sType === "Diss" && t.dissTarget && t.slTotal >= 1000000 && !t.milestonePosted.dissWin) {
-                t.milestonePosted.dissWin = true;
-                posts.mom.unshift({ 
-                    t: `🔥 【骑脸输出】${ad.s} Diss曲《${t.n}》拿下白金认证！`, 
-                    c: `哈哈哈哈！${ad.s} 发帖：感谢某位 ${t.dissTarget} 给我提供的灵感，让我轻轻松松赚了个白金唱片！有些人不仅实力拉胯，连当素材的价值也就仅此而已了！` 
-                });
-                if(typeof pushToTrend === 'function') pushToTrend(`🔥 # ${ad.s} 发帖嘲讽 ${t.dissTarget}`, `太虾仁猪心了！写歌骂你还赚了大钱，还亲自发贴嘲讽！`);
-            }
-        }
-    });
+        
+        dissSel.innerHTML = hateOpts;
+        dissBox.style.display = "block";
+    } else {
+        dissBox.style.display = "none";
+    }
 };
 
+// 提交立项
+window.confirmStartWrite = function() {
+    let sName = document.getElementById("inNewSongName").value.trim();
+    if (!sName) return alert("必须填写歌名！");
+    if(!costEnergy(10)) return;
+    
+    let sCore = document.getElementById("inNewSongCore").value.trim() || "无";
+    let sGenre = document.getElementById("inNewSongGenre").value;
+    let sType = document.getElementById("inNewSongType").value;
+    let sFeat = document.getElementById("inNewSongFeat").value;
+    let dissTarget = (sType === "Diss") ? document.getElementById("inDissTarget").value : "";
+    
+    if(sFeat !== "") sName += ` (Feat. ${sFeat})`; 
+    
+    curPj = {
+        type: "write", 
+        n: sName, 
+        g: [sGenre], 
+        c: "", 
+        core: sCore, 
+        ff: sFeat,
+        sType: sType,
+        dissTarget: dissTarget
+    }; 
+    
+    prog = 0; 
+    if(document.getElementById("txtProg")) document.getElementById("txtProg").innerText = "0%"; 
+    if(document.getElementById("barProg")) document.getElementById("barProg").style.width = "0%"; 
+    if(document.getElementById("boxWriteProgress")) document.getElementById("boxWriteProgress").style.display = "block"; 
+    if(document.getElementById("btnStartWriteProj")) document.getElementById("btnStartWriteProj").style.display = "none"; 
+    
+    closeM('mWriteSongUI');
+    alert(`企划立项：${sName}。已扣除10精力。`); 
+    saveGame(); 
+};
 // ==================== 代码结束 ====================
 </script>
 </body>
