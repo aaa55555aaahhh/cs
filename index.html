@@ -15455,24 +15455,6 @@ function processAvatarUpload(file, callback) {
     reader.readAsDataURL(file);
 }
 
-let ad={}; let lib=[]; let std=[]; let albs=[]; let trackPool=[]; let marketSongs=[]; let worldArtists=[]; let writers=[]; let myWorks=[];
-let selG=[]; let selAG=[]; let posts={wb:[],x:[],ins:[],tiktok:[],mom:[]}; let curApp="";
-let time = { y:2026, m:1, w:1, d:1, h:0 }; let Mt = 1.0; 
-let curPj = null; let prog = 0; let curAlbPj = null; 
-let pickAction = ""; let tempIdx = -1;
-let historyAwards = []; let pendingAwards = []; 
-let currentAwardSeason = { year: 2026, submissions: [], nominations: [] };
-
-const gs=["流行","舞曲","摇滚","R&B","HipHop","电子","乡村","另类","灵魂乐","宗教"];
-const ts=["Midnight","Neon","Summer","Dream","Wild","Starlight","Broken","Lost","Golden","Echoes","Velvet","Shadow","Toxic","Lover","Savage","Fantasy","Rebel","Angel","Vampire","Cruel","Folklore","Evermore"];
-const npcNames=["Elara","Jaxon","Seraphina","Kael","Lyra","Orion","Calliope","Zephyr","Maeve","Caspian","Aria","Dante","Nova","Freya","Asher","Luna","Silas","Aurora","Felix","Zara"];
-let coList = []; 
-let conts=[ {id:1,n:"妈妈",t:"家人",h:[],affinity:50,isCohabiting:false}, {id:2,n:"爸爸",t:"家人",h:[],affinity:50,isCohabiting:false}, {id:3,n:"经纪人",t:"工作伙伴",h:[],affinity:30,isCohabiting:false} ];
-const aKs=[{k:"v",n:"唱功"},{k:"d",n:"舞蹈"},{k:"r",n:"Rap"},{k:"w",n:"创作"},{k:"f",n:"颜值"},{k:"s",n:"台风"},{k:"fa",n:"时尚"},{k:"va",n:"综艺"}];
-
-let awardRegistry = []; // 动态奖项库在完整代码中初始化
-let tourLegs = []; // 巡演场次数据
-
 // ==================== 1. 彻底替换单曲创作UI，激活Diss功能 ====================
 document.addEventListener("DOMContentLoaded", function() {
     let pjSingleBox = document.getElementById("pjSingle");
