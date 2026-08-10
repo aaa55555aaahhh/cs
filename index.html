@@ -15279,28 +15279,59 @@ window.toggleDissUI = function() {
     }
 };
 
-// 提交立项
+// 提交立项 (终极防崩溃版)
 window.confirmStartWrite = function() {
-    let sName = document.getElementById("inNewSongName").value.trim();
+    let nameInput = document.getElementById("inNewSongName") || document.getElementById("inSName");
+    if (!nameInput) return; // 防卡死阻断
+    
+    let sName = nameInput.value.trim();
     if (!sName) return alert("必须填写歌名！");
     if(!costEnergy(10)) return;
     
-    let sCore = document.getElementById("inNewSongCore").value.trim() || "无";
-    let sGenre = document.getElementById("inNewSongGenre").value;
-    if(sGenre === "CUSTOM") {
-        sGenre = document.getElementById("inNewSongCustomGenre").value.trim();
-        if(!sGenre) return alert("必须填写自定义曲风名称！");
-        if(!gs.includes(sGenre)) gs.push(sGenre); // 自动录入全局曲风库
+    let coreInput = document.getElementById("inNewSongCore") || document.getElementById("inSCore");
+    let sCore = coreInput ? coreInput.value.trim() : "无";
+    
+    // ================= 核心修复：曲风自由组合 =================
+    // 1. 继承原版 UI 点击选中的标签风格 (selG 数组)
+    let sGenreArr = typeof selG !== 'undefined' ? [...selG] : [];
+    
+    // 2. 读取下拉框里的曲风
+    let genreSelect = document.getElementById("inNewSongGenre");
+    if (genreSelect && genreSelect.value && genreSelect.value !== "CUSTOM") {
+        if (!sGenreArr.includes(genreSelect.value)) sGenreArr.push(genreSelect.value);
     }
-    let sType = document.getElementById("inNewSongType").value;
-    let sFeat = document.getElementById("inNewSongFeat").value;
-    let dissTarget = (sType === "Diss") ? document.getElementById("inDissTarget").value : "";    
+    
+    // 3. 读取自定义输入框填写的曲风 (类似专辑，没有再自定义)
+    let customInput = document.getElementById("inNewSongCustomGenre") || document.getElementById("inSCustom");
+    if (customInput && customInput.value.trim()) {
+        let customVal = customInput.value.trim();
+        if (!sGenreArr.includes(customVal)) sGenreArr.push(customVal);
+        // 如果系统曲风库(gs)里没有这个自定义流派，自动追加进去，以后就能直接选了
+        if (!gs.includes(customVal)) gs.push(customVal);
+    }
+    
+    // 4. 兜底判定：如果什么都没选，默认给流行
+    if (sGenreArr.length === 0) sGenreArr.push("流行");
+    // =========================================================
+
+    // 获取表演类型 (加入判空防护)
+    let typeInput = document.getElementById("inNewSongType") || document.getElementById("inSType");
+    let sType = typeInput ? typeInput.value : "Vocal";
+    
+    // 获取合作歌手 (加入判空防护)
+    let featInput = document.getElementById("inNewSongFeat") || document.getElementById("inFeat");
+    let sFeat = featInput ? featInput.value : "";
+    
+    // 获取 Diss 目标
+    let dissInput = document.getElementById("inDissTarget");
+    let dissTarget = (sType === "Diss" && dissInput) ? dissInput.value : "";    
+    
     if(sFeat !== "") sName += ` (Feat. ${sFeat})`; 
     
     curPj = {
         type: "write", 
         n: sName, 
-        g: [sGenre], 
+        g: sGenreArr, // 这里传入的是多流派组合的数组
         c: "", 
         core: sCore, 
         ff: sFeat,
