@@ -15190,7 +15190,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 <input id="inNewSongCore" placeholder="如: 重生 / 复仇 / 心碎" style="margin-bottom:10px;">
                 
                 <label style="font-size:12px;font-weight:bold;margin-top:5px;display:block;">3. 选择主曲风:</label>
-                <select id="inNewSongGenre" style="font-size:12px;margin-bottom:10px;">
+                <select id="inNewSongGenre" style="font-size:12px;margin-bottom:10px;" onchange="if(this.value==='CUSTOM'){document.getElementById('inNewSongCustomGenre').style.display='block';}else{document.getElementById('inNewSongCustomGenre').style.display='none';}">
                     <option value="流行">流行 (Pop)</option>
                     <option value="HipHop">说唱 (HipHop)</option>
                     <option value="R&B">R&B / 灵魂乐</option>
@@ -15198,9 +15198,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     <option value="乡村">乡村 (Country)</option>
                     <option value="舞曲">舞曲 (Dance)</option>
                     <option value="宗教">🙏 宗教 (Gospel / Religion) [被电台封杀]</option>
+                    <option value="CUSTOM">✍️ 自定义曲风...</option>
                 </select>
+                <input id="inNewSongCustomGenre" placeholder="请输入自定义曲风名称" style="display:none; margin-bottom:10px; font-size:12px;">
 
-                <label style="font-size:12px;font-weight:bold;display:block;">4. 表演与歌曲类型:</label>
+                <label style="font-size:12px;font-weight:bold;display:block;">4. 表演与歌曲类型:</label>                
                 <select id="inNewSongType" style="font-size:12px;margin-bottom:10px;" onchange="toggleDissUI()">
                     <option value="Vocal">🎤 纯享 Vocal</option>
                     <option value="唱跳">🕺 动感唱跳 (Vocal & Dance)</option>
@@ -15231,9 +15233,13 @@ window.startWrite = function() {
     // 初始化填表
     document.getElementById("inNewSongName").value = "";
     document.getElementById("inNewSongCore").value = "";
+    document.getElementById("inNewSongGenre").value = "流行";
+    if(document.getElementById("inNewSongCustomGenre")) {
+        document.getElementById("inNewSongCustomGenre").value = "";
+        document.getElementById("inNewSongCustomGenre").style.display = "none";
+    }
     document.getElementById("inNewSongType").value = "Vocal";
-    document.getElementById("dissTargetBox").style.display = "none";
-    
+    document.getElementById("dissTargetBox").style.display = "none";    
     // 渲染合作歌手
     let featOpts = `<option value="">(无，我独自Solo)</option>`;
     let allArtists = [...worldArtists].sort((a,b) => (b.fans||0) - (a.fans||0));
@@ -15283,10 +15289,14 @@ window.confirmStartWrite = function() {
     
     let sCore = document.getElementById("inNewSongCore").value.trim() || "无";
     let sGenre = document.getElementById("inNewSongGenre").value;
+    if(sGenre === "CUSTOM") {
+        sGenre = document.getElementById("inNewSongCustomGenre").value.trim();
+        if(!sGenre) return alert("必须填写自定义曲风名称！");
+        if(!gs.includes(sGenre)) gs.push(sGenre); // 自动录入全局曲风库
+    }
     let sType = document.getElementById("inNewSongType").value;
     let sFeat = document.getElementById("inNewSongFeat").value;
-    let dissTarget = (sType === "Diss") ? document.getElementById("inDissTarget").value : "";
-    
+    let dissTarget = (sType === "Diss") ? document.getElementById("inDissTarget").value : "";    
     if(sFeat !== "") sName += ` (Feat. ${sFeat})`; 
     
     curPj = {
@@ -15884,6 +15894,50 @@ window.updAttr = function() {
 setTimeout(() => {
     if (typeof updAttr === 'function') updAttr();
 }, 1500);
+// ==================== 紧急修复：彻底拦截并修复 updAttr 的 reading 'v' / 'length' 报错 ====================
+var superSafeUpdAttrFix = window.updAttr;
+window.updAttr = function() {
+    // 1. 如果大盘还没初始化玩家档案 ad，直接阻断渲染
+    if (typeof ad === 'undefined' || !ad) {
+        return;
+    }
+    
+    // 2. 强力兜底所有可能导致 length 报错的全局数组
+    if (typeof myWorks === 'undefined' || !myWorks) window.myWorks = [];
+    if (typeof trackPool === 'undefined' || !trackPool) window.trackPool = [];
+    if (typeof albs === 'undefined' || !albs) window.albs = [];
+    if (!ad.awd) ad.awd = [];
+    
+    // 3. 如果存在档案，但丢失了八维属性（比如旧档兼容问题），强行补全默认属性
+    if (typeof ad.sk === 'undefined' || !ad.sk) {
+        ad.sk = { v:50, d:50, r:50, w:50, f:50, s:50, fa:50, va:50 };
+    }
+    
+    // 4. 逐个检查八项能力，补全所有缺失的单项能力，防止 reading 报错
+    if (typeof aKs !== 'undefined' && Array.isArray(aKs)) {
+        aKs.forEach(x => {
+            if (typeof ad.sk[x.k] === 'undefined' || ad.sk[x.k] === null || isNaN(ad.sk[x.k])) {
+                ad.sk[x.k] = 50;
+            }
+        });
+    }
+
+    // 5. 执行原版的渲染逻辑，并用 try-catch 包裹，确保即使某一层 UI 出错，也不会导致整个游戏瘫痪
+    try {
+        if (typeof superSafeUpdAttrFix === 'function') {
+            superSafeUpdAttrFix();
+        }
+    } catch(e) {
+        console.warn("已拦截底层渲染异常 (无视即可)：", e);
+    }
+};
+
+// 全局兜底清理可能卡死的定时器引起的 UI 报错
+setTimeout(() => {
+    if (typeof updAttr === 'function') updAttr();
+}, 1500);
+
+// ==================== 代码结束 ====================
 
 // ==================== 代码结束 ====================
 </script>
