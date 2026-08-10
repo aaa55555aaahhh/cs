@@ -1191,11 +1191,15 @@ window.uploadMyAvatar = function(input) {
     }
 }
 
+   // 修复后: 安全版 updAttr 函数
 function updAttr(){ 
     if(!$("boxBasic")) return; 
     
     // 渲染个人头像与基本信息
     let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
+    
+    let safeFans = (ad.st && typeof ad.st.f !== 'undefined') ? ad.st.f : 0;
+    let safeMoney = (typeof ad.m !== 'undefined') ? ad.m : 0;
     
     $("boxBasic").innerHTML = `
     <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
@@ -1204,16 +1208,18 @@ function updAttr(){
             <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
         </div>
         <div style="line-height:1.6;">
-            艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)})<br>
-            粉丝:<b style="color:#c8a440">${ad.st.f.toLocaleString()}</b> | 资金:$${ad.m.toLocaleString()}<br>
-            公司:${escapeHTML(ad.co)}
+            艺人:${escapeHTML(ad.s || '未知')} (${escapeHTML(ad.g || '保密')})<br>
+            粉丝:<b style="color:#c8a440">${safeFans.toLocaleString()}</b> | 资金:$${safeMoney.toLocaleString()}<br>
+            公司:${escapeHTML(ad.co || '独立')}
         </div>
     </div>
     <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
     `; 
 
-    if($("boxInputs")) $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k]}" type="number" min="1" max="1000"></div>`}).join(''); 
-    if($("boxBars")) $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${Math.min(100, ad.sk[x.k] / 10)}%"></div></div><b>${ad.sk[x.k]}</b></div>`}).join('');     
+    // 安全渲染八维能力（只有 ad.sk 存在时才渲染）
+    if($("boxInputs") && ad.sk) $("boxInputs").innerHTML=aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k] || 50}" type="number" min="1" max="1000"></div>`}).join(''); 
+    if($("boxBars") && ad.sk) $("boxBars").innerHTML=aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${Math.min(100, (ad.sk[x.k] || 0) / 10)}%"></div></div><b>${ad.sk[x.k] || 0}</b></div>`}).join('');     
+    
     if($("tabWorks")) $("tabWorks").innerHTML = myWorks.length ? myWorks.map(function(x){
         let t = trackPool.find(tr => tr.id === x.id);
         let cert = getCert(t ? t.slTotal : x.slTotal);
@@ -1223,7 +1229,8 @@ function updAttr(){
         </div>`;
     }).join('') : "无"; 
     
-    if($("tabAwards")) $("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; } 
+    if($("tabAwards")) $("tabAwards").innerHTML = (ad.awd && ad.awd.length) ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
+} 
 window.saveAttr = function(){ aKs.forEach(function(x){ let v=parseInt($(`ie_${x.k}`).value)||1; ad.sk[x.k]=Math.min(1000,Math.max(1,v)); }); $("boxEditAttr").style.display="none"; $("boxBars").style.display="block"; updAttr(); saveGame(); }
 
 function renderMapCompany(){ if(ad.co === "独立"){ $("boxSignCompany").style.display = "block"; $("boxMyCompany").style.display = "none"; renderLbl(); } else { $("boxSignCompany").style.display = "none"; $("boxMyCompany").style.display = "block"; $("btnMapCompany").innerText = "🏢 我的公司"; } }
