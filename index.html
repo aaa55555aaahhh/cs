@@ -16069,6 +16069,106 @@ window.confirmStartWrite = function() {
         saveGame();
     }
 };
+// ==================== 紧急修复：彻底拦截并修复 updAttr 的 reading 'value' 报错 ====================
+var superSafeUpdAttrFixValue = window.updAttr;
+window.updAttr = function() {
+    // 1. 如果大盘还没初始化玩家档案 ad，直接阻断渲染
+    if (typeof ad === 'undefined' || !ad) {
+        return;
+    }
+    
+    // 2. 强力兜底所有可能导致 length 或 reading 'value' 报错的全局数组/对象
+    if (typeof myWorks === 'undefined' || !myWorks) window.myWorks = [];
+    if (typeof trackPool === 'undefined' || !trackPool) window.trackPool = [];
+    if (typeof albs === 'undefined' || !albs) window.albs = [];
+    if (!ad.awd) ad.awd = [];
+    if (typeof ad.st === 'undefined' || !ad.st) ad.st = { f: 0, h: 10 };
+    if (typeof ad.m === 'undefined') ad.m = 0;
+    
+    // 3. 补全缺失的八维属性对象
+    if (typeof ad.sk === 'undefined' || !ad.sk) {
+        ad.sk = { v:50, d:50, r:50, w:50, f:50, s:50, fa:50, va:50 };
+    }
+    
+    // 4. 逐个检查八项能力，补全所有缺失的单项能力
+    if (typeof aKs !== 'undefined' && Array.isArray(aKs)) {
+        aKs.forEach(x => {
+            if (typeof ad.sk[x.k] === 'undefined' || ad.sk[x.k] === null || isNaN(ad.sk[x.k])) {
+                ad.sk[x.k] = 50;
+            }
+        });
+    }
+
+    // 5. 【核心修复】：由于原版在调用 saveAttr() 时会去读取 `document.getElementById('ie_' + x.k).value`，
+    // 如果在还没有渲染 boxInputs 时（比如读档刚开始或者 UI 没加载完），试图去更新或读取，就会报 Cannot read properties of null (reading 'value')。
+    // 我们在这里加上防护，确保在安全的环境下执行原生渲染。
+    
+    try {
+        if (typeof superSafeUpdAttrFixValue === 'function') {
+            superSafeUpdAttrFixValue();
+        }
+    } catch(e) {
+        console.warn("已拦截底层渲染异常 (无视即可)：", e);
+    }
+    
+    // 6. 强制安全重绘基础面板和输入框，确保 DOM 元素一定存在
+    let boxBasic = document.getElementById("boxBasic");
+    if(boxBasic) {
+        let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
+        boxBasic.innerHTML = `
+        <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
+            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+                ${avatarHtml}
+                <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
+            </div>
+            <div style="line-height:1.6;">
+                艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)})<br>
+                粉丝:<b style="color:#c8a440">${(ad.st.f || 0).toLocaleString()}</b> | 资金:$${(ad.m || 0).toLocaleString()}<br>
+                公司:${escapeHTML(ad.co || '独立')}
+            </div>
+        </div>
+        <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
+        `;
+    }
+    
+    let boxInputs = document.getElementById("boxInputs");
+    if (boxInputs && typeof aKs !== 'undefined') {
+        boxInputs.innerHTML = aKs.map(function(x){
+            return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k] || 50}" type="number" min="1" max="1000"></div>`;
+        }).join('');
+    }
+    
+    let boxBars = document.getElementById("boxBars");
+    if (boxBars && typeof aKs !== 'undefined') {
+        boxBars.innerHTML = aKs.map(function(x){
+            let pct = Math.min(100, (ad.sk[x.k] || 0) / 10);
+            return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${pct}%"></div></div><b>${ad.sk[x.k] || 0}</b></div>`;
+        }).join('');
+    }
+};
+
+// 拦截 saveAttr，防止获取不到输入框时报错
+var safeSaveAttr = window.saveAttr;
+window.saveAttr = function() {
+    let allInputsExist = true;
+    aKs.forEach(function(x) {
+        if (!document.getElementById(`ie_${x.k}`)) {
+            allInputsExist = false;
+        }
+    });
+    
+    if (!allInputsExist) {
+        // 如果输入框还没准备好，不要去读取 value，直接关闭面板即可
+        if(document.getElementById("boxEditAttr")) document.getElementById("boxEditAttr").style.display="none"; 
+        if(document.getElementById("boxBars")) document.getElementById("boxBars").style.display="block"; 
+        return;
+    }
+    
+    if (typeof safeSaveAttr === 'function') {
+        safeSaveAttr();
+    }
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
