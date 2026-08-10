@@ -16168,7 +16168,121 @@ window.saveAttr = function() {
         safeSaveAttr();
     }
 };
+// ==================== 补丁：全面实装单曲与专辑的“自定义曲风”功能 ====================
 
+// 1. 拦截并改造专辑立项 (单专与多专) 的曲风选择UI
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        // 给传统的专辑立项界面增加自定义曲风输入
+        let boxAGenre = document.getElementById("boxAGenre");
+        if (boxAGenre && !document.getElementById("inNewAlbumCustomGenre")) {
+            boxAGenre.insertAdjacentHTML('afterend', `
+            <div style="margin-top:10px; margin-bottom:10px; background:#f9f9f9; padding:10px; border-radius:8px; border:1px solid #eee;">
+                <label style="font-size:12px; color:#555;">或者输入小众/自定义曲风：</label>
+                <input id="inNewAlbumCustomGenre" placeholder="比如: 蒸汽波 / 民族乐 / 黑金属..." style="margin-top:5px; margin-bottom:0; font-size:12px;">
+            </div>`);
+        }
+    }, 2000); // 延迟执行确保之前的覆写已经完毕
+});
+
+// 2. 覆盖多专辑文件夹的立项，加入自定义曲风输入
+var oldCreateNewAlbumPjForCustomGenre = window.createNewAlbumPj;
+window.createNewAlbumPj = function() {
+    if(!costEnergy(10)) return;
+    
+    gamePrompt("新专立项 (1/3)", "请输入新专辑的名称：", "未命名专辑", function(aName){
+        if(!aName || aName.trim() === "") return;
+        
+        setTimeout(() => {
+            gamePrompt("新专立项 (2/3)", "请输入新专的概念内核（选填，留空则为无）：", "", function(aCore){
+                
+                setTimeout(() => {
+                    gamePrompt("新专立项 (3/3)", "请输入自定义曲风 (选填，留空默认为流行)：", "", function(aGenre) {
+                        let finalGenre = aGenre.trim() || "流行";
+                        
+                        // 记录进全局曲风大盘
+                        if (finalGenre !== "流行" && !gs.includes(finalGenre)) {
+                            gs.push(finalGenre);
+                        }
+                        
+                        if(!ad.multiAlbPjs) ad.multiAlbPjs = [];
+                        ad.multiAlbPjs.push({
+                            id: "alb_m_" + Date.now(),
+                            n: aName.trim(),
+                            g: [finalGenre], 
+                            core: aCore.trim() || "无",
+                            s: [], 
+                            hype: 1.0, 
+                            singleCount: 0
+                        });
+                        alert(`📁 成功建立专辑档案：${aName}！(曲风: ${finalGenre})`);
+                        if(typeof renderMultiAlbumStudio === 'function') renderMultiAlbumStudio();
+                        saveGame();
+                    });
+                }, 400);
+
+            });
+        }, 400);
+    });
+};
+
+// 3. 增强单曲提交时的自定义曲风保存，确保不再丢失
+var ultimateConfirmStartWrite = window.confirmStartWrite;
+window.confirmStartWrite = function() {
+    let genreSelect = document.getElementById("inNewSongGenre");
+    let sGenre = genreSelect ? genreSelect.value : "流行";
+    let customGenreStr = "";
+    
+    // 如果选了自定义，强制读取自定义输入框的值
+    if(sGenre === "CUSTOM") {
+        let customInput = document.getElementById("inNewSongCustomGenre");
+        customGenreStr = customInput ? customInput.value.trim() : "";
+        
+        if(!customGenreStr) return alert("必须填写自定义曲风名称！");
+        
+        // 自动塞入曲风大盘，以后在其他地方也能刷出来
+        if(!gs.includes(customGenreStr)) gs.push(customGenreStr); 
+        
+        // 伪装一个合法的 select 选项骗过原代码
+        if (genreSelect) {
+            let opt = document.createElement("option");
+            opt.value = customGenreStr;
+            genreSelect.appendChild(opt);
+            genreSelect.value = customGenreStr;
+        }
+    }
+    
+    // 执行原版的创建逻辑
+    if (ultimateConfirmStartWrite) ultimateConfirmStartWrite();
+    
+    // 强制把玩家填写的自定义曲风写入当前的企划 (curPj)
+    if (curPj && curPj.type === "write" && customGenreStr !== "") {
+        curPj.g = [customGenreStr];
+        saveGame();
+    }
+};
+
+// 4. 原版专辑系统 (单专辑) 自定义曲风录入
+var oldStartAlbumForCustomGenre = window.startAlbum;
+window.startAlbum = function() {
+    let customInput = document.getElementById("inNewAlbumCustomGenre");
+    let customVal = customInput ? customInput.value.trim() : "";
+    
+    if (customVal) {
+        // 如果玩家输入了自定义曲风，强制清理掉原来选的标签，只用自定义的
+        if (typeof selAG !== 'undefined') {
+            selAG.length = 0; 
+            selAG.push(customVal);
+        }
+        if (!gs.includes(customVal)) gs.push(customVal);
+    }
+    
+    // 调回原版的发专逻辑
+    if (oldStartAlbumForCustomGenre) oldStartAlbumForCustomGenre();
+    
+    // 清空输入框
+    if (customInput) customInput.value = "";
+};
 // ==================== 代码结束 ====================
 </script>
 </body>
