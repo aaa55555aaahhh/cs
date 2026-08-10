@@ -953,10 +953,9 @@ function initCos(){
   ];
 }
 function initG(){
-  $("boxSGenre").innerHTML = gs.map(function(g){return `<span class="g-tag s-tag" onclick="tgG(this,selG)">${g}</span>`}).join('');
-  $("boxAGenre").innerHTML = gs.map(function(g){return `<span class="g-tag a-tag" onclick="tgG(this,selAG)">${g}</span>`}).join('');
+  if($("boxSGenre")) $("boxSGenre").innerHTML = gs.map(function(g){return `<span class="g-tag s-tag" onclick="tgG(this,selG)">${g}</span>`}).join('');
+  if($("boxAGenre")) $("boxAGenre").innerHTML = gs.map(function(g){return `<span class="g-tag a-tag" onclick="tgG(this,selAG)">${g}</span>`}).join('');
 }
-
 window.addEventListener("load", function() {
     initG();
     loadApiConfig();
@@ -3632,18 +3631,19 @@ document.addEventListener("DOMContentLoaded", function() {
                     <option value="ALL">🌍 不限曲风 (ALL)</option>
                 </select>
                 
-                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定形式 (独唱/合唱):</label>
+<label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定形式 (独唱/合唱):</label>
                 <select id="selCatForm">
-                                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定歌曲类型 (Vocal/唱跳/Rap):</label>
+                    <option value="ALL">🤝 不限形式 (独唱合唱皆可)</option>
+                    <option value="solo">🎤 仅限独唱 (Solo)</option>
+                    <option value="collab">👯 仅限合作/合唱 (Collab)</option>
+                </select>
+
+                <label style="font-size:12px;color:#666;margin-top:5px;display:block;">限定歌曲类型 (Vocal/唱跳/Rap):</label>
                 <select id="selCatSongType">
                     <option value="ALL">🌟 不限类型 (ALL)</option>
                     <option value="Vocal">🎤 仅限 Vocal 歌曲</option>
                     <option value="唱跳">🕺 仅限 唱跳 歌曲</option>
                     <option value="Rapper">🎧 仅限 Rapper 歌曲</option>
-                </select>
-                    <option value="ALL">🤝 不限形式 (独唱合唱皆可)</option>
-                    <option value="solo">🎤 仅限独唱 (Solo)</option>
-                    <option value="collab">👯 仅限合作/合唱 (Collab)</option>
                 </select>
 
                 <label style="font-size:12px;color:#666;margin-top:5px;display:block;">奖项考核侧重 (核心要求):</label>
