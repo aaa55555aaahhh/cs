@@ -14126,6 +14126,128 @@ window.renderChart = function() {
     }).join('');
 };
 
+// ==================== 终极修补：歌曲余热机制与真实趋势箭头 ====================
+
+// 1. 修复时间推演：引入基于大众感知分的“歌曲余热机制”，限制流媒暴跌
+var superFinalOriginalAdvTime = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    // 推演前：记录所有歌曲的“上周真实流媒”和“上周真实排名”
+    trackPool.forEach(t => {
+        t._prevStmWeek = t.stmGlobal_Week || 0;
+        t.prevW = t.lastW || 999;
+    });
+
+    // 执行所有旧版的推演与衰减逻辑
+    superFinalOriginalAdvTime(weeks, showMsg);
+
+    // 推演后：介入“歌曲余热/长尾机制”
+    trackPool.forEach(t => {
+        if (t.type === "track" && t.weeks > 1 && t._prevStmWeek > 0) {
+            // 根据大众感知分 (Spub) 决定抗跌能力
+            let minRetainRate = 0.50; // 烂歌/低评价歌曲，单周最大跌幅50%
+            
+            if (t.Spub >= 85) minRetainRate = 0.85;      // 仙曲/神曲，单周最多只跌 15%
+            else if (t.Spub >= 75) minRetainRate = 0.75; // 优秀热单，最多跌 25%
+            else if (t.Spub >= 60) minRetainRate = 0.65; // 及格流行，最多跌 35%
+            
+            // 如果处于短视频病毒爆发期(逆跌期)，不干涉
+            if (t.longViral && t.longViral > 0) return;
+
+            // 如果本周推演出来的流媒跌破了余热下限，强行兜底锁血！
+            let heatFloor = Math.floor(t._prevStmWeek * minRetainRate);
+            if (t.stmGlobal_Week < heatFloor) {
+                t.stmGlobal_Week = heatFloor;
+                t.stmGlobal_Day = Math.floor(heatFloor / 7);
+                t.stmUS_Week = Math.floor(heatFloor * 0.35); // 重新同步 US 区
+                t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+            }
+        }
+    });
+    
+    // 强制再排一次序，确保余热机制生效后的名次准确
+    if(typeof forceUpdatePeaksAndFlow === 'function') forceUpdatePeaksAndFlow();
+};
+
+// 2. 修复榜单渲染里的趋势指示器逻辑 (上升下降箭头)
+var superFinalOriginalRenderChart = window.renderChart;
+window.renderChart = function() {
+    superFinalOriginalRenderChart();
+    
+    // 获取刚刚渲染完的节点，我们来强制重写一遍精准的箭头逻辑
+    let box = document.getElementById("mChartContent");
+    if(!box || !trackPool || trackPool.length === 0) return;
+    
+    let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+    let list = trackPool.filter(x => isAlbum ? x.type === 'album' : x.type === 'track');
+    
+    // 重新快速计分用于重排
+    list.forEach(t => {
+        let stmGlobal = t.stmGlobal_Week || 0, stmUS = t.stmUS_Week || 0;
+        if(curChTime === 'Month') { stmGlobal = t.stmGlobal_Month || 0; stmUS = t.stmUS_Month || 0; }
+        if(curChTime === 'Year') { stmGlobal = t.stmGlobal_Year || 0; stmUS = t.stmUS_Year || 0; }
+        let isUS = (curChReg === 'US');
+        let baseStm = isUS ? stmUS : stmGlobal;
+        
+        if (curChartPlatform === 'BB') {
+            let pureSales = Math.floor(stmGlobal / 150) * (t.price || 1); 
+            t._chartPts = Math.floor((pureSales * 10) + (stmUS * 0.7 / 125) + (stmUS * 0.3 / 375) + ((t.radioAud || 0) * 333));
+        } else {
+            t._chartPts = Math.floor(baseStm); 
+        }
+    });
+    list.sort((a,b) => b._chartPts - a._chartPts);
+    
+    let finalList = [];
+    let recurrentCount = 0;
+    
+    // 过滤出榜/淘汰的歌曲
+    for (let i = 0; i < list.length; i++) {
+        let t = list[i];
+        let theoreticalRank = i + 1 - recurrentCount; 
+        if (!isAlbum && curChTime === 'Week') {
+            if (t.weeks > 20 && theoreticalRank > 50) { recurrentCount++; continue; }
+            if (t.weeks > 52 && theoreticalRank > 25) { recurrentCount++; continue; }
+        }
+        t._displayRank = theoreticalRank;
+        finalList.push(t);
+    }
+    
+    // 重绘列表
+    box.innerHTML = finalList.slice(0, 100).map((t) => {
+        let currentRank = t._displayRank;
+        let peakVal = (curChReg === 'US') ? (t.peakB || currentRank) : (t.peakS || currentRank);
+        let peakStr = `最高: #${peakVal} | 在榜: ${t.weeks||1}周`;
+        
+        let trendHtml = "";
+        if (t.weeks <= 1) {
+            trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+        } else if (t.prevW === 999 || !t.prevW) {
+            trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">RE</span>`; // 从榜外杀回
+        } else {
+            // 修复点：使用推演前锁定的 prevW 进行真实的排位对比！
+            let diff = t.prevW - currentRank;
+            if (diff > 0) trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▲ ${diff}</span>`; // 排名上升
+            else if (diff < 0) trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`; // 排名下降
+            else trendHtml = `<span style="color:#888; font-weight:bold; font-size:10px;">-</span>`; // 持平
+        }
+
+        return `
+        <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${t.isMe ? 'background:#fff8e8;' : 'background:#fff;'}">
+            <div style="width:45px; text-align:center;">
+                <b style="font-size:17px;display:block;">${currentRank}</b>
+                ${trendHtml}
+            </div>
+            <div style="flex:1; padding-left:10px;">
+                <b>${escapeHTML(t.n)}</b><br>
+                <span style="font-size:11px;color:#666;">${escapeHTML(t.artist)} | ${peakStr}</span>
+            </div>
+            <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">
+                ${curChartPlatform === 'BB' ? t._chartPts.toLocaleString() + ' Pts' : t._chartPts.toLocaleString()}
+            </div>
+        </div>`;
+    }).join('');
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
