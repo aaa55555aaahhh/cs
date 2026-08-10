@@ -13956,6 +13956,134 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }, 1000);
 });
+// 1. 绝对强制大盘卡口 (无论打榜还是逆跌，绝不允许在错误的时间超越倍率限制)
+var oldUpdatePeakRanksForCapV2 = window.updatePeakRanks;
+window.updatePeakRanks = function() {
+    let baseInput = document.getElementById("customMarketBase");
+    // 获取玩家设置的大盘底盘(万)，默认300万，换算周榜目标
+    let targetBase = baseInput ? parseInt(baseInput.value) * 10000 : 3000000; 
+    let weeklyTarget = targetBase * 7;
+    
+    trackPool.forEach(t => {
+        if (t.type === 'track') {
+            // 严格的在榜周数倍率限制
+            let limitMultiplier = 1.1; // 默认老歌最高只能超大盘10%
+            if (t.weeks <= 1) limitMultiplier = 3.0;      // 第1周（首发）：最高 3 倍
+            else if (t.weeks <= 2) limitMultiplier = 2.0; // 第2周：最高 2 倍
+            else if (t.weeks <= 4) limitMultiplier = 1.5; // 首月内：最高 1.5 倍
+            else limitMultiplier = 1.1;                   // 超过1个月，强制打压回大盘基准
+            
+            let maxAllowedWeekly = weeklyTarget * limitMultiplier;
+            
+            // 【核心制裁】：不管因为什么原因(宣发/打单/逆跌)超出了这个上限，直接被系统强制扣除多余流媒！
+            if (t.stmGlobal_Week > maxAllowedWeekly) {
+                // 扣除至上限，并带有微小浮动，让数据看起来真实
+                t.stmGlobal_Week = Math.floor(maxAllowedWeekly - Math.random() * (maxAllowedWeekly * 0.02));
+                t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+                
+                // 连带制裁美国区流媒
+                if (t.stmUS_Week > t.stmGlobal_Week * 0.5) {
+                    t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.4);
+                    t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+                }
+            }
+        }
+    });
+
+    // 2. 独立追踪每个榜单的上周排名 (解决一直只显示“上升”的BUG)
+    let trks = trackPool.filter(x => x.type === "track" || x.type === "album");
+    
+    // --- 追踪 Spotify(流媒) 榜单 ---
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    trks.forEach((t, i) => {
+        t.lastW_Spot = t.curW_Spot || 999;
+        t.curW_Spot = i + 1;
+    });
+
+    // --- 追踪 BB(美国) 榜单 ---
+    trks.forEach(t => {
+        let pSales = Math.floor((t.stmGlobal_Week || 0) / 150) * (t.price || 1);
+        let pStm = (((t.stmUS_Week || 0) * 0.7) / 1000) * 35 + (((t.stmUS_Week || 0) * 0.3) / 2500) * 16;
+        let pRad = (t.radioAud || 0) * 45;
+        t._tempBB = pSales + pStm + pRad;
+    });
+    trks.sort((a,b) => (b._tempBB || 0) - (a._tempBB || 0));
+    trks.forEach((t, i) => {
+        t.lastW_BB = t.curW_BB || 999;
+        t.curW_BB = i + 1;
+    });
+    
+    // --- 追踪 销量 榜单 ---
+    trks.sort((a,b) => Math.floor((b.stmGlobal_Week||0)/150) - Math.floor((a.stmGlobal_Week||0)/150));
+    trks.forEach((t, i) => {
+        t.lastW_Sale = t.curW_Sale || 999;
+        t.curW_Sale = i + 1;
+    });
+
+    oldUpdatePeakRanksForCapV2();
+};
+
+// 3. 彻底重写渲染时的趋势箭头系统
+var oldRenderChartForTrendFix = window.renderChart;
+window.renderChart = function() {
+    oldRenderChartForTrendFix();
+    
+    let chartRows = document.querySelectorAll("#mChartContent > div");
+    
+    let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+    let list = trackPool.filter(x => isAlbum ? x.type === 'album' : x.type === 'track');
+    
+    // 按现有的点数规则重新排一下序以便对标DOM元素
+    list.sort((a,b) => (b._chartPts || 0) - (a._chartPts || 0));
+    
+    let finalList = [];
+    let recurrentCount = 0;
+    for (let i = 0; i < list.length; i++) {
+        let t = list[i];
+        if (t.isRecurrent) { recurrentCount++; continue; }
+        t._displayRank = i + 1 - recurrentCount;
+        finalList.push(t);
+    }
+    
+    // 遍历修改每行的箭头状态
+    chartRows.forEach((row, i) => {
+        let t = finalList[i];
+        if (t && row.querySelector('b')) {
+            let rankNumBox = row.children[0]; // 排位数字和箭头的容器
+            if(rankNumBox) {
+                let currentRank = t._displayRank;
+                
+                // 提取准确的上周排位
+                let lastRank = 999;
+                if (curChartPlatform === 'BB') lastRank = t.lastW_BB || 999;
+                else if (curChartPlatform === 'Sale') lastRank = t.lastW_Sale || 999;
+                else lastRank = t.lastW_Spot || 999; // 默认使用流媒排名
+
+                let trendHtml = "";
+                // 第1周或第2周没有历史成绩，绝对判定为 NEW
+                if (t.weeks <= 2 && lastRank === 999) {
+                    trendHtml = `<span style="color:#25d366; font-weight:bold; font-size:10px;">NEW</span>`;
+                } else {
+                    if (lastRank > 100 || lastRank === 999) {
+                        trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">RE</span>`; // 回榜
+                    } else {
+                        let diff = lastRank - currentRank;
+                        if (diff > 0) {
+                            trendHtml = `<span style="color:#ff0000; font-weight:bold; font-size:10px;">▲ ${diff}</span>`; // 上升
+                        } else if (diff < 0) {
+                            trendHtml = `<span style="color:#0055ff; font-weight:bold; font-size:10px;">▼ ${Math.abs(diff)}</span>`; // 下降
+                        } else {
+                            trendHtml = `<span style="color:#888; font-weight:bold; font-size:10px;">-</span>`; // 持平
+                        }
+                    }
+                }
+                
+                // 替换掉原来的数字框内容
+                rankNumBox.innerHTML = `<b style="color:#333;font-size:17px;display:block;">${currentRank}</b>${trendHtml}`;
+            }
+        }
+    });
+};
 
 // ==================== 代码结束 ====================
 </script>
