@@ -203,7 +203,8 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
           <div id="boxInputs"></div>
           <button onclick="saveAttr()">保存</button> 
           <button class="sec" onclick="document.getElementById('boxEditAttr').style.display='none';document.getElementById('boxBars').style.display='block';">取消</button>
-          <button class="sec inline" onclick="aKs.forEach(x => document.getElementById('ie_'+x.k).value = 1000);" style="margin-bottom:10px;">⚡ 一键拉满 (1000)</button>
+                    <button class="sec inline" onclick="aKs.forEach(x => { let el = document.getElementById('ie_'+x.k); if(el) el.value = 1000; });" style="margin-bottom:10px;">⚡ 一键拉满 (1000)</button>
+
       </div>
       <div class="sub-tab-bar" style="margin-top:15px;">
           <div class="sub-tab active" onclick="switchSubTab(this, 'tabWorks', 'attrTabs')">发行作品</div>
@@ -678,10 +679,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 
 <div class="modal" id="mV"><div class="modal-box"><button class="modal-x" onclick="closeM('mV')">X</button><h3 class="tg" style="text-align:center;">💬 V</h3><div class="sub-tab-bar" style="justify-content:center;"><div class="sub-tab active" onclick="switchSubTab(this,'vCont','vTabs')">通讯录</div><div class="sub-tab" onclick="switchSubTab(this,'vMom','vTabs')">朋友圈</div></div><div id="vTabs"><div id="vCont" class="sub-page active"><div id="vList"></div><div id="vChat" style="display:none;"><button class="sec inline" onclick="vBack()">←</button> <b class="tg" id="vName"></b><div id="vHistory" style="height:150px;overflow-y:auto;background:#fafafa;padding:5px;margin:5px 0;border-radius:8px;"></div><input id="vIn" placeholder="聊天..."><button onclick="vSendMsg()">发送(需API)</button></div></div><div id="vMom" class="sub-page"><textarea id="vMomIn" placeholder="分享动态..."></textarea><button onclick="vSendMom()">发朋友圈</button><div id="vMomList" style="margin-top:10px;"></div></div></div></div></div>
 <div class="modal" id="mInfo"><div class="modal-box" style="padding-top:40px;"><button class="modal-x" onclick="closeM('mInfo')" style="top:10px;">X</button><h3 class="tg" id="mInfoTitle" style="text-align:center;margin-bottom:15px;"></h3><div id="mInfoContent" style="max-height:60vh;overflow-y:auto;"></div></div></div>
-
 <script>
-
-
 // ====== 全局致命错误捕获弹窗（抓虫神器） ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     let errInfo = `🚨 发现致命代码报错！\n\n【错误信息】: ${msg}\n【报错行数】: 第 ${lineNo} 行\n【报错列数】: 第 ${columnNo} 列\n\n请截图此窗口反馈给修复者！`;
@@ -16011,20 +16009,29 @@ document.addEventListener("DOMContentLoaded", function() {
 var oldConfirmStartWriteFix = window.confirmStartWrite;
 window.confirmStartWrite = function() {
     let sGenre = document.getElementById("inNewSongGenre").value;
+    let customGenreStr = "";
+    
     if(sGenre === "CUSTOM") {
-        let customGenre = document.getElementById("inNewSongCustomGenre").value.trim();
-        if(!customGenre) return alert("必须填写自定义曲风名称！");
-        if(!gs.includes(customGenre)) gs.push(customGenre); // 自动塞入曲风大盘
+        customGenreStr = document.getElementById("inNewSongCustomGenre").value.trim();
+        if(!customGenreStr) return alert("必须填写自定义曲风名称！");
+        if(!gs.includes(customGenreStr)) gs.push(customGenreStr); // 自动塞入曲风大盘
         
         // 欺骗原有的检测逻辑
         let opt = document.createElement("option");
-        opt.value = customGenre;
+        opt.value = customGenreStr;
         document.getElementById("inNewSongGenre").appendChild(opt);
-        document.getElementById("inNewSongGenre").value = customGenre;
+        document.getElementById("inNewSongGenre").value = customGenreStr;
     }
     
     // 放行进入原来的写歌逻辑
     if (oldConfirmStartWriteFix) oldConfirmStartWriteFix();
+    
+    // 【核心修复】：由于原逻辑可能已经被层层覆盖导致读取丢失，
+    // 我们在它执行完之后，强制检查当前正在生成的企划(curPj)，把自定义曲风强行塞进去！
+    if (curPj && curPj.type === "write" && customGenreStr !== "") {
+        curPj.g = [customGenreStr];
+        saveGame();
+    }
 };
 
 // ==================== 代码结束 ====================
