@@ -8539,29 +8539,6 @@ window.sendProactiveMail = function() {
     updAttr();
     saveGame();
 };
-// ==================== 终极修补：美观网页密码页与手动读档大厅 ====================
-
-document.addEventListener('DOMContentLoaded', function() {
-    // 强制先隐藏所有页面，防止重叠
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-        p.style.display = 'none';
-    });
-    
-    // 检查是否已经免密解锁过
-    let isUnlocked = localStorage.getItem("starPro_is_unlocked");
-    
-    if (isUnlocked === "true") {
-        // 已经免密过，直接显示创建/读档大厅，跳过密码页！绝对不自动读档！
-        let cp = document.getElementById('createPage');
-        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-    } else {
-        // 没免密，显示美观的网页密码页
-        let lp = document.getElementById('loginPage');
-        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
-    }
-});
-
 // 手动读取存档逻辑（由玩家在大厅点击触发）
 window.mainMenuLoad = function() {
     let slot = document.getElementById('mainMenuSlot').value;
@@ -9634,17 +9611,6 @@ window.refreshTrend = function() {
         trendList.insertAdjacentHTML('afterbegin', h);
     }
 };
-let tourLegs = []; // 存放巡演各场次的数据
-
-// 定义各规模场次限制
-const TOUR_LIMITS = {
-    'mega': { min: 20, max: 100 },
-    'large': { min: 10, max: 50 },
-    'medium': { min: 5, max: 30 },
-    'small': { min: 1, max: 15 },
-    'livehouse': { min: 1, max: 5 }
-};
-
 // 重新渲染巡演面板
 var oldShowMapForTourLegs = window.showMap;
 window.showMap = function(id) {
@@ -15338,9 +15304,11 @@ window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013"
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
     
+    // 获取绝对真实的浏览器原生 alert 方法
+    const nativeAlert = window.constructor.prototype.alert;
+
     if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        // 使用原生的 alert 防止自定义弹窗被遮挡导致看不见错误提示
-        window.alert("密码错误或已被弃用，请重新输入！");
+        nativeAlert.call(window, "密码错误或已被弃用，请重新输入！");
         return;
     }
 
@@ -15361,8 +15329,7 @@ window.checkLoginPwd = function() {
         createPage.classList.add("active");
     }
     
-    // 同样的，用原生弹窗保障成功提示绝对可见
-    setTimeout(() => { window.alert("登录成功！进入大厅。"); }, 100);
+    setTimeout(() => { nativeAlert.call(window, "登录成功！进入大厅。"); }, 100);
 };
 
 // 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
