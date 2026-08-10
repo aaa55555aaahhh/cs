@@ -7066,15 +7066,9 @@ window.updAttr = function() {
         </div>`;
     }).join('') : "无"; 
     
-    if(document.getElementById("tabAwards")) document.getElementById("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录";         let t = trackPool.find(tr => tr.id === x.id);
-        let cert = getCert(t ? t.slTotal : x.slTotal);
-        let peakText = t && t.peakS ? `<br><span style="color:#888;font-size:11px;">在榜 ${t.weeks} 周 | 全球最高: #${t.peakS} | 美国最高: #${t.peakB || '--'}</span>` : '';
-        return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
-            <b>${escapeHTML(x.n)}</b> ${cert}<br>累计销量: ${(t?t.slTotal:x.slTotal).toLocaleString()} 张 | 收入: $${x.revenue.toLocaleString()}${peakText}
-        </div>`;
-    }).join('') : "无"; 
-    
-    document.getElementById("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录"; 
+    if(document.getElementById("tabAwards")) {
+        document.getElementById("tabAwards").innerHTML = ad.awd.length ? ad.awd.map(function(x){return escapeHTML(x)}).join('<br><br>') : "无获奖记录";
+    }
 };
 
 
