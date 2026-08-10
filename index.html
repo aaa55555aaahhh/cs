@@ -16008,32 +16008,36 @@ document.addEventListener("DOMContentLoaded", function() {
 // 拦截确认立项的按钮，保障自定义曲风能正确收录
 var oldConfirmStartWriteFix = window.confirmStartWrite;
 window.confirmStartWrite = function() {
-    let sGenre = document.getElementById("inNewSongGenre").value;
+    // 【修复】：增加判空防护，防止找不到新版界面的元素时报错崩溃
+    let genreSelect = document.getElementById("inNewSongGenre");
+    let sGenre = genreSelect ? genreSelect.value : "";
     let customGenreStr = "";
     
     if(sGenre === "CUSTOM") {
-        customGenreStr = document.getElementById("inNewSongCustomGenre").value.trim();
+        let customInput = document.getElementById("inNewSongCustomGenre");
+        customGenreStr = customInput ? customInput.value.trim() : "";
+        
         if(!customGenreStr) return alert("必须填写自定义曲风名称！");
         if(!gs.includes(customGenreStr)) gs.push(customGenreStr); // 自动塞入曲风大盘
         
         // 欺骗原有的检测逻辑
-        let opt = document.createElement("option");
-        opt.value = customGenreStr;
-        document.getElementById("inNewSongGenre").appendChild(opt);
-        document.getElementById("inNewSongGenre").value = customGenreStr;
+        if (genreSelect) {
+            let opt = document.createElement("option");
+            opt.value = customGenreStr;
+            genreSelect.appendChild(opt);
+            genreSelect.value = customGenreStr;
+        }
     }
     
     // 放行进入原来的写歌逻辑
     if (oldConfirmStartWriteFix) oldConfirmStartWriteFix();
     
-    // 【核心修复】：由于原逻辑可能已经被层层覆盖导致读取丢失，
-    // 我们在它执行完之后，强制检查当前正在生成的企划(curPj)，把自定义曲风强行塞进去！
+    // 强制检查当前正在生成的企划(curPj)，把自定义曲风强行塞进去！
     if (curPj && curPj.type === "write" && customGenreStr !== "") {
         curPj.g = [customGenreStr];
         saveGame();
     }
 };
-
 // ==================== 代码结束 ====================
 </script>
 </body>
