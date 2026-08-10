@@ -15936,8 +15936,96 @@ window.updAttr = function() {
 setTimeout(() => {
     if (typeof updAttr === 'function') updAttr();
 }, 1500);
+// ==================== 紧急修复：个人档案空白与自定义曲风丢失 ====================
 
-// ==================== 代码结束 ====================
+// 1. 强力修复个人档案 (updAttr) 渲染崩溃导致空白的问题
+var ultimateUpdAttrFix = window.updAttr;
+window.updAttr = function() {
+    // 强制补全所有可能导致报错的缺失字段
+    if (!window.ad) return;
+    if (!ad.st) ad.st = { f: 0, h: 10 };
+    if (!ad.sk) ad.sk = { v:50, d:50, r:50, w:50, f:50, s:50, fa:50, va:50 };
+    if (!ad.awd) ad.awd = [];
+    if (typeof ad.m === 'undefined') ad.m = 0;
+    
+    // 执行以前的渲染逻辑，即使出错也不会阻断程序
+    try {
+        if (ultimateUpdAttrFix) ultimateUpdAttrFix();
+    } catch(e) {
+        console.warn("已拦截旧版渲染报错，启动强力备用渲染机制：", e);
+    }
+    
+    // 强行重新渲染基础档案栏，确保百分百显示
+    let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
+    let boxBasic = document.getElementById("boxBasic");
+    if(boxBasic) {
+        boxBasic.innerHTML = `
+        <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
+            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+                ${avatarHtml}
+                <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
+            </div>
+            <div style="line-height:1.6;">
+                艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)})<br>
+                粉丝:<b style="color:#c8a440">${(ad.st.f || 0).toLocaleString()}</b> | 资金:$${(ad.m || 0).toLocaleString()}<br>
+                公司:${escapeHTML(ad.co || '独立')}
+            </div>
+        </div>
+        <input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">
+        `;
+    }
+    
+    if(document.getElementById("boxInputs")) document.getElementById("boxInputs").innerHTML = aKs.map(function(x){return `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k] || 50}" type="number" min="1" max="1000"></div>`}).join(''); 
+    if(document.getElementById("boxBars")) document.getElementById("boxBars").innerHTML = aKs.map(function(x){return `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${Math.min(100, (ad.sk[x.k] || 0) / 10)}%"></div></div><b>${ad.sk[x.k] || 0}</b></div>`}).join(''); 
+};
+
+// 全局强制唤醒一次渲染，防止黑屏或白版
+setTimeout(() => { if(typeof updAttr === 'function') updAttr(); }, 1500);
+
+// 2. 找回丢失的创作曲风自定义功能
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let genreSelect = document.getElementById("inNewSongGenre");
+        // 检查是否存在下拉框且没有被注入过自定义框
+        if (genreSelect && !document.getElementById("inNewSongCustomGenre")) {
+            genreSelect.insertAdjacentHTML('afterend', `<input id="inNewSongCustomGenre" placeholder="请输入自定义曲风名称" style="display:none; margin-bottom:10px; font-size:12px;">`);
+            
+            // 如果不存在 CUSTOM 选项就追加
+            if (!genreSelect.innerHTML.includes("CUSTOM")) {
+                genreSelect.innerHTML += `<option value="CUSTOM">✍️ 自定义曲风...</option>`;
+            }
+            
+            // 绑定联动事件
+            genreSelect.addEventListener("change", function() {
+                if(this.value === "CUSTOM") {
+                    document.getElementById("inNewSongCustomGenre").style.display = "block";
+                } else {
+                    document.getElementById("inNewSongCustomGenre").style.display = "none";
+                }
+            });
+        }
+    }, 2000); // 延迟2秒，确保所有其他UI覆写都已完成
+});
+
+// 拦截确认立项的按钮，保障自定义曲风能正确收录
+var oldConfirmStartWriteFix = window.confirmStartWrite;
+window.confirmStartWrite = function() {
+    let sGenre = document.getElementById("inNewSongGenre").value;
+    if(sGenre === "CUSTOM") {
+        let customGenre = document.getElementById("inNewSongCustomGenre").value.trim();
+        if(!customGenre) return alert("必须填写自定义曲风名称！");
+        if(!gs.includes(customGenre)) gs.push(customGenre); // 自动塞入曲风大盘
+        
+        // 欺骗原有的检测逻辑
+        let opt = document.createElement("option");
+        opt.value = customGenre;
+        document.getElementById("inNewSongGenre").appendChild(opt);
+        document.getElementById("inNewSongGenre").value = customGenre;
+    }
+    
+    // 放行进入原来的写歌逻辑
+    if (oldConfirmStartWriteFix) oldConfirmStartWriteFix();
+};
 
 // ==================== 代码结束 ====================
 </script>
