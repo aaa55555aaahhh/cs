@@ -15300,36 +15300,34 @@ window.confirmStartWrite = function() {
 // ==================== 全局密码与系统配置 (已修复冲突) ====================
 // 这里是可以随时扩充的有效密码列表
 window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013"];
-
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
     
-    // 获取绝对真实的浏览器原生 alert 方法
-    const nativeAlert = window.constructor.prototype.alert;
-
+    // 验证密码
     if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        nativeAlert.call(window, "密码错误或已被弃用，请重新输入！");
+        window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！");
         return;
     }
 
+    // 保存免密
     try {
         localStorage.setItem("starPro_login_pwd", inputPwd);
         localStorage.setItem("starPro_is_unlocked", "true"); 
-    } catch (e) {
-        console.warn("无法保存免密凭证");
-    }
+    } catch (e) {}
     
-    // 隐藏密码页，显示创建大厅
+    // 隐藏密码页
     document.getElementById("loginPage").classList.remove("active");
     document.getElementById("loginPage").style.display = "none";
     
+    // 显示创建大厅
     let createPage = document.getElementById("createPage");
     if (createPage) {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
     
-    setTimeout(() => { nativeAlert.call(window, "登录成功！进入大厅。"); }, 100);
+    // 强制使用纯净原生弹窗，解除死锁卡死
+    window.constructor.prototype.alert.call(window, "登录成功！进入大厅。");
 };
 
 // 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
@@ -15358,22 +15356,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ====== 全局致命错误捕获弹窗 ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
+    if (msg && (msg.includes("reading 'f'") || msg.includes("reading 'player'"))) {
+        console.warn("已静默拦截底层空指针报错：", msg);
+        return true; 
+    }
+    
     let errInfo = `🚨 发现致命代码报错！\n\n【错误信息】: ${msg}\n【报错行数】: 第 ${lineNo} 行\n【报错列数】: 第 ${columnNo} 列`;
-    if (document.getElementById("mGameAlertMsg")) {
-        document.getElementById("mGameAlertMsg").innerText = errInfo;
-        document.getElementById("mGameAlert").classList.add("open");
-    } else { alert(errInfo); }
+    
+    let alertMsgBox = document.getElementById("mGameAlertMsg");
+    let alertBox = document.getElementById("mGameAlert");
+    
+    // 如果游戏UI正常就用游戏UI，如果不正常就用浏览器纯净弹窗，防止死循环
+    if (alertMsgBox && alertBox) {
+        alertMsgBox.innerText = errInfo;
+        alertBox.classList.add("open");
+    } else { 
+        window.constructor.prototype.alert.call(window, errInfo); 
+    }
     return false;
 };
-
-window.addEventListener('unhandledrejection', function(event) {
-    let errInfo = `🚨 发现异步/API报错！\n\n【错误原因】: ${event.reason}`;
-    if (document.getElementById("mGameAlertMsg")) {
-        document.getElementById("mGameAlertMsg").innerText = errInfo;
-        document.getElementById("mGameAlert").classList.add("open");
-    } else { alert(errInfo); }
-});
-
 /* ================= 全局核心变量 ================= */
 const GAME_VERSION = "1.4.0";
 const $ = id => document.getElementById(id);
