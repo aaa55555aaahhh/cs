@@ -16423,31 +16423,24 @@ window.confirmStartWrite = function() {
         saveGame();
     }
 };
-这里是针对您提出的两个报错以及曲风选择新旧融合的修复补丁。
-
-请将以下代码**添加到您现有HTML文件中最后面的 `<script>` 标签内的末尾（即 `// ==================== 代码结束 ====================` 之前）**：
-
-```javascript
-// ==================== 修复1：checkTitles 未定义 ====================
+// ==================== 1. 修复 checkTitles 未定义 ====================
 window.checkTitles = function() {
     if (!ad.titles) ad.titles = { active: [], achieved: [] };
-    // 基础的称号判定逻辑（可后续扩展）
-    if (ad.st && ad.st.f >= 10000000 && !ad.titles.achieved.includes("千万粉巨星")) {
+    if (ad.st && ad.st.f >= 10000000 && ad.titles.achieved.indexOf("千万粉巨星") === -1) {
         ad.titles.achieved.push("千万粉巨星");
-        alert("🎉 恭喜！你获得了新称号【千万粉巨星】！");
+        alert("🎉 恭喜！获得了新称号【千万粉巨星】！");
     } else {
-        alert("🏅 当前暂时没有达成新的称号条件，继续努力吧！");
+        alert("🏅 当前暂时没有达成新的称号条件。");
     }
-    updAttr();
+    if(typeof updAttr === 'function') updAttr();
     saveGame();
 };
 
-// ==================== 修复2：原生 alert.call 报错 ====================
+// ==================== 2. 修复 reading 'call' 报错 (重写登录验证) ====================
 window.checkLoginPwd = function() {
-    let inputPwd = document.getElementById("loginPwd").value.trim();
-    if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        if(window.gameAlert) window.gameAlert("密码错误或已被弃用，请重新输入！");
-        else alert("密码错误或已被弃用，请重新输入！");
+    var inputPwd = document.getElementById("loginPwd").value.trim();
+    if (!window.VALID_PASSWORDS || window.VALID_PASSWORDS.indexOf(inputPwd) === -1) {
+        alert("密码错误或已被弃用，请重新输入！");
         return;
     }
     try {
@@ -16458,104 +16451,104 @@ window.checkLoginPwd = function() {
     document.getElementById("loginPage").classList.remove("active");
     document.getElementById("loginPage").style.display = "none";
     
-    let createPage = document.getElementById("createPage");
+    var createPage = document.getElementById("createPage");
     if (createPage) {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
-    if(window.gameAlert) window.gameAlert("登录成功！进入大厅。");
-    else alert("登录成功！进入大厅。");
+    alert("登录成功！进入大厅。");
 };
 
-// ==================== 修复3：曲风选择新旧融合 (多选标签 + 逗号隔开自定义 + 宗教后果) ====================
+// ==================== 3. 曲风新旧融合与宗教后果 ====================
+if (gs.indexOf("宗教") === -1) gs.push("宗教");
 
-// 1. 确保大盘中有宗教曲风
-if (!gs.includes("宗教")) gs.push("宗教");
-
-// 2. 覆盖单曲创作界面的UI，恢复老版的可点击标签，保留自定义文本框
 document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(() => {
-        let mWriteSongUI = document.getElementById("mWriteSongUI");
-        if (mWriteSongUI) {
-            // 找到包含下拉框的容器，将其替换为新旧融合版
-            let genreSelect = document.getElementById("inNewSongGenre");
-            let customInput = document.getElementById("inNewSongCustomGenre");
-            if (genreSelect) {
-                let parentNode = genreSelect.parentElement;
-                
-                let newHtml = `
-                <div id="hybridGenreBox" style="margin-bottom:10px;">
-                    <label style="font-size:12px;font-weight:bold;margin-top:5px;display:block;">3. 选择主曲风 (可多选):</label>
-                    <div id="boxSGenre" style="margin:5px 0;">
-                        ${gs.map(g => `<span class="g-tag s-tag" onclick="tgG(this, selG)">${g}</span>`).join('')}
-                    </div>
-                    <label style="font-size:12px;color:#888;">自定义曲风 (选填，多种用逗号隔开):</label>
-                    <textarea id="inNewSongCustomGenreText" placeholder="例如: 另类摇滚, 迷幻电子..." style="height:40px;margin-top:3px;font-size:12px;"></textarea>
-                    <p style="font-size:10px;color:#ff0000;margin-top:3px;">⚠️ 注意：如果包含【宗教】曲风，单曲将被各大流行电台彻底封杀 (无法花钱打榜，无基础电台听众)。</p>
-                </div>`;
-                
-                // 替换掉原来的下拉框和它附带的东西
-                genreSelect.outerHTML = newHtml;
-                if(customInput) customInput.remove();
-                
-                // 如果页面上有就初始化一下状态
-                if(typeof selG === 'undefined') window.selG = [];
-                selG = []; // 重置选中
+    setTimeout(function() {
+        var mWriteSongUI = document.getElementById("mWriteSongUI");
+        var genreSelect = document.getElementById("inNewSongGenre");
+        var customInput = document.getElementById("inNewSongCustomGenre");
+        
+        if (mWriteSongUI && genreSelect) {
+            // 生成原有按钮
+            var tagsHtml = "";
+            for(var i=0; i<gs.length; i++) {
+                tagsHtml += '<span class="g-tag s-tag" onclick="tgG(this, selG)">' + gs[i] + '</span>';
             }
+            
+            // 安全的字符串拼接HTML
+            var newHtml = '<div id="hybridGenreBox" style="margin-bottom:10px;">' +
+                '<label style="font-size:12px;font-weight:bold;margin-top:5px;display:block;">3. 选择主曲风 (可多选):</label>' +
+                '<div id="boxSGenre" style="margin:5px 0;">' + tagsHtml + '</div>' +
+                '<label style="font-size:12px;color:#888;">自定义曲风 (选填，多种用逗号隔开):</label>' +
+                '<textarea id="inNewSongCustomGenreText" placeholder="例如: 另类摇滚, 迷幻电子..." style="width:100%;height:40px;margin-top:3px;font-size:12px;padding:5px;"></textarea>' +
+                '<p style="font-size:10px;color:#ff0000;margin-top:3px;">⚠️ 注意：包含【宗教】曲风单曲将被电台全面封杀。</p>' +
+            '</div>';
+            
+            genreSelect.outerHTML = newHtml;
+            if(customInput) customInput.remove();
+            
+            if(typeof selG === 'undefined') window.selG = [];
+            selG = []; // 重置选中
         }
     }, 3000);
 });
 
-// 3. 拦截最终的写歌立项方法，合并曲风并判定宗教
-var ultimateFinalConfirmStartWrite = window.confirmStartWrite;
+var ultimateConfirmStartWrite = window.confirmStartWrite;
 window.confirmStartWrite = function() {
-    let nameInput = document.getElementById("inNewSongName") || document.getElementById("inSName");
+    var nameInput = document.getElementById("inNewSongName") || document.getElementById("inSName");
     if (!nameInput) return; 
-    let sName = nameInput.value.trim();
+    var sName = nameInput.value.trim();
     if (!sName) return alert("必须填写歌名！");
     
-    // 获取多选的曲风
-    let finalGenres = typeof selG !== 'undefined' ? [...selG] : [];
+    var finalGenres = (typeof selG !== 'undefined') ? selG.slice() : [];
+    var customTextarea = document.getElementById("inNewSongCustomGenreText");
     
-    // 获取逗号隔开的自定义曲风
-    let customTextarea = document.getElementById("inNewSongCustomGenreText");
+    // 处理逗号隔开的自定义输入
     if (customTextarea && customTextarea.value.trim() !== "") {
-        let customArr = customTextarea.value.split(/[,，]/).map(x => x.trim()).filter(x => x !== "");
-        customArr.forEach(g => {
-            if (!finalGenres.includes(g)) finalGenres.push(g);
-            if (!gs.includes(g)) gs.push(g); // 注入大盘
-        });
+        var customArr = customTextarea.value.split(/[,，]/);
+        for(var i=0; i<customArr.length; i++) {
+            var g = customArr[i].trim();
+            if(g !== "") {
+                if (finalGenres.indexOf(g) === -1) finalGenres.push(g);
+                if (gs.indexOf(g) === -1) gs.push(g); 
+            }
+        }
     }
     
-    // 兜底
     if (finalGenres.length === 0) finalGenres = ["流行"];
     
-    // 这里为了不让旧函数出错，随便挂载个假节点骗过去
-    let fakeSelect = document.createElement("select");
+    // 欺骗底层函数防报错
+    var fakeSelect = document.createElement("select");
     fakeSelect.id = "inNewSongGenre";
-    fakeSelect.value = finalGenres[0];
+    var opt = document.createElement("option");
+    opt.value = finalGenres[0];
+    fakeSelect.appendChild(opt);
     document.body.appendChild(fakeSelect);
 
-    // 执行老逻辑（主要为了扣精力和生成其他的对象）
-    if (ultimateFinalConfirmStartWrite) ultimateFinalConfirmStartWrite();
+    // 调用原来写好的扣精力/建企划逻辑
+    if (ultimateConfirmStartWrite) ultimateConfirmStartWrite();
     
-    // 用完即删
-    fakeSelect.remove();
+    // 清理假元素
+    if(fakeSelect.parentNode) fakeSelect.parentNode.removeChild(fakeSelect);
     
-    // 强制写入我们刚刚整合好的所有的曲风
+    // 强制把所有曲风塞进去并判定宗教
     if (curPj && curPj.type === "write") {
         curPj.g = finalGenres;
         
-        // 判定宗教后果
-        let hasReligion = finalGenres.some(g => g.includes("宗教") || g.toLowerCase().includes("gospel"));
-        if (hasReligion) {
-            alert(`⚠️ 【电台封杀预警】\n你选择了敏感的【宗教】题材，这首歌将无法在流行电台进行点播打榜，纯靠流媒和销量自生自灭！`);
+        var hasReligion = false;
+        for(var k=0; k<finalGenres.length; k++) {
+            if(finalGenres[k].indexOf("宗教") !== -1 || finalGenres[k].toLowerCase().indexOf("gospel") !== -1) {
+                hasReligion = true; 
+                break;
+            }
         }
-        
+        if (hasReligion) {
+            alert("⚠️ 【电台封杀预警】\n你选择了敏感的【宗教】题材，这首歌将无法在流行电台进行点播打榜，纯靠流媒和销量自生自灭！");
+        }
         saveGame();
     }
 };
-```
+
 // ==================== 代码结束 ====================
 </script>
 </body>
