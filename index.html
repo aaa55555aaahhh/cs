@@ -16353,6 +16353,76 @@ window.confirmStartWrite = function() {
         saveGame();
     }
 };
+// ==================== 修复：直接显示自定义曲风输入框 ====================
+
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let genreSelect = document.getElementById("inNewSongGenre");
+        let customInput = document.getElementById("inNewSongCustomGenre");
+        
+        if (genreSelect && customInput) {
+            // 1. 删除那个愚蠢的 "CUSTOM" 下拉选项
+            let customOption = Array.from(genreSelect.options).find(opt => opt.value === "CUSTOM");
+            if (customOption) {
+                customOption.remove();
+            }
+            
+            // 2. 取消下拉框的 onchange 隐藏逻辑
+            genreSelect.removeAttribute("onchange");
+            
+            // 3. 让自定义输入框直接、永久显示出来，并优化提示语
+            customInput.style.display = "block";
+            customInput.placeholder = "没找到想要的？直接在此输入小众曲风...";
+            
+            // 加一个小标题让排版更好看
+            customInput.insertAdjacentHTML('beforebegin', `<div style="font-size:11px;color:#888;margin-bottom:3px;">或直接手动输入自定义曲风：</div>`);
+        }
+    }, 2500); // 确保在之前生成 UI 的代码之后执行
+});
+
+// 重写提交立项的代码，优先读取直接输入的自定义曲风
+var oldConfirmStartWriteForDirectInput = window.confirmStartWrite;
+window.confirmStartWrite = function() {
+    let nameInput = document.getElementById("inNewSongName") || document.getElementById("inSName");
+    if (!nameInput) return; 
+    let sName = nameInput.value.trim();
+    if (!sName) return alert("必须填写歌名！");
+    
+    let genreSelect = document.getElementById("inNewSongGenre");
+    let customInput = document.getElementById("inNewSongCustomGenre");
+    
+    // 【核心逻辑】：如果玩家在自定义框里输入了字，就强制用玩家打字的曲风！
+    let finalGenre = "";
+    let customGenreStr = customInput ? customInput.value.trim() : "";
+    
+    if (customGenreStr) {
+        finalGenre = customGenreStr;
+        // 自动把玩家发明的曲风塞进大盘系统库里
+        if(typeof gs !== 'undefined' && !gs.includes(finalGenre)) {
+            gs.push(finalGenre); 
+        }
+    } else if (genreSelect) {
+        // 如果没自己打字，就用下拉框选的
+        finalGenre = genreSelect.value;
+    }
+    
+    // 欺骗一下原有函数：动态塞一个选项让原有逻辑读到
+    if (genreSelect && finalGenre) {
+        let opt = document.createElement("option");
+        opt.value = finalGenre;
+        genreSelect.appendChild(opt);
+        genreSelect.value = finalGenre;
+    }
+
+    // 执行原版写歌逻辑
+    if (oldConfirmStartWriteForDirectInput) oldConfirmStartWriteForDirectInput();
+    
+    // 强制修正企划的曲风为最终确定的曲风
+    if (curPj && curPj.type === "write" && finalGenre) {
+        curPj.g = [finalGenre];
+        saveGame();
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
