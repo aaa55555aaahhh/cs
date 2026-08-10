@@ -16283,6 +16283,77 @@ window.startAlbum = function() {
     // 清空输入框
     if (customInput) customInput.value = "";
 };
+// ==================== 终极暴力补丁：强制生效自定义曲风 ====================
+
+document.addEventListener("DOMContentLoaded", function() {
+    // 确保单曲弹窗中有自定义曲风的输入框
+    setTimeout(() => {
+        let genreSelect = document.getElementById("inNewSongGenre");
+        if (genreSelect) {
+            if (!document.getElementById("inNewSongCustomGenre")) {
+                genreSelect.insertAdjacentHTML('afterend', `<input id="inNewSongCustomGenre" placeholder="👉 请输入你要的自定义曲风" style="display:none; margin-bottom:10px; font-size:12px; border:1px solid #c8a440; background:#fff8e8;">`);
+            }
+            if (!genreSelect.innerHTML.includes("CUSTOM")) {
+                genreSelect.innerHTML += `<option value="CUSTOM">✍️ 自定义其它曲风...</option>`;
+            }
+            // 强制绑定联动显示/隐藏
+            genreSelect.onchange = function() {
+                let customInput = document.getElementById("inNewSongCustomGenre");
+                if(customInput) {
+                    customInput.style.display = this.value === "CUSTOM" ? "block" : "none";
+                }
+                // 兼容原来的 Diss 联动
+                if (typeof toggleDissUI === 'function') toggleDissUI();
+            };
+        }
+    }, 1500);
+});
+
+// 暴力重写确认立项逻辑，绝对优先处理自定义曲风
+var hardcoreConfirmStartWrite = window.confirmStartWrite;
+window.confirmStartWrite = function() {
+    let genreSelect = document.getElementById("inNewSongGenre");
+    let customInput = document.getElementById("inNewSongCustomGenre");
+    let finalGenre = "流行";
+
+    // 1. 判断是否选择了自定义
+    if (genreSelect && genreSelect.value === "CUSTOM") {
+        if (!customInput || !customInput.value.trim()) {
+            return alert("⚠️ 你选择了自定义曲风，请务必在下方输入框中填写曲风名称！");
+        }
+        finalGenre = customInput.value.trim();
+        
+        // 强制加入游戏大盘曲风库，以后就能直接选了
+        if (typeof gs !== 'undefined' && !gs.includes(finalGenre)) {
+            gs.push(finalGenre);
+        }
+        
+        // 动态创建一个隐藏选项骗过所有原版校验代码
+        let hackOpt = document.createElement("option");
+        hackOpt.value = finalGenre;
+        genreSelect.appendChild(hackOpt);
+        genreSelect.value = finalGenre;
+    } else if (genreSelect) {
+        finalGenre = genreSelect.value;
+    }
+
+    // 2. 强行清空可能残留的选定曲风数组
+    if (typeof selG !== 'undefined') {
+        selG = [finalGenre];
+    }
+
+    // 3. 执行原版后续逻辑（扣精力、建企划等）
+    if (hardcoreConfirmStartWrite) {
+        hardcoreConfirmStartWrite();
+    }
+
+    // 4. 【最终兜底锁死】：不管原版怎么生成，最后强制把企划对象的曲风改成我们的自定义值
+    if (typeof curPj !== 'undefined' && curPj && curPj.type === "write") {
+        curPj.g = [finalGenre];
+        saveGame();
+    }
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
