@@ -16906,44 +16906,195 @@ window.renderChart = function() {
         box.insertAdjacentHTML('beforeend', outHtml);
     }
 };
+// ==================== 针对性强力修复补丁：舞台/关系/颁奖/歌单/走势 ====================
+
 (function() {
-    console.log("=== 🕵️ 游戏底层架构探测器启动 ===");
-    
-    setTimeout(() => {
-        // 1. 探测常见游戏引擎
-        if (typeof $gameVariables !== 'undefined') console.log("🎯 发现引擎: RPG Maker MV/MZ");
-        if (window.cc) console.log("🎯 发现引擎: Cocos Creator");
-        if (window.Laya) console.log("🎯 发现引擎: LayaAir");
-        if (window.UnityLoader || window.createUnityInstance) console.log("🎯 发现引擎: Unity WebGL");
+    console.log("🛠️ 强力专项修复补丁加载中...");
+
+    // ================= 1. 修复：神级舞台必定触发逻辑 =================
+    // 拦截“跑现场打单”逻辑，强行加入 15% 的神级现场触发率
+    let oldPromoAlbSong = window.promoAlbSong;
+    window.promoAlbSong = function(id) {
+        if(!costEnergy(10)) return; 
+        let t = trackPool.find(x => x.id === id); if(!t) return;
         
-        // 2. 探测前端框架
-        if (window.__VUE__ || document.querySelector('[data-v-app]')) console.log("🎯 发现框架: Vue.js");
-        if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) console.log("🎯 发现框架: React");
+        let promoDecay = Math.pow(0.65, t.promoCount || 0); 
+        let baseBoost = (t.stmGlobal_Week * 7 || t.stmGlobal || 50000) * 0.15 * ad.Geffect;
+        let extraStm = Math.floor((baseBoost + 100000) * promoDecay);
         
-        // 3. 探测画面渲染方式
-        const canvasCount = document.querySelectorAll('canvas').length;
-        if (canvasCount > 0) {
-            console.log(`🖼️ 游戏主要使用 Canvas 渲染 (数量: ${canvasCount})，DOM修改大概率无效。`);
+        // 🌟 强判定：15% 几率触发神级舞台
+        let isGodStage = Math.random() < 0.15;
+        let godMsg = "";
+        if (isGodStage) {
+            extraStm *= 3; // 爆发 3 倍
+            godMsg = "\n🌟 【神级现场触发】绝美Live直拍火出圈了！路人盘大爆炸！";
+        }
+        
+        if(extraStm > 3000000) extraStm = 3000000 + Math.floor(Math.random()*500000);
+        
+        advHour(24); 
+        t.stmGlobal += extraStm; 
+        t.slTotal += Math.floor(extraStm/150); 
+        t.longViral = (t.longViral||0) + (isGodStage ? 6 : 4); 
+        t.viralBoost = (t.viralBoost || 1.0) + (isGodStage ? 0.3 : 0.15); 
+        t.promoCount = (t.promoCount || 0) + 1; 
+        
+        alert(`📺 现场打单成功！${godMsg}\n《${t.n}》流媒激增 ${extraStm.toLocaleString()}！`); 
+        saveGame(); 
+        let albIdx = albs.findIndex(a => a.s.some(s => s.n === t.n)); 
+        if(albIdx > -1) window.openAlbDetail(albIdx);
+    };
+
+    // ================= 2. 修复：找回主角与圈内的人脉/粉圈关系表 =================
+    // 将自己的关系总结注入到档案面板
+    let oldUpdAttr = window.updAttr;
+    window.updAttr = function() {
+        if (typeof oldUpdAttr === 'function') oldUpdAttr();
+        let box = document.getElementById("boxBasic");
+        if (box && !document.getElementById("myRelationsUI")) {
+            let relHtml = `
+            <div id="myRelationsUI" style="margin-top:10px; padding:10px; background:#f9f9f9; border-radius:6px; border:1px solid #eee; font-size:12px;">
+                <b style="color:#e91e63;">💞 个人圈内关系指标</b><br>
+                圈内人缘：<b style="color:#25d366;">${Math.min(100, Math.floor(ad.st.f / 1000000) + 50)}</b>/100 (影响日常邀约)<br>
+                粉圈凝聚：<b style="color:#0055ff;">${Math.min(100, 80 + ad.awd.length)}</b>/100 (影响饭圈撕逼战力)
+            </div>`;
+            box.insertAdjacentHTML('beforeend', relHtml);
+        }
+    };
+
+    // ================= 3. 修复：AI记事处的颁奖典礼快捷行动 =================
+    let oldRefreshTodoStatus = window.refreshTodoStatus;
+    window.refreshTodoStatus = function() {
+        if (typeof oldRefreshTodoStatus === 'function') oldRefreshTodoStatus();
+        let isAwardMonth = [2,5,8,11].includes(time.m);
+        let statusBox = document.getElementById("uiTodoStatus");
+        if (isAwardMonth && statusBox && !document.getElementById("btnQuickAward")) {
+            statusBox.innerHTML += `<br><button id="btnQuickAward" class="sec inline" style="margin-top:8px;background:#c8a440;color:#fff;border:none;padding:6px 12px;cursor:pointer;" onclick="quickAction('award')">🏆 快捷前往颁奖典礼</button>`;
+        }
+    };
+
+    let oldQuickAction = window.quickAction;
+    window.quickAction = function(type) {
+        if (type === 'award') {
+            if(![2,5,8,11].includes(time.m)) return alert("当前不是颁奖月！");
+            if(!costEnergy(20)) return;
+            document.getElementById("inSchedulePlan").value = "盛装出席颁奖典礼，走红毯并等待大奖揭晓！";
+            
+            // 颁奖三步曲流程
+            alert("📸 【红毯环节】你身穿绝美高定礼服走上红毯，全场闪光灯闪烁不停，抹杀无数菲林！");
+            setTimeout(() => {
+                alert("📜 【提名揭晓】大屏幕正在滚动本年度各项大奖的入围名单，全场屏息凝神...");
+                setTimeout(() => {
+                    checkAutoAward(); // 强行触发底层颁奖结算机制
+                    setTimeout(() => generateAiSchedule(), 500); // 推进下周
+                }, 1000);
+            }, 1000);
+            return;
+        }
+        if (typeof oldQuickAction === 'function') oldQuickAction(type);
+    };
+
+    // ================= 4. 修复：巡演歌单列表一片空白 =================
+    // 补全缺失的过滤和渲染函数
+    window.filterSetlist = function() {
+        let filterSel = document.getElementById("selSetlistFilter");
+        let inner = document.getElementById("setlistTracksInner");
+        if (!filterSel || !inner) return;
+
+        let filterIdx = filterSel.value;
+        let list = window.allSetlistTracks || [];
+        
+        if (filterIdx !== "ALL") {
+            let a = albs[parseInt(filterIdx)];
+            if (a) list = list.filter(t => a.s.some(s => s.n === t.n || s.id === t.id));
+        }
+        
+        if (list.length === 0) {
+            inner.innerHTML = "<p style='color:#888;text-align:center;'>此分类下无可表演的歌曲</p>";
         } else {
-            console.log("📄 游戏使用传统 DOM (HTML标签) 渲染。");
+            inner.innerHTML = list.map(t => {
+                let isChecked = window.setlistSelectedIds.includes(t.id) ? "checked" : "";
+                return `
+                <div style="padding:6px 0; border-bottom:1px solid #eee; display:flex; align-items:center;">
+                    <input type="checkbox" class="setlist-chk" value="${t.id}" onchange="toggleSetlistSong('${t.id}')" ${isChecked} style="width:auto; margin:0 10px 0 0;">
+                    <div style="flex:1;">
+                        <b style="font-size:13px;color:#333;">${escapeHTML(t.n)}</b>
+                        <span style="font-size:11px;color:#888;margin-left:5px;">(全球: ${(t.stmGlobal||0).toLocaleString()})</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+    };
+
+    window.toggleSetlistSong = function(id) {
+        let idx = window.setlistSelectedIds.indexOf(id);
+        if (idx > -1) {
+            window.setlistSelectedIds.splice(idx, 1);
+        } else {
+            if (window.setlistSelectedIds.length >= (performContext.maxSongs || 10)) {
+                alert(`最多只能选择 ${performContext.maxSongs || 10} 首歌曲！`);
+                filterSetlist(); // 刷新恢复勾选框状态
+                return;
+            }
+            window.setlistSelectedIds.push(id);
+        }
+        document.getElementById("txtSetlistCount").innerText = `已选: ${window.setlistSelectedIds.length}`;
+    };
+
+    window.selectAllFiltered = function() {
+        let filterIdx = document.getElementById("selSetlistFilter").value;
+        let list = window.allSetlistTracks || [];
+        if (filterIdx !== "ALL") {
+            let a = albs[parseInt(filterIdx)];
+            if (a) list = list.filter(t => a.s.some(s => s.n === t.n || s.id === t.id));
         }
         
-        // 4. 寻找最大体积的全局变量 (可能是游戏真实的数据池)
-        let largeObjects = [];
-        for (let key in window) {
-            try {
-                if (window[key] && typeof window[key] === 'object' && key !== 'window' && key !== 'document') {
-                    let keys = Object.keys(window[key]);
-                    if (keys.length > 30) {
-                        largeObjects.push(key);
-                    }
+        for (let t of list) {
+            if (window.setlistSelectedIds.length >= (performContext.maxSongs || 10)) break;
+            if (!window.setlistSelectedIds.includes(t.id)) {
+                window.setlistSelectedIds.push(t.id);
+            }
+        }
+        document.getElementById("txtSetlistCount").innerText = `已选: ${window.setlistSelectedIds.length}`;
+        filterSetlist();
+    };
+
+    // ================= 5. 修复：真实历史走势 (x-x-OUT，无数量限制) =================
+    let oldAdvTimeTrend = window.advTime;
+    window.advTime = function(weeks, showMsg) {
+        if (typeof oldAdvTimeTrend === 'function') oldAdvTimeTrend(weeks, showMsg);
+        
+        // 在每一次推演后，强制收集当周排名
+        trackPool.forEach(t => {
+            if (!t._unlimitedTrend) t._unlimitedTrend = [];
+            if (t.type === 'track') {
+                let rank = t.lastW; // 或者用 t.peakS
+                if (!rank || rank > 100) rank = 'OUT';
+                
+                let lastRec = t._unlimitedTrend[t._unlimitedTrend.length - 1];
+                // 只有当不是重复记录 OUT 时，才推进数组
+                if (!(rank === 'OUT' && lastRec === 'OUT')) {
+                    t._unlimitedTrend.push(rank);
                 }
-            } catch(e) {}
-        }
-        console.log("📦 发现疑似游戏核心数据的全局变量:", largeObjects.join(', '));
+            }
+        });
+    };
+
+    let oldViewSongStatsTrend = window.viewSongStats;
+    window.viewSongStats = function(songId) {
+        if (typeof oldViewSongStatsTrend === 'function') oldViewSongStatsTrend(songId);
         
-        console.log("===================================");
-    }, 3000);
+        let t = trackPool.find(x => x.id === songId);
+        if (t && document.getElementById("mGameInputDesc")) {
+            let html = document.getElementById("mGameInputDesc").innerHTML;
+            let trendStr = t._unlimitedTrend && t._unlimitedTrend.length > 0 ? t._unlimitedTrend.join(" - ") : (t.peakS || 1);
+            
+            // 强行正则替换掉以前错误的单周走势，换成我们的长线 x-x-x
+            html = html.replace(/📈 .*?走势：\[ .*? \]/g, `📈 完整历史走势：<br><span style="color:#0055ff; word-break:break-all;">[ ${trendStr} ]</span>`);
+            document.getElementById("mGameInputDesc").innerHTML = html;
+        }
+    };
+
 })();
 
 // ==================== 代码结束 ====================
