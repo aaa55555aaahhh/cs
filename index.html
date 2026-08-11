@@ -6697,6 +6697,8 @@ function initNpcRelations() {
 var oldOpenNpcDetailForRelFixed2 = window.openNpcDetail;
 window.openNpcDetail = function(id) {
     initNpcRelations();
+    if(oldOpenNpcDetailForRelFixed2) 
+
     
     // 执行原版的基础面板渲染
     oldOpenNpcDetailForRelFixed(id);
@@ -16806,7 +16808,7 @@ window.openAlbDetail = function(idx) {
 };
 
 // 3. 记录不同时间维度的历史排位 (用于判定出榜)
-var oldAdvTimeForHistory = window.advTime;
+var oldAdvTimeForHistory2 = window.advTime;
 window.advTime = function(weeks, showMsg) {
     trackPool.forEach(t => {
         // 每天/周/月记录历史排位，这里简化处理，将上期的排位存入 lastRank 系列变量
