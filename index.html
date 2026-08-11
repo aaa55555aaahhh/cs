@@ -19456,171 +19456,176 @@ window.checkAutoAward = function() {
     window.checkAutoAward = function() {
         console.log("旧版 checkAutoAward 被新版替换以防止内存溢出。请依赖 generateNominations 进行动态颁奖！");
     };
-// 1. 修复玩家头像无法更改：重新绑定和清理旧的输入框，并使用闭包防冲突
-document.addEventListener("DOMContentLoaded", function() {
-    setTimeout(() => {
-        let avatarInput = document.getElementById("myAvatarInput");
-        if (avatarInput) {
-            avatarInput.outerHTML = `<input type="file" id="myAvatarInput" accept="image/*" style="display:none;" onchange="uploadMyAvatar(this)">`;
+(function(){
+    // 1. 修复 checkLoginPwd 未定义与登录大厅卡死问题
+    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+    window.checkLoginPwd = function() {
+        let inputPwd = document.getElementById("loginPwd") ? document.getElementById("loginPwd").value.trim() : "";
+        if (!window.VALID_PASSWORDS.includes(inputPwd)) {
+            alert("识别码错误，请重新输入！");
+            return;
         }
-    }, 1500);
-});
-
-window.uploadMyAvatar = function(input) {
-    if (input.files && input.files[0]) {
-        processAvatarUpload(input.files[0], function(base64) {
-            ad.avatar = base64;
-            // 强行刷新所有带头像的 img
-            let imgTags = document.querySelectorAll("img");
-            imgTags.forEach(img => {
-                if(img.src.includes(base64.substring(0,20)) || (img.parentElement.getAttribute("onclick") && img.parentElement.getAttribute("onclick").includes("myAvatarInput"))) {
-                    img.src = base64;
-                }
-            });
-            if(typeof updAttr === 'function') updAttr();
-            saveGame();
-            alert("✅ 头像上传/更换成功！");
-        });
-    }
-    input.value = ""; 
-};
-
-// 2. 任何需要选歌的地方（如MV拍摄、打歌等），新发行的歌（在榜周数少）排在最上面
-window.renderMVMap = function() { 
-    // 按在榜周数升序，越新的歌越在前面
-    let trks = trackPool.filter(x => x.isMe && x.type === "track").sort((a,b) => (a.weeks||0) - (b.weeks||0)); 
-    let listMV = document.getElementById("listMV");
-    if(listMV) {
-        listMV.innerHTML = trks.length ? trks.map(t => {
-            let streamCount = t.stmGlobal ? t.stmGlobal : (t.stm ? t.stm : 0);
-            let btnLyric = t.hasLyricMV ? `<button class="sec inline" disabled style="opacity:0.5;">✅ 已拍歌词版</button>` : `<button class="sec inline" onclick="shootMV('${t.id}', 0)">歌词MV</button>`;
-            let btnReal = t.hasRealMV ? `<button class="inline" disabled style="opacity:0.5;">✅ 已拍真人主打</button>` : `<button class="inline" onclick="shootMV('${t.id}', 1)">真人MV</button>`;
-            return `<div class="card" style="padding:10px;margin-bottom:8px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <b>${escapeHTML(t.n)}</b> <button class="sec inline" onclick="viewSongStats('${t.id}')">📄 详情</button>
-                </div>
-                <span style="font-size:11px;color:#c8a440;">(发行${t.weeks}周)</span><br>
-                <span style="font-size:11px;color:#888;">流媒: ${streamCount.toLocaleString()} | MV次数: ${t.mvN||0}</span>
-                <div style="margin-top:6px;">${btnLyric}${btnReal}</div>
-            </div>`;
-        }).join('') : "<p style='font-size:12px;color:#888;'>没有可拍MV的单曲</p>";
-    }
-};
-
-var oldDoTVPromoForSort = window.doTVPromo;
-window.doTVPromo = function(showName){
-    if (showName) {
-        currentPromoShow = showName || "打歌节目";
-        let myTrks = trackPool.filter(function(x){ return x.isMe && x.type === "track"; })
-                             .sort((a,b) => (a.weeks||0) - (b.weeks||0)); // 新歌在前
-        if(!myTrks.length) { return alert("⚠️ 没有可打单歌曲！"); } 
-        pickAction = "tvPromoFree"; 
-        document.getElementById("mPickTitle").innerText = `🎤 登台 ${currentPromoShow}`; 
-        document.getElementById("mPickExt").style.display = "none"; 
-     
-        document.getElementById("mPickList").innerHTML = myTrks.map(t => `
-            <div style="padding:8px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
-                <div><input type="radio" name="tvR" value="${t.id}"> <b>${escapeHTML(t.n)}</b> <span style="font-size:10px;color:#888;">(发行${t.weeks||1}周)</span></div>
-                <button class="sec inline" style="padding:2px 6px;font-size:11px;" onclick="viewSongStats('${t.id}')">详情</button>
-            </div>`).join(''); 
-        document.getElementById("mPick").classList.add("open"); 
-    } else {
-        oldDoTVPromoForSort(showName);
-    }
-};
-
-// 3. 限制乐评打分机制：即使满属性，100分也极度罕见，增加乐评人的刻薄度
-if (typeof calculateRealisticScore !== 'undefined') {
-    window.calculateRealisticScore = function(rawScore, aiAdj) {
-        let base;
-        if (rawScore <= 100) base = rawScore * 0.7; 
-        else if (rawScore <= 200) base = 70 + (rawScore - 100) * 0.15;
-        else if (rawScore <= 1000) base = 85 + (rawScore - 200) * 0.012; // 满属性1000大概基础到94.6分
-        else base = 95;
-
-        // 加入随机波动 (-5 到 +3)，乐评人天然带有偏见
-        let rng = Math.floor(Math.random() * 9) - 5;
+        try {
+            localStorage.setItem("starPro_login_pwd", inputPwd);
+            localStorage.setItem("starPro_is_unlocked", "true"); 
+        } catch (e) {}
         
-        let finalScore = base + rng + (aiAdj || 0);
-        
-        // 98分以上强制进行第二次极低概率的抛骰子，只有 5% 的概率能过 99，否则最高 98
-        if (finalScore >= 99 && Math.random() > 0.05) {
-            finalScore = 98;
+        let loginPage = document.getElementById("loginPage");
+        if(loginPage) {
+            loginPage.classList.remove("active");
+            loginPage.style.display = "none";
         }
-
-        return Math.max(0, Math.min(100, Math.floor(finalScore)));
+        let createPage = document.getElementById("createPage");
+        if (createPage) {
+            createPage.style.display = "block";
+            createPage.classList.add("active");
+        }
+        alert("验证成功！欢迎进入大厅。");
     };
-}
 
-// 4. 修复“在榜周数”逻辑：只有进了前100名，在榜周数才会增加
-var oldAdvTimeForChartWeeks = window.advTime;
-window.advTime = function(weeks, showMsg) {
-    // 拦截并在推演时，检查上周的排名
-    trackPool.forEach(t => {
-        if (t.type === "track" || t.type === "album") {
-            // 原先是每周固定 weeks++
-            // 现在改为：如果刚发行 (weeks == 0) 或 上周在全球前100，或美国前100，才计入“在榜周数”
-            if (t.weeks === undefined) t.weeks = 0;
-            if (t.chartWeeks === undefined) t.chartWeeks = 0; // 真实在榜周数
-            
-            let wasInChart = (t.lastW && t.lastW <= 100) || (t.peakB && t.lastW && t.lastW <= 100) || t.weeks === 0;
-            
-            if (wasInChart) {
-                t.chartWeeks++;
+    // 2. 修复玩家头像无法更改：每次上传后强制清空 input 值
+    window.uploadMyAvatar = function(input) {
+        if (input.files && input.files[0]) {
+            processAvatarUpload(input.files[0], function(base64) {
+                ad.avatar = base64;
+                let imgTags = document.querySelectorAll("img");
+                imgTags.forEach(img => {
+                    if(img.src.includes(base64.substring(0,20)) || (img.parentElement && img.parentElement.getAttribute("onclick") && img.parentElement.getAttribute("onclick").includes("myAvatarInput"))) {
+                        img.src = base64;
+                    }
+                });
+                if(typeof updAttr === 'function') updAttr();
+                saveGame();
+                alert("✅ 头像上传/更换成功！");
+            });
+        }
+        input.value = ""; // 核心：清空文件选择状态，允许再次点击
+    };
+
+    // 3. 删除 NPC 按钮功能与注入
+    window.deleteNPC = function(npcId) {
+        if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品仍会保留，但TA将从艺人榜和关系网中永久消失)")) return;
+        let idx = worldArtists.findIndex(x => x.id === npcId);
+        if(idx > -1) {
+            worldArtists.splice(idx, 1);
+            alert("✅ 删除成功！");
+            closeM('mInfo');
+            if(typeof renderNpcList === 'function') renderNpcList();
+            saveGame();
+        }
+    };
+
+    var baseOpenNpcDetailForDelete = window.openNpcDetail;
+    window.openNpcDetail = function(id) {
+        if (baseOpenNpcDetailForDelete) baseOpenNpcDetailForDelete(id);
+        let npc = worldArtists.find(x => x.id === id);
+        if (npc) {
+            let contentDiv = document.getElementById("mInfoContent");
+            if (contentDiv && !contentDiv.innerHTML.includes("deleteNPC")) {
+                let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
+                if (editBtn) {
+                    let delBtnHtml = `<button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;border-color:#ff0000;color:#ff0000;" onclick="deleteNPC('${npc.id}')">🗑️ 删除艺人</button>`;
+                    editBtn.insertAdjacentHTML('afterend', delBtnHtml);
+                }
             }
         }
-    });
+    };
 
-    // 运行底层的推演（底层可能会做 t.weeks++，我们保留它作为“发行周数”，引入 t.chartWeeks 作为在榜周数）
-    oldAdvTimeForChartWeeks(weeks, showMsg);
-};
-
-// 修正歌曲详情里的展示文本
-var oldViewSongStatsForChartWeeks = window.viewSongStats;
-window.viewSongStats = function(songId) {
-    oldViewSongStatsForChartWeeks(songId);
-    let t = trackPool.find(x => x.id === songId);
-    if(t && document.getElementById("mGameInputDesc")) {
-        let content = document.getElementById("mGameInputDesc").innerHTML;
-        // 把原先的“在榜总周数”替换为真实的打榜周数
-        let cw = t.chartWeeks || t.weeks || 1;
-        content = content.replace(/(📅 在榜总周数：<b>).*?( 周<\/b>)/, `$1${cw}$2 <span style="font-size:10px;color:#888;">(距发行已 ${t.weeks} 周)</span>`);
-        
-        let outStr = (t.lastW && t.lastW <= 100) ? `<span style="color:#25d366;font-weight:bold;">TBC (仍在榜)</span>` : `<span style="color:#888;font-weight:bold;">OUT (已出榜)</span>`;
-        content = content.replace(/当前状态：.*?<br>/, `当前状态：${outStr}<br>`);
-        
-        document.getElementById("mGameInputDesc").innerHTML = content;
-    }
-};
-
-// 5. 确保删除NPC按钮有效
-window.deleteNPC = function(npcId) {
-    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
-    let idx = worldArtists.findIndex(x => x.id === npcId);
-    if(idx > -1) {
-        worldArtists.splice(idx, 1);
-        alert("✅ 删除成功！");
-        closeM('mInfo');
-        if(typeof renderNpcList === 'function') renderNpcList();
-        saveGame();
-    }
-};
-
-var oldOpenNpcDetailForDeleteBtn = window.openNpcDetail;
-window.openNpcDetail = function(id) {
-    oldOpenNpcDetailForDeleteBtn(id); 
-    let npc = worldArtists.find(x => x.id === id);
-    if (npc) {
-        let contentDiv = document.getElementById("mInfoContent");
-        if (contentDiv && !contentDiv.innerHTML.includes("deleteNPC")) {
-            let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
-            if (editBtn) {
-                let delBtnHtml = `<button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;border-color:#ff0000;color:#ff0000;" onclick="deleteNPC('${npc.id}')">🗑️ 删除艺人</button>`;
-                editBtn.insertAdjacentHTML('afterend', delBtnHtml);
-            }
+    // 4. 新歌优先靠前：MV 和 电视台打单列表按周数升序排序
+    window.renderMVMap = function() { 
+        let trks = trackPool.filter(x => x.isMe && x.type === "track").sort((a,b) => (a.weeks||0) - (b.weeks||0)); 
+        let listMV = document.getElementById("listMV");
+        if(listMV) {
+            listMV.innerHTML = trks.length ? trks.map(t => {
+                let streamCount = t.stmGlobal ? t.stmGlobal : (t.stm ? t.stm : 0);
+                let btnLyric = t.hasLyricMV ? `<button class="sec inline" disabled style="opacity:0.5;">✅ 已拍歌词版</button>` : `<button class="sec inline" onclick="shootMV('${t.id}', 0)">歌词MV</button>`;
+                let btnReal = t.hasRealMV ? `<button class="inline" disabled style="opacity:0.5;">✅ 已拍真人主打</button>` : `<button class="inline" onclick="shootMV('${t.id}', 1)">真人MV</button>`;
+                return `<div class="card" style="padding:10px;margin-bottom:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <b>${escapeHTML(t.n)}</b> <button class="sec inline" onclick="viewSongStats('${t.id}')">📄 详情</button>
+                    </div>
+                    <span style="font-size:11px;color:#c8a440;">(发行第${t.weeks||1}周)</span><br>
+                    <span style="font-size:11px;color:#888;">流媒: ${streamCount.toLocaleString()} | MV次数: ${t.mvN||0}</span>
+                    <div style="margin-top:6px;">${btnLyric}${btnReal}</div>
+                </div>`;
+            }).join('') : "<p style='font-size:12px;color:#888;'>没有可拍MV的单曲</p>";
         }
+    };
+
+    var oldDoTVPromoForSort = window.doTVPromo;
+    window.doTVPromo = function(showName){
+        if (showName) {
+            window.currentPromoShow = showName || "打歌节目";
+            let myTrks = trackPool.filter(function(x){ return x.isMe && x.type === "track"; })
+                                 .sort((a,b) => (a.weeks||0) - (b.weeks||0));
+            if(!myTrks.length) { return alert("⚠️ 没有可打单歌曲！"); } 
+            pickAction = "tvPromoFree"; 
+            document.getElementById("mPickTitle").innerText = `🎤 登台 ${window.currentPromoShow}`; 
+            document.getElementById("mPickExt").style.display = "none"; 
+         
+            document.getElementById("mPickList").innerHTML = myTrks.map(t => `
+                <div style="padding:8px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+                    <div><input type="radio" name="tvR" value="${t.id}"> <b>${escapeHTML(t.n)}</b> <span style="font-size:10px;color:#888;">(发行第${t.weeks||1}周)</span></div>
+                    <button class="sec inline" style="padding:2px 6px;font-size:11px;" onclick="viewSongStats('${t.id}')">详情</button>
+                </div>`).join(''); 
+            document.getElementById("mPick").classList.add("open"); 
+        } else {
+            if (oldDoTVPromoForSort) oldDoTVPromoForSort(showName);
+        }
+    };
+
+    // 5. 乐评 100 分防滥用机制
+    if (typeof calculateRealisticScore !== 'undefined') {
+        window.calculateRealisticScore = function(rawScore, aiAdj) {
+            let base;
+            if (rawScore <= 100) base = rawScore * 0.7; 
+            else if (rawScore <= 200) base = 70 + (rawScore - 100) * 0.15;
+            else if (rawScore <= 1000) base = 85 + (rawScore - 200) * 0.012; 
+            else base = 95;
+
+            let rng = Math.floor(Math.random() * 9) - 5;
+            let finalScore = base + rng + (aiAdj || 0);
+            
+            // 极度苛刻：98分以上只有 5% 的概率通过，否则强压回 98
+            if (finalScore >= 99 && Math.random() > 0.05) {
+                finalScore = 98;
+            }
+            return Math.max(0, Math.min(100, Math.floor(finalScore)));
+        };
     }
-};
+
+    // 6. 出榜不记录周数：修复真实在榜周数统计 (只有在前100名才算在榜)
+    var oldAdvTimeForChartWeeks = window.advTime;
+    window.advTime = function(weeks, showMsg) {
+        trackPool.forEach(t => {
+            if (t.type === "track" || t.type === "album") {
+                if (t.chartWeeks === undefined) t.chartWeeks = 0; 
+                let wasInChart = (t.lastW && t.lastW <= 100) || (t.peakB && t.lastW && t.lastW <= 100) || t.weeks === 0;
+                if (wasInChart) {
+                    t.chartWeeks++;
+                }
+            }
+        });
+        if (oldAdvTimeForChartWeeks) oldAdvTimeForChartWeeks(weeks, showMsg);
+    };
+
+    var oldViewSongStatsForChartWeeks = window.viewSongStats;
+    window.viewSongStats = function(songId) {
+        if (oldViewSongStatsForChartWeeks) oldViewSongStatsForChartWeeks(songId);
+        let t = trackPool.find(x => x.id === songId);
+        if(t && document.getElementById("mGameInputDesc")) {
+            let content = document.getElementById("mGameInputDesc").innerHTML;
+            let cw = t.chartWeeks || t.weeks || 1;
+            content = content.replace(/(📅 在榜总周数：<b>).*?( 周<\/b>)/, `$1${cw}$2 <span style="font-size:10px;color:#888;">(距发行已 ${t.weeks} 周)</span>`);
+            let outStr = (t.lastW && t.lastW <= 100) ? `<span style="color:#25d366;font-weight:bold;">TBC (仍在榜)</span>` : `<span style="color:#888;font-weight:bold;">OUT (已出榜)</span>`;
+            content = content.replace(/当前状态：.*?<br>/, `当前状态：${outStr}<br>`);
+            document.getElementById("mGameInputDesc").innerHTML = content;
+        }
+    };
+
+    // 7. 解决报错，确保系统稳定执行
+    console.log("✅ 星路制作人底层修复补丁 1.4.1 已加载完毕。");
+})();
 // ==================== 代码结束 ====================
 </script>
 </body>
