@@ -19351,6 +19351,111 @@ window.checkAutoAward = function() {
         Array.prototype.filter = pureNativeFilter;
     }
 };
+// ==================== 终极防爆栈与修复补丁 ====================
+
+(function() {
+    // 1. 彻底修复并恢复原生的 Array.prototype.filter
+    // 由于之前的代码中存在多次不安全的 filter 劫持，导致无限套娃引发 Maximum call stack size exceeded
+    
+    // 如果已经被劫持了，我们通过新建一个 iframe 来获取最纯净的原生 filter
+    try {
+        let iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+        let pureFilter = iframe.contentWindow.Array.prototype.filter;
+        document.body.removeChild(iframe);
+        Array.prototype.filter = pureFilter;
+    } catch(e) {
+        console.warn("恢复原生 filter 失败，尝试其他方式");
+    }
+
+    // 2. 重新定义之前导致报错的 checkAutoAward 逻辑，绝对不再全局污染 Array.prototype.filter！
+    // 我们将其逻辑转移到获取奖项候选池的 getAwardTop5 内部，这样就无需劫持基础对象
+    
+    var originalGetAwardTop5 = window.getAwardTop5;
+    if (typeof originalGetAwardTop5 === 'function') {
+        window.getAwardTop5 = function(awd, cat, poolYear) {
+            // 给实体打上参赛年份兜底
+            trackPool.forEach(t => { 
+                if(t.t_y === undefined) t.t_y = time.y; 
+            });
+            
+            // 执行原版的提取逻辑，但在此前过滤掉超过1年的作品
+            let trks = trackPool.filter(x => x.type === "track" && (poolYear - (x.t_y||poolYear) <= 1));
+            let albsOnly = trackPool.filter(x => x.type === "album" && (poolYear - (x.t_y||poolYear) <= 1));
+            
+            let pool = [];
+            if (cat.targetType === 'album') pool = [...albsOnly];
+            else if (cat.targetType === 'track') pool = [...trks];
+            else if (cat.targetType === 'artist') pool = [...worldArtists, { id: 'player_self', n: ad.s, fans: ad.st.f, isMe: true, sk: ad.sk }];
+            else if (cat.targetType === 'mv') pool = trks.filter(x => x.mvN > 0); 
+        
+            if (cat.targetGenre && cat.targetGenre !== "ALL") pool = pool.filter(x => x.gnr && x.gnr.includes(cat.targetGenre));
+            if (cat.targetForm === 'solo') pool = pool.filter(x => !x.isCollab);
+            if (cat.targetForm === 'collab') pool = pool.filter(x => x.isCollab);
+            
+            // 加入 targetSongType 过滤支持
+            if (cat.targetSongType && cat.targetSongType !== "ALL") pool = pool.filter(x => x.sType === cat.targetSongType);
+        
+            let w_spub = awd.rules.weightSpub || 0.33;
+            let w_sales = awd.rules.weightSales || 0.33;
+            let w_catchy = awd.rules.weightCatchy || 0.34;
+        
+            pool = pool.filter(item => {
+                let hash = 0; 
+                let aName = item.isMe ? ad.s : (item.artist || item.n);
+                for (let i = 0; i < aName.length; i++) hash = aName.charCodeAt(i) + ((hash << 5) - hash);
+                if (cat.focus === 'songwriting') {
+                    if(item.isMe && item.c === "外购获得") return false; 
+                    if(!item.isMe && (Math.abs(hash) % 100 > 50)) return false; 
+                    w_spub = 0.8; w_sales = 0.1; w_catchy = 0.1; 
+                }
+                if (cat.focus === 'vocal') {
+                    if(!item.isMe && (Math.abs(hash) % 100 > 60)) return false; 
+                    w_spub = 0.5; w_sales = 0.2; w_catchy = 0.3; 
+                }
+                return true;
+            });
+        
+            pool.forEach(item => {
+                if (cat.targetType === 'artist') {
+                    item._awdScore = (item.fans || 0) * (Math.random() * 0.4 + 0.8);
+                } else {
+                    let s_spub = item.Spub || 50;
+                    
+                    // 如果有特殊陪跑逻辑，可以在这里体现，不再需要劫持
+                    let s_sales = item.slTotal || 0;
+                    let s_catchy = item.catchiness || 1.0;
+                    if (cat.targetType === 'mv') s_catchy *= (1 + (item.mvN * 0.5)); 
+                    
+                    let normSpub = s_spub * 10000; 
+                    let normSales = s_sales; 
+                    let normCatchy = s_catchy * 200000;
+                    
+                    item._awdScore = (normSpub * w_spub) + (normSales * w_sales) + (normCatchy * w_catchy);
+                    item._awdScore *= (Math.random() * 0.4 + 0.8);
+                    if (item.isMe) {
+                        if (cat.focus === 'songwriting') item._awdScore += ((ad.sk.w||50) * 50000);
+                        if (cat.focus === 'vocal') item._awdScore += ((ad.sk.v||50) * 50000);
+                    }
+                }
+            });
+        
+            pool.sort((a,b) => b._awdScore - a._awdScore);
+            return pool.slice(0, 5).map(x => ({
+                id: x.id,
+                n: x.n,
+                artist: x.isMe ? ad.s : (x.artist || x.n),
+                isMe: x.isMe,
+                score: x._awdScore
+            }));
+        };
+    }
+    
+    // 3. 彻底停用所有会劫持原生方法的颁奖重写代码
+    window.checkAutoAward = function() {
+        console.log("旧版 checkAutoAward 被新版替换以防止内存溢出。请依赖 generateNominations 进行动态颁奖！");
+    };
 
 // ==================== 代码结束 ====================
 </script>
