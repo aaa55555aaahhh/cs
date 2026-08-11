@@ -18162,6 +18162,100 @@ window.deleteNPC = function(npcId) {
     }
 };
 
+window.deleteNPC = function(npcId) {
+    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
+    let idx = worldArtists.findIndex(x => x.id === npcId);
+    if(idx > -1) {
+        worldArtists.splice(idx, 1);
+        alert("✅ 删除成功！");
+        closeM('mInfo');
+        if(typeof renderNpcList === 'function') renderNpcList();
+        saveGame();
+    }
+};
+
+// ==================== 2. 导出单体艺人数据 ====================
+window.exportSingleNPC = function(npcId) {
+    let npc = worldArtists.find(x => x.id === npcId);
+    if (!npc) return alert("未找到艺人数据！");
+    let jsonStr = JSON.stringify(npc, null, 2);
+    let blob = new Blob([jsonStr], { type: "application/json" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = `星路制作人_艺人_${npc.n}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+window.uploadMyAvatar = function(input) {
+    if (input.files && input.files[0]) {
+        processAvatarUpload(input.files[0], function(base64) {
+            ad.avatar = base64;
+            // 修复换头像不刷新的问题，强行找到原图标签替换 src
+            let imgTags = document.querySelectorAll("img");
+            imgTags.forEach(img => {
+                if(img.src.includes(base64.substring(0,20)) || (img.parentElement.getAttribute("onclick") && img.parentElement.getAttribute("onclick").includes("myAvatarInput"))) {
+                    img.src = base64;
+                }
+            });
+            updAttr();
+            saveGame();
+            alert("✅ 头像上传/更换成功！");
+        });
+    }
+    input.value = ""; 
+};
+
+// ==================== 8. 重构时尚屋与商店系统 ====================
+window.deleteNPC = function(npcId) {
+    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
+    let idx = worldArtists.findIndex(x => x.id === npcId);
+    if(idx > -1) {
+        worldArtists.splice(idx, 1);
+        alert("✅ 删除成功！");
+        closeM('mInfo');
+        if(typeof renderNpcList === 'function') renderNpcList();
+        saveGame();
+    }
+};
+
+// ==================== 2. 导出单体艺人数据 ====================
+window.exportSingleNPC = function(npcId) {
+    let npc = worldArtists.find(x => x.id === npcId);
+    if (!npc) return alert("未找到艺人数据！");
+    let jsonStr = JSON.stringify(npc, null, 2);
+    let blob = new Blob([jsonStr], { type: "application/json" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = `星路制作人_艺人_${npc.n}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
+
+window.uploadMyAvatar = function(input) {
+    if (input.files && input.files[0]) {
+        processAvatarUpload(input.files[0], function(base64) {
+            ad.avatar = base64;
+            // 修复换头像不刷新的问题，强行找到原图标签替换 src
+            let imgTags = document.querySelectorAll("img");
+            imgTags.forEach(img => {
+                if(img.src.includes(base64.substring(0,20)) || (img.parentElement.getAttribute("onclick") && img.parentElement.getAttribute("onclick").includes("myAvatarInput"))) {
+                    img.src = base64;
+                }
+            });
+            updAttr();
+            saveGame();
+            alert("✅ 头像上传/更换成功！");
+        });
+    }
+    input.value = ""; 
+};
 // ==================== 8. 重构时尚屋与商店系统 ====================
 let fashionMags = [
     { n: "VOGUE", tier: "T0", type: "女刊", history: [] },
