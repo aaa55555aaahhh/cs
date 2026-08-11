@@ -15352,7 +15352,7 @@ window.confirmStartWrite = function() {
 
 // ==================== 全局密码与系统配置 (已修复冲突) ====================
 // 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344"];
+window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
     
@@ -18306,7 +18306,7 @@ window.strollFashion = function(type, idx) {
     let isBrand = type === 'brand';
     
     let roll = Math.random();
-    if(roll < 0.3) {
+    if(roll < 0.8) {
         // 建立联系
         let npcName = entity.n + (isBrand ? " 品牌公关" : " 主编");
         if(!conts.find(c => c.n === npcName)) {
@@ -18596,21 +18596,6 @@ window.advTime = function(weeks, showMsg) {
         if(albIdx > -1) window.openAlbDetail(albIdx);
     };
 
-    // ================= 2. 修复：找回主角与圈内的人脉/粉圈关系表 =================
-    var oldUpdAttr = window.updAttr;
-    window.updAttr = function() {
-        if (typeof oldUpdAttr === 'function') oldUpdAttr();
-        var box = document.getElementById("boxBasic");
-        if (box && !document.getElementById("myRelationsUI")) {
-            var relHtml = "<div id='myRelationsUI' style='margin-top:10px; padding:10px; background:#f9f9f9; border-radius:6px; border:1px solid #eee; font-size:12px;'>" +
-                "<b style='color:#e91e63;'>💞 个人圈内关系指标</b><br>" +
-                "圈内人缘：<b style='color:#25d366;'>" + Math.min(100, Math.floor(ad.st.f / 1000000) + 50) + "</b>/100 (影响日常邀约)<br>" +
-                "粉圈凝聚：<b style='color:#0055ff;'>" + Math.min(100, 80 + ad.awd.length) + "</b>/100 (影响饭圈撕逼战力)" +
-                "</div>";
-            box.insertAdjacentHTML('beforeend', relHtml);
-        }
-    };
-
     // ================= 3. 修复：AI记事处的颁奖典礼快捷行动 =================
     var oldRefreshTodoStatus = window.refreshTodoStatus;
     window.refreshTodoStatus = function() {
@@ -18704,6 +18689,828 @@ window.advTime = function(weeks, showMsg) {
     };
 
 })();
+    // ================= 1. 奖项动态时间推演 (自动适应自定义月份) =================
+    function getOffsetMonth(baseMonth, offset) {
+        let m = baseMonth - offset;
+        while (m <= 0) m += 12;
+        return m;
+    }
+
+    var originalRefreshTodoStatus = window.refreshTodoStatus;
+    window.refreshTodoStatus = function() {
+        if (originalRefreshTodoStatus) originalRefreshTodoStatus();
+        
+        let curM = time.m;
+        // 筛选出对应阶段的奖项
+        let subAwds = awardRegistry.filter(a => getOffsetMonth(a.month || 12, 2) === curM);
+        let nomAwds = awardRegistry.filter(a => getOffsetMonth(a.month || 12, 1) === curM);
+        let cerAwds = awardRegistry.filter(a => (a.month || 12) === curM);
+
+        let html = ``;
+        if(subAwds.length > 0) html += `<br><span style="color:#0055ff;">• 📢 【提报阶段】：${subAwds.map(a=>a.name).join('、')} 正在进行首轮报名审查。</span>`;
+        if(nomAwds.length > 0) html += `<br><span style="color:#e6683c;">• 📜 【提名公布】：${nomAwds.map(a=>a.name).join('、')} 现已公布提名五强名单！</span>`;
+        if(cerAwds.length > 0) html += `<br><span style="color:#e91e63;font-weight:bold;">• 🏆 【颁奖盛典】：本月举办 ${cerAwds.map(a=>a.name).join('、')}！去走红毯并见证大奖归属吧！</span>`;
+        
+        let statusBox = document.getElementById("uiTodoStatus");
+        if (statusBox) {
+            // 清理旧的硬编码文案
+            let cleanHtml = statusBox.innerHTML.replace(/• 📢.*?<\/span>|<br>/g, "").replace(/• 📜.*?<\/span>|<br>/g, "").replace(/• 🏆.*?<\/span>|<br>/g, "");
+            statusBox.innerHTML = cleanHtml + html;
+        }
+
+        // 生成快捷按钮
+        let actionArea = document.getElementById("scheduleActionArea");
+        if(actionArea) {
+            let btnHtml = `
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('write')">🎵 闭关写歌</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('relax')">🏖️ 休息放空</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('promo')">📺 跑通告宣发</button>
+            `;
+            if (nomAwds.length > 0 && typeof viewNominationsUI === 'function') {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff8e8; border:1px solid #c8a440; color:#a67c00;" onclick="viewNominationsUI()">📜 查看本月提名名单</button>`;
+            }
+            if (cerAwds.length > 0) {
+                // 如果有奖项要颁发，高亮显示入口
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff0f5; border:1px solid #e91e63; color:#e91e63; font-weight:bold;" onclick="startCeremonyUI()">🏆 参加颁奖典礼 (可表演)</button>`;
+            }
+            actionArea.innerHTML = btnHtml;
+        }
+    };
+
+    // 确保时间跨月时，生成下个月的提名名单
+    var originalAdvTimeForNoms = window.advTime;
+    window.advTime = function(weeks, showMsg) {
+        let oldM = time.m;
+        let oldY = time.y;
+        
+        if (originalAdvTimeForNoms) originalAdvTimeForNoms(weeks, showMsg);
+        
+        let curM = time.m;
+        let curY = time.y;
+        
+        if (oldM !== curM) {
+            // 生成【下个月】要办的奖项的提名（即本月是提名月）
+            let targetAwds = awardRegistry.filter(a => getOffsetMonth(a.month || 12, 1) === curM);
+            targetAwds.forEach(awd => {
+                let targetYear = (awd.month < curM) ? curY + 1 : curY;
+                let awdKey = `${targetYear}_${awd.id}`;
+                if (ad.awardData && ad.awardData.nominations && !ad.awardData.nominations[awdKey]) {
+                    ad.awardData.nominations[awdKey] = {};
+                    awd.categories.forEach(cat => {
+                        if (typeof getAwardTop5 === 'function') {
+                            ad.awardData.nominations[awdKey][cat.id] = getAwardTop5(awd, cat, targetYear);
+                        }
+                    });
+                    if(posts && posts.mom) posts.mom.unshift({t: `📰 【入围名单公布】`, c: `${awd.name} 的各项提名现已出炉！去看看有谁入围了吧！`});
+                }
+            });
+        }
+    };
+
+    // ================= 2. 颁奖典礼：登台表演 (1~3首) =================
+    var originalStartCeremonyUI = window.startCeremonyUI;
+    window.startCeremonyUI = function() {
+        let curM = time.m;
+        let curY = time.y;
+        let cerAwds = awardRegistry.filter(a => (a.month || 12) === curM);
+        
+        // 检查玩家是否入围
+        let isNominated = false;
+        cerAwds.forEach(awd => {
+            let awdKey = `${curY}_${awd.id}`;
+            let noms = ad.awardData ? ad.awardData.nominations[awdKey] : null;
+            if (noms) {
+                Object.values(noms).forEach(top5 => {
+                    if (top5 && top5.find(x => x.isMe)) isNominated = true;
+                });
+            }
+        });
+
+        if (isNominated) {
+            if(confirm("🎉 组委会注意到你获得了重磅提名！特地为你留出了 1~3 首歌曲的【串烧表演时间】。\n你要先去配置表演歌单吗？（如果不配置将只在台下观看）")) {
+                window.performContext = { type: 'award', maxSongs: 3, cerAwds: cerAwds };
+                if (typeof openSetlistUI === 'function') {
+                    openSetlistUI("🏆 颁奖典礼舞台表演配置");
+                    return; // 拦截掉原流程，等表演完了再出开奖结果
+                }
+            }
+        }
+        
+        // 如果没入围或者取消表演，直接走原版开奖流程
+        if (originalStartCeremonyUI) originalStartCeremonyUI();
+    };
+
+    // 拦截舞台确认按钮，表演完后直接顺滑衔接开奖
+    var originalConfirmPerformance = window.confirmPerformance;
+    window.confirmPerformance = function() {
+        let isAwardStage = (window.performContext && window.performContext.type === 'award');
+        
+        if (originalConfirmPerformance) originalConfirmPerformance(); 
+        
+        if (isAwardStage) {
+            setTimeout(() => {
+                alert("🎤 你的舞台表演已震撼落幕，全场起立鼓掌！\n接下来，颁奖典礼即将揭晓最终得主...");
+                if (originalStartCeremonyUI) originalStartCeremonyUI(); // 调回颁奖结算
+            }, 800);
+        }
+    };
+
+
+    // ================= 3. 历史走势重构：真正的收集器 =================
+    var originalUpdatePeakRanks = window.updatePeakRanks;
+    window.updatePeakRanks = function() {
+        // 先让内部更新 Peak
+        if (originalUpdatePeakRanks) originalUpdatePeakRanks(); 
+        
+        // 我们利用刚刚计算出的 lastW (上周排名) 来记录走势
+        trackPool.forEach(t => {
+            if (t.type === "track" || t.type === "album") {
+                if (!t.trueTrend) t.trueTrend = [];
+                
+                let rankToPush = t.lastW; 
+                // 如果排名没算出来，或者大于100，记为 OUT
+                if (!rankToPush || rankToPush > 100) rankToPush = 'OUT';
+                
+                // 为了防止短时间内重复调用导致数组被塞满同样的数字，只有跨周/天数变动才推入
+                // 简单处理：只要最后一位不等于当前排名，或者还是首周，就记录
+                if (t.trueTrend.length === 0 || t.trueTrend[t.trueTrend.length - 1] !== rankToPush || t.weeks === 1) {
+                    t.trueTrend.push(rankToPush);
+                }
+                
+                // 限制长度防爆档
+                if (t.trueTrend.length > 40) t.trueTrend.shift();
+            }
+        });
+    };
+
+    // 覆盖 UI 展示：替换原来的假走势
+    var originalViewSongStats = window.viewSongStats;
+    window.viewSongStats = function(songId) {
+        if (originalViewSongStats) originalViewSongStats(songId);
+        
+        let t = trackPool.find(x => x.id === songId);
+        if (t && document.getElementById("mGameInputDesc")) {
+            let html = document.getElementById("mGameInputDesc").innerHTML;
+            let trendStr = t.trueTrend && t.trueTrend.length > 0 ? t.trueTrend.join(" - ") : (t.peakS || "1");
+            
+            // 替换展示
+            html = html.replace(/📈 历史走势：.*?<\/b>/g, `📈 真实历史走势：<b><span style='color:#0055ff; word-break:break-all;'>[ ${trendStr} ]</span></b>`);
+            document.getElementById("mGameInputDesc").innerHTML = html;
+        }
+    };
+
+
+    // ================= 4. 宗教电台漏洞彻底封死 =================
+    // 1. 拦截注水购买：如果是宗教直接不准买
+    var originalBuyRadioPayola = window.buyRadioPayola;
+    window.buyRadioPayola = function(id, tab = 'all') {
+        let t = trackPool.find(x => x.id === id);
+        if(t && (t.gnr.includes("宗教") || (t.g && t.g.includes("宗教")))) {
+            return alert("🚫 【电台全面封杀】\n这首歌的曲风包含敏感的【宗教】元素，各大主流电台拒收公关费并拒绝播放！你无法进行注水！");
+        }
+        if (originalBuyRadioPayola) originalBuyRadioPayola(id, tab);
+    };
+
+    // 2. 拦截 B榜点数计算：每次渲染榜单前，强制把宗教歌曲的电台分归零
+    var originalRenderChart = window.renderChart;
+    window.renderChart = function() {
+        trackPool.forEach(t => {
+            if (t.type === "track" && (t.gnr && t.gnr.includes("宗教") || (t.g && t.g.includes("宗教")))) {
+                t.radioAud = 0; 
+                t.radioBought = 0;
+            }
+        });
+        if (originalRenderChart) originalRenderChart();
+    };
+
+})();
+// ==================== 强制覆盖补丁 1：待办按钮、删除NPC与头像修复 ====================
+
+// 1. 修复头像重传不刷新的BUG
+window.uploadMyAvatar = function(input) {
+    if (input.files && input.files[0]) {
+        processAvatarUpload(input.files[0], function(base64) {
+            ad.avatar = base64;
+            // 强行刷新所有带头像的 img
+            let imgTags = document.querySelectorAll("img");
+            imgTags.forEach(img => {
+                if(img.src.includes(base64.substring(0,20)) || (img.parentElement.getAttribute("onclick") && img.parentElement.getAttribute("onclick").includes("myAvatarInput"))) {
+                    img.src = base64;
+                }
+            });
+            if(typeof updAttr === 'function') updAttr();
+            saveGame();
+            alert("✅ 头像上传/更换成功！");
+        });
+    }
+    input.value = ""; // 核心：清空input，允许下次选同一张图
+};
+
+// 2. 注入删除NPC功能
+window.deleteNPC = function(npcId) {
+    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从大盘和关系网中消失)")) return;
+    let idx = worldArtists.findIndex(x => x.id === npcId);
+    if(idx > -1) {
+        worldArtists.splice(idx, 1);
+        alert("✅ 删除成功！");
+        closeM('mInfo');
+        if(typeof renderNpcList === 'function') renderNpcList();
+        saveGame();
+    }
+};
+
+var baseOpenNpcDetailForDelete = window.openNpcDetail;
+window.openNpcDetail = function(id) {
+    baseOpenNpcDetailForDelete(id); // 执行原有渲染
+    let npc = worldArtists.find(x => x.id === id);
+    if (npc) {
+        let contentDiv = document.getElementById("mInfoContent");
+        if (contentDiv) {
+            let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
+            if (editBtn && !contentDiv.innerHTML.includes("deleteNPC")) {
+                let delBtnHtml = `<button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;border-color:#ff0000;color:#ff0000;" onclick="deleteNPC('${npc.id}')">🗑️ 删除艺人</button>`;
+                editBtn.insertAdjacentHTML('afterend', delBtnHtml);
+            }
+        }
+    }
+};
+
+// 3. 行程记事增加报名、看提名、看历届按钮
+var baseRefreshTodoStatusForBtns = window.refreshTodoStatus;
+window.refreshTodoStatus = function() {
+    baseRefreshTodoStatusForBtns(); // 跑原有逻辑
+    
+    // 强制追加按钮
+    let actionArea = document.getElementById("scheduleActionArea");
+    if(actionArea) {
+        let curM = time.m;
+        let subAwds = awardRegistry.filter(a => (a.month - 2 === curM || (a.month <= 2 && curM === 12 + a.month - 2)));
+        let nomAwds = awardRegistry.filter(a => (a.month - 1 === curM || (a.month === 1 && curM === 12)));
+        let cerAwds = awardRegistry.filter(a => a.month === curM);
+        
+        let btnHtml = `
+        <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('write')">🎵 闭关写歌</button>
+        <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('relax')">🏖️ 休息放空</button>
+        <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('promo')">📺 跑通告宣发</button>
+        `;
+        if (subAwds.length > 0) btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#e0f2fe; border:1px solid #0055ff; color:#0055ff; display:block; margin-top:5px; width:100%;" onclick="alert('系统已自动将你的所有符合年份限制的单曲和专辑提交至组委会进行初轮筛查。')">📢 确认报名奖项</button>`;
+        if (nomAwds.length > 0) btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff8e8; border:1px solid #c8a440; color:#a67c00; display:block; margin-top:5px; width:100%;" onclick="viewNominationsUI()">📜 查看入围提名奖项</button>`;
+        if (cerAwds.length > 0) btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff0f5; border:1px solid #e91e63; color:#e91e63; font-weight:bold; display:block; margin-top:5px; width:100%;" onclick="startCeremonyUI()">🏆 参加颁奖典礼 (可表演)</button>`;
+        
+        // 历届获奖按钮
+        btnHtml += `<button class="sec inline" style="white-space:nowrap; display:block; margin-top:5px; width:100%;" onclick="switchMainTab(this, 'pMap'); showMap('mapAwards');">🏆 查看历届获奖人数</button>`;
+        
+        actionArea.innerHTML = btnHtml;
+    }
+};
+
+// ==================== 强制覆盖补丁 2：新歌优先靠前 ====================
+window.renderMVMap = function() { 
+    // 按周数生序，越新的歌（weeks越小）越在前面
+    let trks = trackPool.filter(x => x.isMe && x.type === "track").sort((a,b) => (a.weeks||0) - (b.weeks||0)); 
+    let listMV = document.getElementById("listMV");
+    if(listMV) {
+        listMV.innerHTML = trks.length ? trks.map(t => {
+            let streamCount = t.stmGlobal ? t.stmGlobal : (t.stm ? t.stm : 0);
+            let btnLyric = t.hasLyricMV ? `<button class="sec inline" disabled style="opacity:0.5;">✅ 已拍歌词版</button>` : `<button class="sec inline" onclick="shootMV('${t.id}', 0)">歌词MV</button>`;
+            let btnReal = t.hasRealMV ? `<button class="inline" disabled style="opacity:0.5;">✅ 已拍真人主打</button>` : `<button class="inline" onclick="shootMV('${t.id}', 1)">真人MV</button>`;
+            return `<div class="card" style="padding:10px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <b>${escapeHTML(t.n)}</b> <button class="sec inline" onclick="viewSongStats('${t.id}')">📄 详情</button>
+                </div>
+                <span style="font-size:11px;color:#c8a440;">(在榜${t.weeks}周)</span><br>
+                <span style="font-size:11px;color:#888;">流媒: ${streamCount.toLocaleString()} | MV次数: ${t.mvN||0}</span>
+                <div style="margin-top:6px;">${btnLyric}${btnReal}</div>
+            </div>`;
+        }).join('') : "<p style='font-size:12px;color:#888;'>没有可拍MV的单曲</p>";
+    }
+};
+window.renderStdMap = function(){ 
+    // 成品库倒序排（最后录制的在最上面）
+    let reversedStd = [...std].reverse();
+    document.getElementById("listStudio").innerHTML = `<b>一键录制(耗10精)：</b><br>` + lib.map((x,i)=>`<div class="row"><span>${escapeHTML(x.n)}</span><button class="inline" onclick="startRecord(${i})">录制</button></div>`).join('') + `<hr style="margin:10px 0;border:#eee 1px solid;"><b>成品库(未发行)：</b><br>`+ reversedStd.map(x => `
+        <div style="padding:8px 0;border-bottom:1px solid #eee;display:flex;flex-direction:column;gap:5px;">
+            <b>${escapeHTML(x.n)}</b>
+            <div style="display:flex;gap:5px;">
+                <button class="sec inline" style="flex:1;font-size:11px;" onclick="preheatSong('${escapeHTML(x.n)}')">📢 预热造势</button>
+                <button class="inline" style="flex:1;font-size:11px;" onclick="openRelSingle('${x.id}')">🚀 正式发歌</button>
+            </div>
+        </div>`).join(''); 
+};
+
+// ==================== 强制覆盖补丁 3：出榜100名外不记录 + 实销大盘与浮动倍数 ====================
+
+// 榜单排位机制覆盖
+window.updatePeakRanks = function() {
+    let allItems = trackPool.filter(x => x.type === "track" || x.type === "album");
+    // 日榜
+    allItems.sort((a,b) => (b.stmGlobal_Day || 0) - (a.stmGlobal_Day || 0));
+    allItems.forEach((t, i) => { if(i < 100) t.peakDaily = Math.min(t.peakDaily || 999, i + 1); });
+
+    // 周榜 (超过100名强制飞榜 OUT)
+    allItems.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    allItems.forEach((t, i) => { 
+        let rank = i + 1;
+        if (rank <= 100) {
+            if (!t.peakS || rank < t.peakS) { t.peakS = rank; t.peakW = 1; }
+            else if (rank === t.peakS) t.peakW = (t.peakW || 1) + 1;
+            t.lastW = rank; 
+        } else {
+            t.lastW = 999; // 100名外打入冷宫
+        }
+    });
+
+    allItems.sort((a,b) => (b.stmUS_Week || 0) - (a.stmUS_Week || 0));
+    allItems.forEach((t, i) => { 
+        let rank = i + 1;
+        if (rank <= 100) {
+            if (!t.peakB || rank < t.peakB) { t.peakB = rank; t.peakBW = 1; }
+            else if (rank === t.peakB) t.peakBW = (t.peakBW || 1) + 1;
+        }
+    });
+};
+
+// 注入UI：销量大盘与倍数
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        let baseInput = document.getElementById("customMarketBase");
+        if(baseInput && baseInput.parentElement && baseInput.parentElement.parentElement) {
+            baseInput.parentElement.parentElement.innerHTML = `
+            <h2 class="tg" style="margin-bottom:10px;">🌍 全球大盘与限制控制</h2>
+            <p style="font-size:12px;color:#888;margin-bottom:10px;">设定流媒与实销的冠军基准，系统会在此基础上产生 ±15% 的真实波动。并可自定义新歌冲榜倍数。</p>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
+                <label style="font-size:12px;width:110px;">流媒每日基准(万):</label>
+                <input type="number" id="customMarketBase" value="300" style="margin:0; flex:1;">
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:5px;">
+                <label style="font-size:12px;width:110px;">实销每周基准(万):</label>
+                <input type="number" id="customSalesBase" value="15" style="margin:0; flex:1;">
+            </div>
+            <div style="font-size:11px;color:#0055ff;margin:8px 0 5px 0;">👇 新歌突破大盘限制倍数：</div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="font-size:11px;">首日:</label><input type="number" id="limitDay1" value="3.5" step="0.1" style="margin:0;width:50px;padding:4px;">
+                <label style="font-size:11px;">首周:</label><input type="number" id="limitWeek1" value="2.5" step="0.1" style="margin:0;width:50px;padding:4px;">
+                <label style="font-size:11px;">首月:</label><input type="number" id="limitMonth1" value="1.5" step="0.1" style="margin:0;width:50px;padding:4px;">
+                <button class="sec inline" onclick="alert('✅ 大盘及超限倍数设定已更新！下周生效。')">保存设定</button>
+            </div>`;
+        }
+    }, 1500);
+});
+
+// 重构 advTime 大盘压制算法
+var baseAdvTimeForLimits = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    // 强制剥离旧的大盘压制
+    let trks = trackPool.filter(x => x.type === "track");
+    trks.forEach(t => { t._old_stmGlobal_Week = t.stmGlobal_Week || 0; });
+
+    if(baseAdvTimeForLimits) baseAdvTimeForLimits(weeks, showMsg);
+
+    // 新的弹性浮动大盘控制
+    let streamBaseInput = document.getElementById("customMarketBase");
+    let targetStream = streamBaseInput ? parseInt(streamBaseInput.value) * 10000 : 3000000;
+    
+    let salesBaseInput = document.getElementById("customSalesBase");
+    let targetSales = salesBaseInput ? parseInt(salesBaseInput.value) * 10000 : 150000;
+
+    let lD1 = parseFloat(document.getElementById("limitDay1")?.value || 3.5);
+    let lW1 = parseFloat(document.getElementById("limitWeek1")?.value || 2.5);
+    let lM1 = parseFloat(document.getElementById("limitMonth1")?.value || 1.5);
+
+    trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
+    if (trks.length > 0) {
+        let currentTopWeekly = Math.max(1, trks[0].stmGlobal_Week || 1);
+        
+        // ±15% 的真实大盘波动
+        let fluc = (Math.random() * 0.3) - 0.15;
+        let realWeeklyTarget = (targetStream * 7) * (1 + fluc);
+        let realSalesTarget = targetSales * (1 + fluc);
+        
+        let scale = realWeeklyTarget / currentTopWeekly;
+
+        trks.forEach(t => {
+            let limitMultiplier = 1.0 + (Math.random() * 0.1 - 0.05);
+            if (t.weeks <= 1) limitMultiplier = lW1; 
+            else if (t.weeks <= 4) limitMultiplier = lM1;
+
+            let maxStmAllowed = realWeeklyTarget * limitMultiplier;
+            let currentStm = Math.floor((t._old_stmGlobal_Week || 0) * scale); // 恢复原走势再压制
+            
+            if (currentStm > maxStmAllowed) {
+                currentStm = Math.floor(maxStmAllowed - Math.random() * (maxStmAllowed * 0.05));
+            }
+            
+            t.stmGlobal_Week = currentStm;
+            t.stmGlobal_Day = Math.floor(t.stmGlobal_Week / 7);
+            t.stmUS_Week = Math.floor(t.stmGlobal_Week * 0.35);
+            t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
+            
+            // 实销大盘控制
+            let currentSales = Math.floor(t.stmGlobal_Week / 150);
+            let maxSalesAllowed = realSalesTarget * limitMultiplier;
+            if (currentSales > maxSalesAllowed) {
+                t.slTotal -= currentSales; 
+                t.slTotal += Math.floor(maxSalesAllowed); // 修正销量
+            }
+        });
+    }
+    updatePeakRanks();
+};
+
+// ==================== 强制覆盖补丁 4：重构已有大奖 ====================
+// 修改打开面板逻辑
+var oldConfirmPickForAwardEdit = window.confirmPick;
+window.confirmPick = async function() {
+    if (pickAction === "renameAwardSelect") {
+        let radios = document.getElementsByName("awdSel");
+        let selIdx = -1;
+        for(let i=0; i<radios.length; i++) { if(radios[i].checked) selIdx = parseInt(radios[i].value); }
+        if(selIdx === -1) return alert("请选择一个大奖！");
+        
+        closeM('mPick');
+        curEditAwardIdx = selIdx;
+        let awd = awardRegistry[selIdx];
+        document.getElementById("mAwardEditTitle").innerText = "✏️ 重构已有大奖";
+        document.getElementById("inAwdName").value = awd.name;
+        document.getElementById("inAwdDesc").value = awd.desc || "";
+        
+        if(document.getElementById("inAwdMonth")) document.getElementById("inAwdMonth").value = awd.month || 12;
+        if(document.getElementById("inAwdWtSpub") && awd.rules) {
+            document.getElementById("inAwdWtSpub").value = Math.round((awd.rules.weightSpub || 0.33) * 100);
+            document.getElementById("inAwdWtSales").value = Math.round((awd.rules.weightSales || 0.33) * 100);
+            document.getElementById("inAwdWtCatchy").value = Math.round((awd.rules.weightCatchy || 0.34) * 100);
+        }
+        document.getElementById("mAwardEditUI").classList.add("open");
+        return;
+    }
+    return oldConfirmPickForAwardEdit();
+};
+
+window.saveAwardEdit = function() {
+    let n = document.getElementById("inAwdName").value.trim();
+    let d = document.getElementById("inAwdDesc").value.trim() || "大奖";
+    if(!n) return alert("名称不能为空！");
+    
+    let monthInput = document.getElementById("inAwdMonth");
+    let targetMonth = monthInput ? parseInt(monthInput.value) : 12;
+
+    let wtSpub = parseFloat(document.getElementById("inAwdWtSpub").value) || 0;
+    let wtSales = parseFloat(document.getElementById("inAwdWtSales").value) || 0;
+    let wtCatchy = parseFloat(document.getElementById("inAwdWtCatchy").value) || 0;
+    let totalWt = wtSpub + wtSales + wtCatchy;
+    if (totalWt === 0) { wtSpub = 34; wtSales = 33; wtCatchy = 33; totalWt = 100; }
+    
+    let rules = {
+        weightSpub: parseFloat((wtSpub / totalWt).toFixed(2)),
+        weightSales: parseFloat((wtSales / totalWt).toFixed(2)),
+        weightCatchy: parseFloat((wtCatchy / totalWt).toFixed(2))
+    };
+    
+    if (curEditAwardIdx === -1) {
+        awardRegistry.push({ id: "awd_" + Date.now(), name: n, desc: d, month: targetMonth, rules: rules, categories: [] });
+        alert("✅ 全新颁奖典礼创立成功！");
+    } else {
+        // 重构：保留 categories 不动，其他全改
+        awardRegistry[curEditAwardIdx].name = n;
+        awardRegistry[curEditAwardIdx].desc = d;
+        awardRegistry[curEditAwardIdx].month = targetMonth;
+        awardRegistry[curEditAwardIdx].rules = rules;
+        alert("✅ 大奖已完美重构！原有分支类目已保留。");
+    }
+    closeM('mAwardEditUI');
+    if(typeof renderAwardRegistry === 'function') renderAwardRegistry();
+    saveGame();
+};
+<<<<
+// ==================== 代码结束 ====================
+</script>
+</body>
+</html>
+====
+// ==================== 8. 全新时尚屋与商店系统 ====================
+let fashionMags = [
+    { n: "VOGUE", tier: "T0", type: "女刊", history: [] },
+    { n: "GQ", tier: "T0", type: "男刊", history: [] },
+    { n: "ELLE", tier: "T1", type: "女刊", history: [] },
+    { n: "Esquire", tier: "T1", type: "男刊", history: [] },
+    { n: "Harper's BAZAAR", tier: "T1", type: "女刊", history: [] }
+];
+
+let luxuryBrands = [
+    { n: "CHANEL", tier: "顶奢", lines: ["成衣", "包袋", "香水美妆"], ambassadors: [], blacklist: [] },
+    { n: "DIOR", tier: "顶奢", lines: ["成衣", "包袋", "香水美妆"], ambassadors: [], blacklist: [] },
+    { n: "LOUIS VUITTON", tier: "顶奢", lines: ["成衣", "皮具"], ambassadors: [], blacklist: [] },
+    { n: "GUCCI", tier: "高奢", lines: ["成衣", "皮具"], ambassadors: [], blacklist: [] },
+    { n: "PRADA", tier: "高奢", lines: ["成衣", "皮具"], ambassadors: [], blacklist: [] },
+    { n: "COACH", tier: "轻奢", lines: ["包袋"], ambassadors: [], blacklist: [] }
+];
+
+// 初始化玩家衣橱
+if(typeof ad.wardrobe === 'undefined') ad.wardrobe = { hc: 0, fakeHc: 0, gifts: 0 };
+
+window.renderFashionHouse = function() {
+    let html = `
+        <div class="sub-tab-bar" style="margin-bottom:10px;">
+            <div class="sub-tab active" onclick="switchSubTab(this, 'fashionMag', 'fashionTabs')">时尚杂志</div>
+            <div class="sub-tab" onclick="switchSubTab(this, 'fashionBrand', 'fashionTabs')">奢侈品品牌</div>
+            <div class="sub-tab" onclick="switchSubTab(this, 'fashionWeek', 'fashionTabs')">四大时装周</div>
+        </div>
+        <div id="fashionTabs">
+            <div id="fashionMag" class="sub-page active">
+                <p style="font-size:11px;color:#888;margin-bottom:5px;">女刊含金量 > 男刊，但 T0男刊 > T1女刊。</p>
+                ${fashionMags.map((m, i) => `
+                    <div class="card" style="padding:10px;margin-bottom:5px;border:1px solid #d1c290;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <b>${m.n}</b> <span style="font-size:10px;background:#111;color:#c8a440;padding:2px 6px;border-radius:4px;">${m.tier} ${m.type}</span>
+                        </div>
+                        <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="strollFashion('mag', ${i})">随便逛逛(偶遇主编)</button>
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="shootMag(${i})">拍摄杂志</button>
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="viewMagHistory(${i})">杂志人物</button>
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="joinFashionGala('${m.n} 晚宴')">杂志晚宴</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div id="fashionBrand" class="sub-page">
+                <p style="font-size:11px;color:#888;margin-bottom:5px;">支线与代言人梯队可高度自定义。代言最高荣誉为全球代言人。</p>
+                ${luxuryBrands.map((b, i) => `
+                    <div class="card" style="padding:10px;margin-bottom:5px;border:1px solid #d1c290;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <b>${b.n}</b> <span style="font-size:10px;background:#c8a440;color:#000;padding:2px 6px;border-radius:4px;">${b.tier}</span>
+                        </div>
+                        <div style="font-size:10px;color:#888;margin-top:2px;">支线: ${b.lines.join(' / ')}</div>
+                        <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="strollFashion('brand', ${i})">随便逛逛(偶遇PR)</button>
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="shootAd(${i})">拍摄广告</button>
+                            <button class="sec inline" style="font-size:11px;padding:4px 8px;" onclick="joinFashionGala('${b.n} 品牌晚宴')">品牌晚宴</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div id="fashionWeek" class="sub-page">
+                <p style="font-size:11px;color:#888;margin-bottom:10px;">每年2-3月(秋冬)及9-10月(春夏)。需自费购买门票，或通过品牌方赞助入场。</p>
+                <button onclick="joinFashionWeek('巴黎时装周')">✈️ 出席 巴黎时装周</button>
+                <button onclick="joinFashionWeek('米兰时装周')">✈️ 出席 米兰时装周</button>
+                <button onclick="joinFashionWeek('纽约时装周')">✈️ 出席 纽约时装周</button>
+                <button onclick="joinFashionWeek('伦敦时装周')">✈️ 出席 伦敦时装周</button>
+            </div>
+        </div>
+    `;
+    let mapFashion = document.getElementById("mapFashion");
+    if (mapFashion) {
+        mapFashion.innerHTML = `<h3 class="tg" style="margin-bottom:10px;">✨ 时尚屋</h3>` + html;
+    }
+};
+
+var oldShowMapForFashion = window.showMap;
+window.showMap = function(id) {
+    if(oldShowMapForFashion) oldShowMapForFashion(id);
+    if(id === 'mapFashion') renderFashionHouse();
+};
+
+// --- 红毯神级与灾难判定系统 ---
+window.redCarpetRNG = function(eventName) {
+    let score = (ad.sk.fa||50) * 0.6 + (ad.sk.f||50) * 0.4 + (Math.random()*40 - 20);
+    
+    // 如果穿了高定，极大加成
+    if (ad.wardrobe.hc > 0) {
+        score += 30;
+        ad.wardrobe.hc--; 
+    } else if (ad.wardrobe.fakeHc > 0) {
+        // 山寨高定触发黑名单
+        ad.wardrobe.fakeHc--;
+        luxuryBrands[0].blacklist.push(ad.s);
+        if(posts && posts.mom) posts.mom.unshift({t: `🚨 [群嘲] ${ad.s} 穿山寨礼服走红毯被品牌方拉黑！`, c: `笑死我了，没有那个咖位就别硬借高定，穿假货被认出来了，时尚圈彻底封杀。`});
+        ad.st.f -= Math.floor(ad.st.f * 0.05);
+        return alert(`💩 【红毯大翻车】\n你图便宜穿了【山寨高定】出席 ${eventName}，被时尚博主和品牌方当场揭穿！你被顶级奢牌拉入了黑名单，引发全网群嘲！`);
+    }
+    
+    if(score >= 90) {
+        ad.st.f += 100000;
+        if(posts && posts.mom) posts.mom.unshift({t: `✨ [热搜] ${ad.s} ${eventName} 红毯神级出圈`, c: `这套造型简直是封神！生图比精修还绝！`});
+        alert(`📸 【神级红毯】你在 ${eventName} 的红毯造型惊艳全球，被评为全场最佳，疯狂吸粉！`);
+    } else if(score < 40) {
+        ad.st.f -= 20000;
+        if(posts && posts.mom) posts.mom.unshift({t: `💩 [热搜] ${ad.s} ${eventName} 红毯造型灾难`, c: `得罪造型师了吗？像披了个麻袋就出来了。`});
+        alert(`💩 【红毯出丑】你在 ${eventName} 的造型大翻车，被全网吐槽为时尚灾难...`);
+    } else {
+        alert(`✅ 你在 ${eventName} 顺利走完红毯，表现中规中矩。`);
+    }
+};
+
+window.strollFashion = function(type, idx) {
+    if(!costEnergy(10)) return;
+    advHour(4);
+    let entity = type === 'mag' ? fashionMags[idx] : luxuryBrands[idx];
+    let isBrand = type === 'brand';
+    
+    let roll = Math.random();
+    if(roll < 0.4) {
+        let npcName = entity.n + (isBrand ? " 品牌公关" : " 主编");
+        if(!conts.find(c => c.n === npcName)) {
+            conts.push({id:Date.now(), n:npcName, t:"时尚人脉", h:[], affinity:10, isCohabiting:false});
+            alert(`✨ 随便逛逛时，你偶遇了【${npcName}】！你们相谈甚欢，互留了联系方式！`);
+        } else {
+            let pr = conts.find(c => c.n === npcName);
+            pr.affinity += 5;
+            
+            if(isBrand && (pr.affinity > 50 || ad.st.f > 20000000) && Math.random() < 0.4) {
+                ad.wardrobe.hc += 1;
+                alert(`🎁 【品牌青睐】\n${npcName} 决定直接借给你一套最新季的【高级定制(HC)礼服】！已放入衣橱。`);
+                if(Math.random() < 0.3 && !entity.ambassadors.includes(ad.s)) {
+                    entity.ambassadors.push(ad.s);
+                    if(posts && posts.mom) posts.mom.unshift({t: `🔥 [官宣] ${ad.s} 成为 ${entity.n} 品牌大使！`, c: `恭喜拿下奢牌 title，排面拉满！`});
+                    alert(`🎉 【重磅官宣】经过考察，${entity.n} 正式宣布你成为品牌代言人！`);
+                }
+            } else if (!isBrand && (pr.affinity > 40 || ad.st.f > 10000000) && Math.random() < 0.4) {
+                if(!entity.history.includes(ad.s)) entity.history.push(ad.s);
+                ad.st.f += 50000;
+                if(posts && posts.mom) posts.mom.unshift({t: `📸 [大片] ${ad.s} 登封 ${entity.n}`, c: `主编亲自推封！这硬照表现力太绝了！`});
+                alert(`📸 【推封成功】\n主编拍板，你成功登上了《${entity.n}》本月封面！粉丝大涨！`);
+            } else {
+                alert(`✨ 你和【${npcName}】喝了杯下午茶，巩固了关系。(好感+5)`);
+            }
+        }
+    } else {
+        alert(`🚶 你在时尚区逛了一下午，但并没有遇到什么重要人物。`);
+    }
+    saveGame();
+};
+
+window.joinFashionWeek = function(weekName) {
+    if(!costEnergy(30)) return;
+    advHour(72);
+    
+    let sponsored = luxuryBrands.some(b => b.ambassadors.includes(ad.s));
+    if(sponsored) {
+        alert(`✈️ 作为品牌代言人，品牌方为你赞助了全程机酒、保镖及全套高定装备，你以前排VIP身份出席了【${weekName}】！`);
+        ad.wardrobe.hc += 1;
+    } else {
+        if(ad.m < 150000) return alert("自费前往需要支付 $150,000 的机酒门票费用！");
+        ad.m -= 150000;
+        alert(`✈️ 你自费 $150,000 前往了【${weekName}】看秀镀金。`);
+    }
+    redCarpetRNG(weekName);
+    updAttr(); saveGame();
+};
+
+window.joinFashionGala = function(galaName) {
+    if(!costEnergy(20)) return;
+    advHour(12);
+    redCarpetRNG(galaName);
+    updAttr(); saveGame();
+};
+
+window.shootMag = function(idx) { alert("⚠️ 需通过随便逛逛结交主编推封，或被品牌方推送才能拍摄！"); };
+window.shootAd = function(idx) { alert("⚠️ 需成为该品牌大使/代言人后方可参与拍摄全球广告！"); };
+window.viewMagHistory = function(idx) {
+    let hist = fashionMags[idx].history;
+    alert(`《${fashionMags[idx].n}》历届封面人物：\n` + (hist.length ? hist.join(', ') : "暂无记录"));
+};
+
+// 商店系统
+var oldOpenAppForStore = window.openApp;
+window.openApp = function(appId) {
+    if (appId === 'Store') {
+        let html = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="card" style="border:1px solid #c8a440;background:#fff8e8;">
+                <b style="font-size:14px;">🎁 精美礼品盲盒</b><br>
+                <span style="font-size:11px;color:#666;">送给通讯录好友增加好感度。售价: $5,000</span><br>
+                <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('gift')">购买</button>
+            </div>
+            <div class="card" style="border:1px solid #0055ff;background:#f0f9ff;">
+                <b style="font-size:14px;">👗 顶级正版高定礼服 (HC)</b><br>
+                <span style="font-size:11px;color:#666;">走红毯必穿，极大增加神级出圈概率。售价: $300,000</span><br>
+                <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('hc')">斥资购买</button>
+            </div>
+            <div class="card" style="border:1px solid #ff0000;background:#fff0f5;">
+                <b style="font-size:14px;">🧥 1:1 山寨高定礼服</b><br>
+                <span style="font-size:11px;color:#666;">便宜的仿品。但有极高风险被品牌拉黑。售价: $10,000</span><br>
+                <button class="red" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('fakeHc')">铤而走险购买</button>
+            </div>
+        </div>`;
+        document.getElementById("mInfoTitle").innerText = "🛍️ 星路商店";
+        document.getElementById("mInfoContent").innerHTML = html;
+        document.getElementById("mInfo").classList.add("open");
+    } else {
+        if(oldOpenAppForStore) oldOpenAppForStore(appId);
+    }
+};
+
+window.buyStoreItem = function(type) {
+    let cost = type === 'hc' ? 300000 : (type === 'fakeHc' ? 10000 : 5000);
+    if(ad.m < cost) return alert("资金不足！");
+    ad.m -= cost;
+    
+    if(type === 'gift') { ad.wardrobe.gifts++; alert("✅ 购买成功！获得了 1 个精美礼物。"); }
+    else if(type === 'hc') { ad.wardrobe.hc++; alert("✅ 购买成功！获得 1 件正版高定礼服，下次走红毯自动穿戴！"); }
+    else if(type === 'fakeHc') { ad.wardrobe.fakeHc++; alert("✅ 购买成功！获得 1 件山寨高定，风险极大，请小心使用！"); }
+    
+    updAttr(); saveGame();
+};
+
+// ==================== 9. NPC 独立时尚生态演算系统 ====================
+
+var oldAdvTimeForNPCFashion = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    if (oldAdvTimeForNPCFashion) oldAdvTimeForNPCFashion(weeks, showMsg);
+
+    // 每推演一周，后台随机模拟 NPC 的时尚资源活动
+    if (typeof worldArtists !== 'undefined' && worldArtists.length > 0) {
+        let fashionEvents = []; 
+        
+        worldArtists.forEach(npc => {
+            // 每周每个 NPC 只有 4% 的概率去跑时尚通告 (避免热搜疲劳)
+            let roll = Math.random();
+            if (roll < 0.04 * weeks) {
+                let fa = npc.sk ? (npc.sk.fa || 50) : 50;
+                let f = npc.sk ? (npc.sk.f || 50) : 50;
+                let fans = npc.fans || 0;
+                
+                let eventType = Math.random();
+                
+                // 【30% 概率：出席红毯/时装周】
+                if (eventType < 0.30) {
+                    let score = (fa * 0.6) + (f * 0.4) + (Math.random() * 40 - 20);
+                    let eventNames = ["Met Gala晚宴", "巴黎时装周", "戛纳红毯", "米兰时装周", "年度盛典红毯"];
+                    let eventName = eventNames[Math.floor(Math.random() * eventNames.length)];
+                    
+                    if (score >= 85) {
+                        npc.fans += Math.floor(fans * 0.01); 
+                        fashionEvents.push({
+                            t: `✨ [红毯神图] ${npc.n} 惊艳亮相 ${eventName}`,
+                            c: `这套高定穿在TA身上简直绝了，外网生图已经转疯了！颜霸降临！`
+                        });
+                    } else if (score < 40) {
+                        npc.fans -= Math.floor(fans * 0.005); 
+                        fashionEvents.push({
+                            t: `💩 [红毯翻车] ${npc.n} ${eventName} 造型大翻车`,
+                            c: `穿得像个行走的灾难，时尚博主全网群嘲，真是白瞎了去蹭这种顶级红毯。`
+                        });
+                    }
+                }
+                
+                // 【40% 概率：杂志推封】
+                else if (eventType < 0.70) {
+                    if (fa >= 60 && typeof fashionMags !== 'undefined' && fashionMags.length > 0) {
+                        let mag = fashionMags[Math.floor(Math.random() * fashionMags.length)];
+                        if (!mag.history.includes(npc.n)) {
+                            mag.history.push(npc.n);
+                            npc.fans += 20000;
+                            fashionEvents.push({
+                                t: `📸 [杂志首登] ${npc.n} 解锁《${mag.n}》封面`,
+                                c: `主编极其青睐的硬照表现力，内页大片张张神图，时尚圈资源越来越顶了！`
+                            });
+                        }
+                    }
+                }
+                
+                // 【30% 概率：拿下奢侈品代言】
+                else {
+                    if (fans >= 15000000 && fa >= 75 && typeof luxuryBrands !== 'undefined' && luxuryBrands.length > 0) {
+                        let brand = luxuryBrands[Math.floor(Math.random() * luxuryBrands.length)];
+                        
+                        if (!brand.ambassadors.includes(npc.n) && !brand.blacklist.includes(npc.n)) {
+                            brand.ambassadors.push(npc.n);
+                            npc.fans += 80000;
+                            fashionEvents.push({
+                                t: `💎 [重磅官宣] ${brand.n} 正式宣布 ${npc.n} 成为全球品牌大使！`,
+                                c: `拿下${brand.tier} title！蓝血奢牌直接空降，粉丝们把排面打在公屏上！`
+                            });
+                            
+                            // 饭圈拉踩剧情
+                            if (brand.ambassadors.includes(ad.s)) {
+                                fashionEvents.push({
+                                    t: `🔥 [吃瓜] ${npc.n} 空降代言，疑似威胁 ${ad.s} 的地位？`,
+                                    c: `同为 ${brand.n} 的品牌大使，品牌方以后借高定到底会偏心谁？两家粉丝已经在广场上暗潮汹涌了...`
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 注入热搜和动态
+        if (fashionEvents.length > 0 && typeof posts !== 'undefined' && posts.mom) {
+            fashionEvents.forEach(evt => {
+                posts.mom.unshift(evt);
+                if (typeof pushToTrend === 'function') pushToTrend(evt.t, evt.c);
+            });
+        }
+    }
+};
+// ==================== 代码结束 ====================
+</script>
+</body>
+</html>
+>>>>
+
+
 
 // ==================== 代码结束 ====================
 </script>
