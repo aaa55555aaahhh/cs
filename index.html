@@ -19337,6 +19337,21 @@ window.advTime = function(weeks, showMsg) {
         }
     }
 };
+// ==================== 终极修复：解决 Array.filter 套娃导致的内存溢出 (Maximum call stack size exceeded) ====================
+var buggyCheckAutoAward = window.checkAutoAward;
+window.checkAutoAward = function() {
+    // 在执行任何大奖判定前，先备份最干净的、原生的 filter
+    let pureNativeFilter = Array.prototype.filter;
+    
+    try {
+        buggyCheckAutoAward();
+    } finally {
+        // 无论里面怎么乱改、怎么抛错，执行完毕后，强制将 filter 恢复为原生状态！
+        // 彻底斩断无限套娃死循环！
+        Array.prototype.filter = pureNativeFilter;
+    }
+};
+
 // ==================== 代码结束 ====================
 </script>
 </body>
