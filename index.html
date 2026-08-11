@@ -18169,7 +18169,7 @@ window.renderChart = function() {
     
     oldRenderChartForReligionRadio(); // 执行正常渲染
 };
-<<<<
+
         let curM = time.m;
         let curY = time.y;
         
@@ -18181,7 +18181,7 @@ window.renderChart = function() {
         if(subAwds.length > 0) {
             html += `<br><span style="color:#0055ff;">• 📢 【作品初选阶段】：${subAwds.map(a=>a.name).join('、')} 正在进行首轮评审。公关团队已提交你的作品。</span>`;
         }
-====
+
         // 安全初始化 awardData 防止报错 Cannot read properties of undefined (reading 'finished')
         if (!ad.awardData) ad.awardData = { nominations: {}, finished: {} };
         if (!ad.awardData.finished) ad.awardData.finished = {};
@@ -18198,9 +18198,7 @@ window.renderChart = function() {
         if(subAwds.length > 0) {
             html += `<br><span style="color:#0055ff;">• 📢 【作品初选阶段】：${subAwds.map(a=>a.name).join('、')} 正在进行首轮评审。系统将自动为你提报数据达标的作品。</span>`;
         }
->>>>
 
-<<<<
         let actionArea = document.getElementById("scheduleActionArea");
         if(actionArea) {
             let btnHtml = `
@@ -18218,7 +18216,7 @@ window.renderChart = function() {
             
             actionArea.innerHTML = btnHtml;
         }
-====
+
         let actionArea = document.getElementById("scheduleActionArea");
         if(actionArea) {
             let btnHtml = `
@@ -18241,24 +18239,20 @@ window.renderChart = function() {
             
             actionArea.innerHTML = btnHtml;
         }
->>>>
 
-<<<<
         let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
         if (editBtn) editBtn.insertAdjacentHTML('afterend', exportBtnHtml);
-====
+
         let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
         if (editBtn) {
             editBtn.insertAdjacentHTML('afterend', exportBtnHtml);
             let delBtnHtml = `<button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;border-color:#ff0000;color:#ff0000;" onclick="deleteNPC('${npc.id}')">🗑️ 删除艺人</button>`;
             editBtn.insertAdjacentHTML('afterend', delBtnHtml);
         }
->>>>
 
-<<<<
 // ==================== 2. 导出单体艺人数据 ====================
 window.exportSingleNPC = function(npcId) {
-====
+
 window.deleteNPC = function(npcId) {
     if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
     let idx = worldArtists.findIndex(x => x.id === npcId);
@@ -18273,9 +18267,7 @@ window.deleteNPC = function(npcId) {
 
 // ==================== 2. 导出单体艺人数据 ====================
 window.exportSingleNPC = function(npcId) {
->>>>
 
-<<<<
 window.uploadMyAvatar = function(input) {
     if (input.files && input.files[0]) {
         processAvatarUpload(input.files[0], function(base64) {
@@ -18288,7 +18280,7 @@ window.uploadMyAvatar = function(input) {
     // 核心修复：清空 file input 的 value，这样下次点同样的图片也能触发 onchange
     input.value = ""; 
 };
-====
+
 window.uploadMyAvatar = function(input) {
     if (input.files && input.files[0]) {
         processAvatarUpload(input.files[0], function(base64) {
@@ -18307,9 +18299,7 @@ window.uploadMyAvatar = function(input) {
     }
     input.value = ""; 
 };
->>>>
 
-<<<<
             // 每次跨周结算完排名后，把真实的排位硬塞进 trendChart 数组里
             trackPool.forEach(t => {
                 if (t.type === "track" || t.type === "album") {
@@ -18318,7 +18308,7 @@ window.uploadMyAvatar = function(input) {
                     // lastW 是刚才 updatePeakRanks 刚排出来的最新全球周榜名次
                     let rankToPush = t.lastW || 'OUT'; 
                     if (rankToPush > 100) rankToPush = 'OUT';
-====
+
             // 每次跨周结算完排名后，把真实的排位硬塞进 trendChart 数组里
             trackPool.forEach(t => {
                 if (t.type === "track" || t.type === "album") {
@@ -18332,19 +18322,16 @@ window.uploadMyAvatar = function(input) {
                         t.lastW = 999; 
                         t.peakS = t.peakS || 999;
                     }
->>>>
-<<<<
+
 function renderMVMap(){ 
     let trks = trackPool.filter(function(x){return x.isMe && x.type==="track"}); 
     $("listMV").innerHTML = trks.length ? trks.map(function(t){
-====
+
 function renderMVMap(){ 
     // 强制按在榜周数升序（即最新发行的排在最前面），方便找新歌拍MV
     let trks = trackPool.filter(function(x){return x.isMe && x.type==="track"}).sort((a,b) => (a.weeks||0) - (b.weeks||0)); 
     $("listMV").innerHTML = trks.length ? trks.map(function(t){
->>>>
 
-<<<<
         <div class="card">
             <h2 class="tg" style="margin-bottom:10px;">🌍 全球大盘水准控制</h2>
             <p style="font-size:12px;color:#888;margin-bottom:10px;">调节此数值，可避免冠军几千万流媒，亚军只有几十万的割裂感。数值越高，整个榜单(包括糊咖)的基础流媒就越高。</p>
@@ -18354,7 +18341,7 @@ function renderMVMap(){
                 <button class="sec inline" onclick="alert('✅ 大盘底盘已更新！下周生效。')">保存大盘</button>
             </div>
         </div>
-====
+
         <div class="card">
             <h2 class="tg" style="margin-bottom:10px;">🌍 全球大盘与限制控制</h2>
             <p style="font-size:12px;color:#888;margin-bottom:10px;">调节流媒与实销大盘底线(冠军基准)，并自定义新歌超限倍数。系统会在该数值基础上进行 ±10% 的真实浮动。</p>
@@ -18374,9 +18361,7 @@ function renderMVMap(){
                 <button class="sec inline" onclick="alert('✅ 大盘及超限倍数设定已更新！')">保存</button>
             </div>
         </div>
->>>>
 
-<<<<
         if(trks.length > 0) {
             let currentTopWeekly = Math.max(1, trks[0].stmGlobal_Week || 1);
             let scale = weeklyTarget / currentTopWeekly;
@@ -18394,7 +18379,7 @@ function renderMVMap(){
                 t.stmUS_Day = Math.floor(t.stmUS_Week / 7);
             });
         }
-====
+
         let salesBaseInput = document.getElementById("customSalesBase");
         let targetSales = salesBaseInput ? parseInt(salesBaseInput.value) * 10000 : 150000;
         
@@ -18436,9 +18421,7 @@ function renderMVMap(){
                 }
             });
         }
->>>>
 
-<<<<
         closeM('mPick');
         curEditAwardIdx = selIdx;
         let awd = awardRegistry[selIdx];
@@ -18446,7 +18429,7 @@ function renderMVMap(){
         document.getElementById("inAwdName").value = awd.name;
         document.getElementById("inAwdDesc").value = awd.desc || "";
         if(document.getElementById("inAwdWtSpub") && awd.rules) {
-====
+
         closeM('mPick');
         curEditAwardIdx = selIdx;
         let awd = awardRegistry[selIdx];
@@ -18455,14 +18438,13 @@ function renderMVMap(){
         document.getElementById("inAwdDesc").value = awd.desc || "";
         if(document.getElementById("inAwdMonth")) document.getElementById("inAwdMonth").value = awd.month || 12;
         if(document.getElementById("inAwdWtSpub") && awd.rules) {
->>>>
-<<<<
+
       <div id="mapFashion" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg">✨ 四大时尚周</h3>
         <p style="font-size:12px;color:#888;margin-bottom:10px;">每年2-3月(秋冬装)及9-10月(春夏装)。粉丝>500w且时尚>70将受邀免票，否则需$20w购买门票入场镀金。</p>
         <button onclick="joinFashion()">出席时装大秀 (耗1天/10精)</button>
       </div>
-====
+
       <div id="mapFashion" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
         <h3 class="tg" style="margin-bottom:10px;">✨ 时尚屋 (Fashion House)</h3>
         <div class="sub-tab-bar" style="margin-bottom:10px;">
@@ -18489,18 +18471,13 @@ function renderMVMap(){
             </div>
         </div>
       </div>
->>>>
 
-<<<<
             <div class="app-icon" style="background:#ff0000" onclick="openApp('YouTube')"><div class="picon">▶</div>YouTube</div>
-====
             <div class="app-icon" style="background:#ff0000" onclick="openApp('YouTube')"><div class="picon">▶</div>YouTube</div>
             <div class="app-icon" style="background:#eab308" onclick="openApp('Store')"><div class="picon">🛍️</div>商店</div>
->>>>
 
-<<<<
 // ==================== 终极扩展 4.1：巡演暖场嘉宾与主动写信系统 ====================
-====
+
 // ==================== 8. 重构时尚屋与商店系统 ====================
 let fashionMags = [
     { n: "VOGUE", tier: "T0", type: "女刊", history: [] },
@@ -18711,10 +18688,9 @@ window.buyStoreItem = function(type) {
 };
 
 // ==================== 终极扩展 4.1：巡演暖场嘉宾与主动写信系统 ====================
->>>>
-<<<<
+
 // ==================== 终极修补程序：解决所有按键失效、大盘畸形与格莱美重复问题 ====================
-====
+
 // ==================== 9. NPC 独立时尚生态演算系统 (代言/红毯/杂志) ====================
 
 var oldAdvTimeForNPCFashion = window.advTime;
@@ -18818,7 +18794,7 @@ window.advTime = function(weeks, showMsg) {
 };
 
 // ==================== 终极修补程序：解决所有按键失效、大盘畸形与格莱美重复问题 ====================
->>>>
+
 
 // ==================== 代码结束 ====================
 </script>
