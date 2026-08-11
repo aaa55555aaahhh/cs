@@ -16548,6 +16548,211 @@ window.confirmStartWrite = function() {
         saveGame();
     }
 };
+// ==================== 终极补丁 7.0：修复公司、详情退出、打单上限、红毯联动与巡演空白 ====================
+
+// 1. 修复：大盘初始公司消失的问题（强制重新初始化并渲染）
+var superOldInitCos = window.initCos;
+window.initCos = function() {
+    if(superOldInitCos) superOldInitCos();
+    coList = [
+        {n:"UMG", l:"T0", m:500000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90},
+        {n:"SME", l:"T0", m:450000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90},
+        {n:"WMG", l:"T0", m:400000, f:2000000, attr:90, bg:"#1a1a2e", t:"T0", grade:1.90},
+        {n:"Nova Records", l:"T1", m:200000, f:800000, attr:80, bg:"#16213e", t:"T1", grade:1.45},
+        {n:"Echo Sound", l:"T2", m:80000, f:300000, attr:70, bg:"#0f3460", t:"T2", grade:1.10},
+        {n:"Pulse Music", l:"T3", m:30000, f:100000, attr:60, bg:"#533483", t:"T3", grade:0.80},
+        {n:"Indie Vibe", l:"T4", m:10000, f:30000, attr:50, bg:"#e8e8e8", t:"T4", grade:0.55}
+    ];
+};
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(() => {
+        if (!coList || coList.length === 0) {
+            initCos();
+            if(typeof renderMapCompany === 'function') renderMapCompany();
+        }
+    }, 2000);
+});
+
+// 2. 修复：打单上限被突破的问题（拦截后续神级舞台反馈）
+var realOldPromoAlbSong = window.promoAlbSong;
+window.promoAlbSong = function(id) {
+    let t = trackPool.find(x => x.id === id);
+    if(t) {
+        if((t.promoCount || 0) >= 5) {
+            return alert("⚠️ 这首歌的电视/电台打单总次数已达上限(5次)！频繁刷脸会让观众审美疲劳，请换一首歌宣发！");
+        }
+        t.promoCountThisWeek = t.promoCountThisWeek || 0;
+        if (t.promoCountThisWeek >= 7) {
+            return alert("⚠️ 这首歌本周的现场打单通告已经排满了（一周最多7次）！请下周再来打榜。");
+        }
+    }
+    // 只有没超限才执行原版
+    realOldPromoAlbSong(id);
+};
+
+// 3. 修复：歌曲详情页面没有退出键，并追加走势 (x-x-x)
+window.viewSongStats = function(songId) {
+    let t = trackPool.find(x => x.id === songId);
+    if(!t) return;
+    
+    let certStr = window.getCert ? window.getCert(t.slTotal) : "";
+    let heatLabel = window.getHeatLabel ? window.getHeatLabel(t.slTotal, 'track') : "";
+    let singleTag = t.singleLabel ? `[${t.singleLabel}]` : "[非主打/弃曲]";
+    
+    let randomCmt = "这首歌真的太好听了，无限循环中！";
+    if(t.Spub > 85) randomCmt = "仙曲！这种艺术品级别的歌现在真的很少见了！";
+    else if(t.Spub < 50) randomCmt = "说实话有点失望，退步了。";
+    if (t._pctRadio > 50) randomCmt = "这电台比例太离谱了，全是资本在塞钱洗脑吧？";
+    
+    let songAwards = historyAwards.filter(awd => awd.includes(t.n) && awd.includes(ad.s));
+    let awdHtml = songAwards.length > 0 
+        ? `<div style="margin-top:5px;padding:5px;background:#fff;border:1px solid #c8a440;border-radius:4px;color:#c8a440;"><b>🏆 获奖荣誉：</b><br>${songAwards.map(a => a.replace(/<[^>]+>/g, ' ').substring(0,30)+"...").join('<br>')}</div>` 
+        : `<div style="margin-top:5px;padding:5px;background:#eee;border-radius:4px;color:#888;">暂无重要颁奖典礼获奖记录</div>`;
+
+    let chartStatus = (t.lastW && t.lastW <= 100) ? `<span style="color:#25d366;font-weight:bold;">TBC (仍在榜)</span>` : `<span style="color:#888;font-weight:bold;">OUT (已出榜)</span>`;
+    
+    // 生成走势文本
+    let trendStr = t.trendChart && t.trendChart.length > 0 ? t.trendChart.join(" - ") : (t.peakS || "1");
+
+    let statsHtml = `
+    <div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:65vh;overflow-y:auto;position:relative;">
+        <button class="sec" style="position:absolute; top:10px; right:10px; width:auto; padding:4px 10px; font-size:12px; margin:0; z-index:10;" onclick="closeM('mGameInput');">✖ 关闭</button>
+        <h3 class="tg" style="margin-bottom:5px;padding-right:50px;">${escapeHTML(t.n)}</h3>
+        <div style="font-size:12px;color:#666;margin-bottom:10px;">
+            专辑定位：<b style="color:#8e44ad;">${singleTag}</b><br>
+            成就认证：<b style="color:#e6683c;">${heatLabel}</b> ${certStr}<br>
+            当前状态：${chartStatus}<br>
+            ${awdHtml}
+        </div>
+        
+        <h4 style="border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:6px;color:#0055ff;">📊 权威榜单成绩</h4>
+        <div style="font-size:12px;line-height:1.8;background:#f0f9ff;padding:8px;border-radius:6px;margin-bottom:10px;">
+            🌍 全球流媒 (Spo)：<b>Peak #${t.peakS || '--'}</b><br>
+            🇺🇸 美国总榜 (BB)：<b>Peak #${t.peakB || '--'}</b><br>
+            📅 在榜总周数：<b>${t.weeks || 1} 周</b><br>
+            📈 历史走势：<b>[ ${trendStr} ]</b>
+        </div>
+        
+        <h4 style="border-bottom:1px solid #ddd;padding-bottom:4px;margin-bottom:6px;color:#c8a440;">🎵 核心流媒与销量</h4>
+        <div style="font-size:12px;line-height:1.8;">
+            🌍 全球总播放：<b>${(t.stmGlobal||0).toLocaleString()}</b><br>
+            📻 累计电台听众：<b>${(t.radioAud||0).toFixed(1)} M</b><br>
+            💿 累计总销量：<b>${(t.slTotal||0).toLocaleString()}</b> 张<br>
+        </div>
+        
+        <div style="margin-top:15px; padding:10px; background:#fff0f5; border:1px dashed #ff0000; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <b style="color:#ff0000; font-size:12px;">💧 数据注水 / 抹黑操纵</b>
+            </div>
+            <button class="red inline" style="font-size:11px; padding:6px 12px;" onclick="closeM('mGameInput'); openWateringUI('${t.id}')">打开控制台</button>
+        </div>
+    </div>
+    `;
+    
+    document.getElementById("mGameInputTitle").innerText = "单曲全面数据";
+    document.getElementById("mGameInputDesc").innerHTML = statsHtml;
+    document.getElementById("mGameInputField").style.display = "none";
+    let btns = document.getElementById("mGameInput").querySelectorAll("button");
+    if(btns.length > 1) { btns[0].style.display = "none"; btns[1].style.display = "none"; }
+    document.getElementById("mGameInput").classList.add("open");
+};
+
+// 4. 修复：人脉与奖项面板空白
+window.updAttr = function() {
+    if (typeof ad === 'undefined' || !ad) return;
+    if (typeof ad.sk === 'undefined' || !ad.sk) ad.sk = { v:50, d:50, r:50, w:50, f:50, s:50, fa:50, va:50 };
+    if (!ad.awd) ad.awd = [];
+    if (!myWorks) window.myWorks = [];
+
+    let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
+    let boxBasic = document.getElementById("boxBasic");
+    if(boxBasic) {
+        boxBasic.innerHTML = `
+        <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
+            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+                ${avatarHtml}
+            </div>
+            <div style="line-height:1.6;">
+                艺人:${escapeHTML(ad.s)} (${escapeHTML(ad.g)})<br>
+                粉丝:<b style="color:#c8a440">${(ad.st.f || 0).toLocaleString()}</b> | 资金:$${(ad.m || 0).toLocaleString()}<br>
+                公司:${escapeHTML(ad.co || '独立')}
+            </div>
+        </div>`;
+    }
+    
+    if(document.getElementById("boxInputs")) document.getElementById("boxInputs").innerHTML = aKs.map(x => `<div class="attr-edit-row"><label>${x.n}</label><input id="ie_${x.k}" value="${ad.sk[x.k] || 50}" type="number" min="1" max="1000"></div>`).join(''); 
+    if(document.getElementById("boxBars")) document.getElementById("boxBars").innerHTML = aKs.map(x => `<div class="attr-row"><span>${x.n}</span><div class="attr-bar-wrap"><div class="attr-bar-fill" style="width:${Math.min(100, (ad.sk[x.k] || 0) / 10)}%"></div></div><b>${ad.sk[x.k] || 0}</b></div>`).join(''); 
+    
+    // 渲染发行作品
+    let tabWorks = document.getElementById("tabWorks");
+    if(tabWorks) {
+        tabWorks.innerHTML = myWorks.length ? myWorks.map(x => {
+            let t = trackPool.find(tr => tr.id === x.id);
+            let safeSlTotal = t ? (t.slTotal || 0) : (x.slTotal || 0);
+            return `<div style="font-size:12px;margin-bottom:8px;border-bottom:1px solid #eee;padding-bottom:8px;">
+                <b>${escapeHTML(x.n)}</b><br>累计销量: ${safeSlTotal.toLocaleString()} 张
+            </div>`;
+        }).join('') : "无";
+    }
+
+    // 渲染奖项
+    let tabAwards = document.getElementById("tabAwards");
+    if(tabAwards) {
+        tabAwards.innerHTML = ad.awd.length ? ad.awd.map(x => escapeHTML(x)).join('<br><br>') : "无获奖记录";
+    }
+
+    // 渲染人脉关系
+    let tabRelations = document.getElementById("tabRelations");
+    if(tabRelations) {
+        let relHtml = "";
+        if (typeof worldArtists !== 'undefined') {
+            worldArtists.forEach(npc => {
+                if(npc.relations && npc.relations['player_self']) {
+                    let rel = npc.relations['player_self'];
+                    if(rel.p !== "陌生" || rel.f !== "陌生") {
+                        let pColor = (rel.p === "坏血" || rel.p === "讨厌") ? "#ff0000" : (rel.p === "陌生" ? "#888" : "#25d366");
+                        let fColor = rel.f === "互撕" ? "#ff0000" : (rel.f === "相亲相爱" ? "#25d366" : "#888");
+                        relHtml += `
+                        <div style="padding:8px 0; border-bottom:1px dashed #d1c290; display:flex; justify-content:space-between; align-items:center;">
+                            <b style="font-size:13px;">${escapeHTML(npc.n)}</b>
+                            <span style="font-size:11px; text-align:right;">私下: <b style="color:${pColor};">${rel.p}</b> | 粉圈: <b style="color:${fColor};">${rel.f}</b></span>
+                        </div>`;
+                    }
+                }
+            });
+        }
+        tabRelations.innerHTML = relHtml || "<div style='color:#888;text-align:center;padding:15px;'>圈内孤狼，暂未发现人脉。</div>";
+    }
+};
+
+// 5. 修复：AI记事加入颁奖季红毯快捷按钮
+document.addEventListener("DOMContentLoaded", function() {
+    setInterval(() => {
+        let btnBox = document.querySelector("#pSchedule .card > div:nth-child(3)"); // 快捷按钮容器
+        let isAwardMonth = [2,5,8,11].includes(time.m);
+        
+        if (isAwardMonth && btnBox && !document.getElementById("btnQuickAward")) {
+            btnBox.insertAdjacentHTML('beforeend', `
+                <button id="btnQuickAward" class="sec inline" style="white-space:nowrap; background:#fff0f5; color:#e91e63; border:1px solid #ffb6c1;" onclick="quickAction('award')">🏆 参加颁奖典礼</button>
+            `);
+        } else if (!isAwardMonth && document.getElementById("btnQuickAward")) {
+            document.getElementById("btnQuickAward").remove();
+        }
+    }, 1000);
+});
+
+var oldQuickAction = window.quickAction;
+window.quickAction = function(type) {
+    let planInput = document.getElementById("inSchedulePlan");
+    if(type === 'award') {
+        planInput.value = "我盛装打扮出席了本月的音乐颁奖典礼，先走了红毯艳压全场，然后在台下紧张地等待提名公布，最后拿下了大奖！";
+        // 触发自动检查颁奖
+        if(typeof checkAutoAward === 'function') checkAutoAward();
+        setTimeout(() => generateAiSchedule(), 300);
+    } else {
+        oldQuickAction(type);
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
