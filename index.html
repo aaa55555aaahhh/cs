@@ -16436,29 +16436,6 @@ window.checkTitles = function() {
     saveGame();
 };
 
-// ==================== 2. 修复 reading 'call' 报错 (重写登录验证) ====================
-window.checkLoginPwd = function() {
-    var inputPwd = document.getElementById("loginPwd").value.trim();
-    if (!window.VALID_PASSWORDS || window.VALID_PASSWORDS.indexOf(inputPwd) === -1) {
-        alert("密码错误或已被弃用，请重新输入！");
-        return;
-    }
-    try {
-        localStorage.setItem("starPro_login_pwd", inputPwd);
-        localStorage.setItem("starPro_is_unlocked", "true"); 
-    } catch (e) {}
-    
-    document.getElementById("loginPage").classList.remove("active");
-    document.getElementById("loginPage").style.display = "none";
-    
-    var createPage = document.getElementById("createPage");
-    if (createPage) {
-        createPage.style.display = "block";
-        createPage.classList.add("active");
-    }
-    alert("登录成功！进入大厅。");
-};
-
 // ==================== 3. 曲风新旧融合与宗教后果 ====================
 if (gs.indexOf("宗教") === -1) gs.push("宗教");
 
@@ -18155,6 +18132,118 @@ window.buyRadioPayola = function(id, tab = 'all') {
     }
     oldBuyRadioPayolaForReligionStrict(id, tab);
 };
+
+// 封堵 Billboard 排行榜计算时的电台得分
+var oldRenderChartForReligionRadio = window.renderChart;
+window.renderChart = function() {
+    // 渲染前，强制把宗教曲目的电台听众归零
+    trackPool.forEach(t => {
+        if (t.type === "track" && (t.gnr && t.gnr.includes("宗教") || (t.g && t.g.includes("宗教")))) {
+            t.radioAud = 0; 
+            t.radioBought = 0;
+        }
+    });
+    
+    oldRenderChartForReligionRadio(); // 执行正常渲染
+};
+
+        let curM = time.m;
+        let curY = time.y;
+        
+        let subAwds = awardRegistry.filter(a => (a.month - 2 === curM || (a.month <= 2 && curM === 12 + a.month - 2)));
+        let nomAwds = awardRegistry.filter(a => (a.month - 1 === curM || (a.month === 1 && curM === 12)));
+        let cerAwds = awardRegistry.filter(a => a.month === curM);
+
+        let html = ``;
+        if(subAwds.length > 0) {
+            html += `<br><span style="color:#0055ff;">• 📢 【作品初选阶段】：${subAwds.map(a=>a.name).join('、')} 正在进行首轮评审。公关团队已提交你的作品。</span>`;
+        }
+
+        // 安全初始化 awardData 防止报错 Cannot read properties of undefined (reading 'finished')
+        if (!ad.awardData) ad.awardData = { nominations: {}, finished: {} };
+        if (!ad.awardData.finished) ad.awardData.finished = {};
+        if (!ad.awardData.nominations) ad.awardData.nominations = {};
+
+        let curM = time.m;
+        let curY = time.y;
+        
+        let subAwds = awardRegistry.filter(a => (a.month - 2 === curM || (a.month <= 2 && curM === 12 + a.month - 2)));
+        let nomAwds = awardRegistry.filter(a => (a.month - 1 === curM || (a.month === 1 && curM === 12)));
+        let cerAwds = awardRegistry.filter(a => a.month === curM);
+
+        let html = ``;
+        if(subAwds.length > 0) {
+            html += `<br><span style="color:#0055ff;">• 📢 【作品初选阶段】：${subAwds.map(a=>a.name).join('、')} 正在进行首轮评审。系统将自动为你提报数据达标的作品。</span>`;
+        }
+
+        let actionArea = document.getElementById("scheduleActionArea");
+        if(actionArea) {
+            let btnHtml = `
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('write')">🎵 闭关写歌</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('relax')">🏖️ 休息放空</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('promo')">📺 跑通告宣发</button>
+            `;
+            
+            if (nomAwds.length > 0) {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff8e8; border:1px solid #c8a440; color:#a67c00;" onclick="viewNominationsUI()">📜 查看本月提名名单</button>`;
+            }
+            if (cerAwds.length > 0) {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff0f5; border:1px solid #e91e63; color:#e91e63; font-weight:bold;" onclick="startCeremonyUI()">🏆 参加颁奖典礼 (可表演)</button>`;
+            }
+            
+            actionArea.innerHTML = btnHtml;
+        }
+
+        let actionArea = document.getElementById("scheduleActionArea");
+        if(actionArea) {
+            let btnHtml = `
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('write')">🎵 闭关写歌</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('relax')">🏖️ 休息放空</button>
+            <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('promo')">📺 跑通告宣发</button>
+            `;
+            
+            if (subAwds.length > 0) {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#e0f2fe; border:1px solid #0055ff; color:#0055ff; display:block; margin-top:5px; width:100%;" onclick="alert('系统已自动将你的所有符合年份限制的单曲和专辑提交至组委会进行初轮筛查。')">📢 确认报名奖项</button>`;
+            }
+            if (nomAwds.length > 0) {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff8e8; border:1px solid #c8a440; color:#a67c00; display:block; margin-top:5px; width:100%;" onclick="viewNominationsUI()">📜 查看入围提名奖项</button>`;
+            }
+            if (cerAwds.length > 0) {
+                btnHtml += `<button class="sec inline" style="white-space:nowrap; background:#fff0f5; border:1px solid #e91e63; color:#e91e63; font-weight:bold; display:block; margin-top:5px; width:100%;" onclick="startCeremonyUI()">🏆 参加颁奖典礼 (可表演)</button>`;
+            }
+            
+            btnHtml += `<button class="sec inline" style="white-space:nowrap; display:block; margin-top:5px; width:100%;" onclick="switchMainTab(this, 'pMap'); showMap('mapAwards');">🏆 查看历届获奖人数</button>`;
+            
+            actionArea.innerHTML = btnHtml;
+        }
+
+        let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
+        if (editBtn) editBtn.insertAdjacentHTML('afterend', exportBtnHtml);
+
+        let editBtn = contentDiv.querySelector("button[onclick*='openEditNpc']");
+        if (editBtn) {
+            editBtn.insertAdjacentHTML('afterend', exportBtnHtml);
+            let delBtnHtml = `<button class="sec inline" style="padding:4px 8px;font-size:11px;margin-top:5px;border-color:#ff0000;color:#ff0000;" onclick="deleteNPC('${npc.id}')">🗑️ 删除艺人</button>`;
+            editBtn.insertAdjacentHTML('afterend', delBtnHtml);
+        }
+
+// ==================== 2. 导出单体艺人数据 ====================
+window.exportSingleNPC = function(npcId) {
+
+window.deleteNPC = function(npcId) {
+    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
+    let idx = worldArtists.findIndex(x => x.id === npcId);
+    if(idx > -1) {
+        worldArtists.splice(idx, 1);
+        alert("✅ 删除成功！");
+        closeM('mInfo');
+        if(typeof renderNpcList === 'function') renderNpcList();
+        saveGame();
+    }
+};
+
+// ==================== 2. 导出单体艺人数据 ====================
+window.exportSingleNPC = function(npcId) {
 
 window.uploadMyAvatar = function(input) {
     if (input.files && input.files[0]) {
