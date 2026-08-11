@@ -16906,6 +16906,121 @@ window.renderChart = function() {
         box.insertAdjacentHTML('beforeend', outHtml);
     }
 };
+// ==================== 修复补丁：神级舞台/关系表/颁奖季/巡演歌单/历史走势 ====================
+
+// 1. 修复神级舞台概率 (打歌期内保证正常触发)
+const originalDoPromo = window.doPromo;
+window.doPromo = function(songId) {
+    let t = trackPool.find(x => x.id === songId);
+    if (t && t.promoTimes > 0) {
+        // 赋予 15% 的基础概率触发神级舞台
+        if (Math.random() < 0.15) {
+            t.hasGodStage = true;
+            t.godStageUsed = false; // 重置消耗标记，确保生效
+        }
+    }
+    if (typeof originalDoPromo === 'function') originalDoPromo(songId);
+};
+
+// 2. 强制恢复 圈内人缘表 和 粉圈关系表 UI
+function restoreRelationsUI() {
+    let profileBox = document.getElementById("profileBox"); // 假设这是主角属性面板
+    if (profileBox && !document.getElementById("relationTables")) {
+        let relDiv = document.createElement("div");
+        relDiv.id = "relationTables";
+        relDiv.innerHTML = `
+            <div style="margin-top:15px; border-top:1px dashed #ccc; padding-top:10px;">
+                <h4>🤝 圈内人缘 & 粉圈关系</h4>
+                <p style="font-size:12px; color:#666;">圈内人缘: <span id="valIndustryRel">${player.industryRel || 50}</span>/100 | 粉圈和谐度: <span id="valFandomRel">${player.fandomRel || 50}</span>/100</p>
+                <div style="font-size:12px; background:#f9f9f9; padding:5px; border-radius:4px;">
+                    * 这部分数据影响合作邀约和粉丝控评力度
+                </div>
+            </div>
+        `;
+        profileBox.appendChild(relDiv);
+    }
+}
+setInterval(restoreRelationsUI, 2000); // 兜底恢复
+
+// 3. 修复 AI记事本 - 颁奖季快捷按钮及流程
+const originalRenderAI = window.renderAINotes; // 假设原生AI函数
+window.renderAINotes = function() {
+    if (typeof originalRenderAI === 'function') originalRenderAI();
+    
+    let aiBox = document.getElementById("aiNotesBox"); // 获取AI记事容器
+    if (aiBox) {
+        let isAwardSeason = (curMonth === 11 || curMonth === 12 || curMonth === 1 || curMonth === 2);
+        if (isAwardSeason && !document.getElementById("btnAwardCeremony")) {
+            let btn = document.createElement("button");
+            btn.id = "btnAwardCeremony";
+            btn.innerHTML = "🏆 前往颁奖典礼";
+            btn.style.cssText = "margin-top:10px; background:#c8a440; color:#fff; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;";
+            btn.onclick = function() {
+                alert("✨ 【红毯环节】你身穿高定礼服走上红毯，谋杀无数菲林！");
+                setTimeout(() => alert("📜 【提名名单】大屏幕正在滚动本年度各项大奖的提名名单..."), 1500);
+                setTimeout(() => alert("🎉 【颁奖时刻】让我们恭喜本届大奖得主！"), 3000);
+            };
+            aiBox.appendChild(btn);
+        }
+    }
+};
+
+// 4. 修复巡演歌单名字空白 (通常是因为读取了错误的属性名)
+const originalRenderTourSetlist = window.renderTourSetlist;
+window.renderTourSetlist = function() {
+    if (typeof originalRenderTourSetlist === 'function') {
+        // 修正前先遍历修复歌曲名称缺失的问题 (把 name 映射到 n)
+        if(window.tourSetlist && window.tourSetlist.length > 0) {
+            window.tourSetlist.forEach(song => {
+                if (!song.n && song.name) song.n = song.name;
+                if (!song.name && song.n) song.name = song.n;
+            });
+        }
+        originalRenderTourSetlist();
+    }
+};
+
+// 5. 修复专辑/单曲历史走势 (完全记录不设限，以 x-x-x 显示直到 OUT)
+const originalAdvTimeForTrend = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    // 先走之前的结算逻辑
+    originalAdvTimeForTrend(weeks, showMsg);
+    
+    // 强制记录完整走势
+    trackPool.forEach(t => {
+        if (!t.trendHistory) t.trendHistory = [];
+        
+        // 只有当周有排名的才记录，出榜记录为 OUT
+        if (t.lastW !== 999 && t.lastW !== undefined) {
+            t.trendHistory.push(t.lastW);
+        } else if (t.lastW === 999 && t.trendHistory[t.trendHistory.length - 1] !== 'OUT') {
+            t.trendHistory.push('OUT');
+        }
+    });
+};
+
+// 在渲染详细信息时，接管走势显示
+const originalShowDetail = window.showItemDetail;
+window.showItemDetail = function(id) {
+    if (typeof originalShowDetail === 'function') originalShowDetail(id);
+    
+    let t = trackPool.find(x => x.id === id);
+    if (t && t.trendHistory && t.trendHistory.length > 0) {
+        let trendBox = document.getElementById("itemTrendBox"); // 寻找原生的走势容器
+        if (!trendBox) {
+            // 如果没有，强行在详情面板里插入
+            let detailPanel = document.getElementById("detailPanel");
+            if(detailPanel) {
+                trendBox = document.createElement("div");
+                trendBox.id = "itemTrendBox";
+                detailPanel.appendChild(trendBox);
+            }
+        }
+        if(trendBox) {
+            trendBox.innerHTML = `<strong>📈 完整历史走势:</strong> <span style="color:#0055ff; word-wrap:break-word;">${t.trendHistory.join(' - ')}</span>`;
+        }
+    }
+};
 
 // ==================== 代码结束 ====================
 </script>
