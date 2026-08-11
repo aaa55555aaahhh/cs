@@ -18147,21 +18147,6 @@ window.renderChart = function() {
     oldRenderChartForReligionRadio(); // 执行正常渲染
 };
 
-// ==================== 2. 导出单体艺人数据 ====================
-window.exportSingleNPC = function(npcId) {
-
-window.deleteNPC = function(npcId) {
-    if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
-    let idx = worldArtists.findIndex(x => x.id === npcId);
-    if(idx > -1) {
-        worldArtists.splice(idx, 1);
-        alert("✅ 删除成功！");
-        closeM('mInfo');
-        if(typeof renderNpcList === 'function') renderNpcList();
-        saveGame();
-    }
-};
-
 window.deleteNPC = function(npcId) {
     if(!confirm("⚠️ 确定要彻底删除该艺人吗？(TA的作品不会被删除，但TA将从艺人榜和关系网中消失)")) return;
     let idx = worldArtists.findIndex(x => x.id === npcId);
