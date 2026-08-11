@@ -16906,107 +16906,44 @@ window.renderChart = function() {
         box.insertAdjacentHTML('beforeend', outHtml);
     }
 };
-// ==================== 强效终极补丁：强制劫持与DOM重写 ====================
-
 (function() {
-    console.log("🚀 强效终极补丁已加载...");
-
-    // 1 & 5. 劫持底层对象 (解决神级舞台概率与无限制走势记录)
-    // 通过定期扫描全局变量，强制修复歌曲和专辑数据
-    setInterval(() => {
-        let pools = [window.trackPool, window.albumPool, window.songs].filter(Boolean);
-        pools.forEach(pool => {
-            if (!Array.isArray(pool)) return;
-            pool.forEach(item => {
-                // 【修复1】强制解锁神级舞台概率 (只要打歌次数>0，强行赋予20%触发率)
-                if (item.promoTimes > 0 && !item.godStageUsed) {
-                    if (Math.random() < 0.20) item.hasGodStage = true;
+    console.log("=== 🕵️ 游戏底层架构探测器启动 ===");
+    
+    setTimeout(() => {
+        // 1. 探测常见游戏引擎
+        if (typeof $gameVariables !== 'undefined') console.log("🎯 发现引擎: RPG Maker MV/MZ");
+        if (window.cc) console.log("🎯 发现引擎: Cocos Creator");
+        if (window.Laya) console.log("🎯 发现引擎: LayaAir");
+        if (window.UnityLoader || window.createUnityInstance) console.log("🎯 发现引擎: Unity WebGL");
+        
+        // 2. 探测前端框架
+        if (window.__VUE__ || document.querySelector('[data-v-app]')) console.log("🎯 发现框架: Vue.js");
+        if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) console.log("🎯 发现框架: React");
+        
+        // 3. 探测画面渲染方式
+        const canvasCount = document.querySelectorAll('canvas').length;
+        if (canvasCount > 0) {
+            console.log(`🖼️ 游戏主要使用 Canvas 渲染 (数量: ${canvasCount})，DOM修改大概率无效。`);
+        } else {
+            console.log("📄 游戏使用传统 DOM (HTML标签) 渲染。");
+        }
+        
+        // 4. 寻找最大体积的全局变量 (可能是游戏真实的数据池)
+        let largeObjects = [];
+        for (let key in window) {
+            try {
+                if (window[key] && typeof window[key] === 'object' && key !== 'window' && key !== 'document') {
+                    let keys = Object.keys(window[key]);
+                    if (keys.length > 30) {
+                        largeObjects.push(key);
+                    }
                 }
-                
-                // 【修复5】强制记录完整历史走势 (不设限 x-x-x)
-                if (!item._fullTrend) item._fullTrend = [];
-                // 假设 item.lastW 或 item.rank 是当前排名
-                let currentRank = item.lastW || item.rank || 999;
-                let lastRecorded = item._fullTrend[item._fullTrend.length - 1];
-                
-                // 每周发生变化时推入新排名，直到彻底OUT
-                if (currentRank !== lastRecorded && !(currentRank === 999 && lastRecorded === 'OUT')) {
-                    item._fullTrend.push(currentRank === 999 ? 'OUT' : currentRank);
-                }
-            });
-        });
-    }, 1000);
-
-    // 监听全站DOM变化，强行修改UI (解决关系表、颁奖季、巡演空白、走势显示)
-    const observer = new MutationObserver((mutations) => {
-        // 【修复2】强行恢复圈内人缘/粉圈关系表
-        const profileAreas = document.querySelectorAll('.profile-container, #profileBox, [data-type="profile"]');
-        profileAreas.forEach(area => {
-            if (!document.getElementById("force-relations-ui")) {
-                let div = document.createElement("div");
-                div.id = "force-relations-ui";
-                div.innerHTML = `<div style="padding:10px; border:2px solid #ff6b81; border-radius:8px; margin-top:10px;">
-                    <h3 style="color:#ff6b81;">💞 人脉与粉圈数据 (强行恢复)</h3>
-                    <p>圈内人缘：<span style="font-weight:bold;">${window.player?.industryRel || '良好 (90)'}</span></p>
-                    <p>粉圈和谐度：<span style="font-weight:bold;">${window.player?.fandomRel || '高度凝聚 (95)'}</span></p>
-                </div>`;
-                area.appendChild(div);
-            }
-        });
-
-        // 【修复3】强行注入AI记事本的颁奖季流程
-        const aiNotesAreas = document.querySelectorAll('.ai-notes, #aiNotesBox');
-        aiNotesAreas.forEach(area => {
-            let currentMonth = window.curMonth || window.month || new Date().getMonth() + 1;
-            let isAwardSeason = [11, 12, 1, 2].includes(currentMonth);
-            
-            if (isAwardSeason && !document.getElementById("force-award-btn")) {
-                let btn = document.createElement("button");
-                btn.id = "force-award-btn";
-                btn.innerText = "🏆 强制开启颁奖典礼流程";
-                btn.style.cssText = "display:block; width:100%; padding:15px; background:linear-gradient(90deg, #d4af37, #f3e5ab); color:#000; font-weight:bold; border:none; cursor:pointer; border-radius:5px; margin-top:10px;";
-                btn.onclick = () => {
-                    alert("📸 【红毯环节】你身穿高定礼服走上红毯，谋杀无数菲林！");
-                    setTimeout(() => alert("📜 【提名名单】最佳年度单曲、最佳女/男歌手...提名滚动中！"), 1200);
-                    setTimeout(() => alert("🎉 【颁奖时刻】恭喜你获得本届重磅大奖，全场起立欢呼！"), 2400);
-                };
-                area.prepend(btn); // 强行放在最上面
-            }
-        });
-
-        // 【修复4】强行修复巡演歌单名字空白
-        // 查找所有可能是巡演列表的项，如果里面没有文字，强行从全局歌单抓取名字补上
-        const tourItems = document.querySelectorAll('.tour-song-item, .setlist-item');
-        tourItems.forEach((item, index) => {
-            if (item.innerText.trim() === "") {
-                let allSongs = window.trackPool || window.songs || [];
-                let fallbackName = allSongs[index] ? (allSongs[index].name || allSongs[index].n || "未命名曲目") : `巡演曲目 ${index + 1}`;
-                item.innerText = `🎵 ${fallbackName}`;
-                item.style.color = "#333"; 
-            }
-        });
-
-        // 【修复5的UI部分】拦截详情页，强行替换单周走势为长线走势
-        const trendDisplays = document.querySelectorAll('.trend-display, #itemTrendBox');
-        trendDisplays.forEach(el => {
-            // 假设元素上有 data-id 属性或者我们能匹配到当前查看的歌曲
-            let currentViewId = window.currentViewId || window.activeItemId;
-            if (!currentViewId) return;
-            
-            let pools = [window.trackPool, window.albumPool, window.songs].filter(Boolean);
-            let targetItem = null;
-            pools.forEach(p => { if(!targetItem && Array.isArray(p)) targetItem = p.find(x => x.id === currentViewId); });
-
-            if (targetItem && targetItem._fullTrend && !el.dataset.fixed) {
-                el.dataset.fixed = "true";
-                el.innerHTML = `<strong>📈 真实完整走势：</strong> ${targetItem._fullTrend.join(' ➔ ')}`;
-            }
-        });
-    });
-
-    // 启动全站核弹级监听
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-
+            } catch(e) {}
+        }
+        console.log("📦 发现疑似游戏核心数据的全局变量:", largeObjects.join(', '));
+        
+        console.log("===================================");
+    }, 3000);
 })();
 
 // ==================== 代码结束 ====================
