@@ -4329,9 +4329,9 @@ window.renameMyCompany = function() {
 };
 
 // 注入改名按钮到我的公司面板
-var oldRenderMapCompany = window.renderMapCompany;
+var oldRenderMapCompany2 = window.renderMapCompany;
 window.renderMapCompany = function() {
-    oldRenderMapCompany();
+    oldRenderMapCompany2();
     let box = document.getElementById("boxMyCompany");
     if(box && !document.getElementById("btnRenameCo")) {
         let btnHtml = `<button id="btnRenameCo" class="sec inline" style="font-size:11px; padding:4px 8px; margin-bottom:10px;" onclick="renameMyCompany()">✏️ 修改公司名称</button>`;
@@ -18249,7 +18249,7 @@ window.startCeremonyUI = function() {
 };
 
 // 商店系统
-var oldOpenAppForStore = window.openApp;
+var oldOpenAppForStore2 = window.openApp;
 window.openApp = function(appId) {
     if (appId === 'Store') {
         let html = `
@@ -18274,7 +18274,8 @@ window.openApp = function(appId) {
         document.getElementById("mInfoContent").innerHTML = html;
         document.getElementById("mInfo").classList.add("open");
     } else {
-        if(oldOpenAppForStore) oldOpenAppForStore(appId);
+        if(oldOpenAppForStore2) oldOpenAppForStore2(appId);
+
     }
 };
 
