@@ -13882,7 +13882,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // ==================== 终极底层强力修复：大盘弹性 & 榜单流动性 & Peak拦截 ====================
 
 // 1. 拦截并强制重写时间流逝，处理大盘弹性区间和数据聚合
-const originalAdvTime = window.advTime;
+var originalAdvTime = window.advTime;
 window.advTime = function(weeks, showMsg) {
     // 修复周、月、年榜数据相同的NaN错误，提前初始化
     trackPool.forEach(t => {
@@ -13969,7 +13969,7 @@ function forceUpdatePeaksAndFlow() {
 }
 
 // 3. 拦截渲染函数：只负责显示，不污染结算
-const originalRenderChart = window.renderChart;
+var originalRenderChart = window.renderChart;
 window.renderChart = function() {
     let box = document.getElementById("mChartContent");
     if(!trackPool || trackPool.length === 0) { 
