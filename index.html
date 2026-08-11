@@ -18794,7 +18794,153 @@ window.advTime = function(weeks, showMsg) {
 };
 
 // ==================== 终极修补程序：解决所有按键失效、大盘畸形与格莱美重复问题 ====================
+// ==================== 防报错强力修复补丁：舞台/关系/颁奖/歌单/走势 ====================
 
+(function() {
+    console.log("🛠️ 防报错专项修复补丁加载中...");
+
+    // ================= 1. 修复：神级舞台必定触发逻辑 =================
+    var oldPromoAlbSong = window.promoAlbSong;
+    window.promoAlbSong = function(id) {
+        if(!costEnergy(10)) return; 
+        var t = trackPool.find(function(x){ return x.id === id; }); 
+        if(!t) return;
+        
+        var promoDecay = Math.pow(0.65, t.promoCount || 0); 
+        var baseBoost = (t.stmGlobal_Week * 7 || t.stmGlobal || 50000) * 0.15 * ad.Geffect;
+        var extraStm = Math.floor((baseBoost + 100000) * promoDecay);
+        
+        // 🌟 强判定：15% 几率触发神级舞台
+        var isGodStage = Math.random() < 0.15;
+        var godMsg = "";
+        if (isGodStage) {
+            extraStm *= 3; // 爆发 3 倍
+            godMsg = "\n🌟 【神级现场触发】绝美Live直拍火出圈了！路人盘大爆炸！";
+        }
+        
+        if(extraStm > 3000000) extraStm = 3000000 + Math.floor(Math.random()*500000);
+        
+        advHour(24); 
+        t.stmGlobal += extraStm; 
+        t.slTotal += Math.floor(extraStm/150); 
+        t.longViral = (t.longViral||0) + (isGodStage ? 6 : 4); 
+        t.viralBoost = (t.viralBoost || 1.0) + (isGodStage ? 0.3 : 0.15); 
+        t.promoCount = (t.promoCount || 0) + 1; 
+        
+        alert("📺 现场打单成功！" + godMsg + "\n《" + t.n + "》流媒激增 " + extraStm.toLocaleString() + "！"); 
+        saveGame(); 
+        var albIdx = albs.findIndex(function(a){ return a.s.some(function(s){ return s.n === t.n; }); }); 
+        if(albIdx > -1) window.openAlbDetail(albIdx);
+    };
+
+    // ================= 2. 修复：找回主角与圈内的人脉/粉圈关系表 =================
+    var oldUpdAttr = window.updAttr;
+    window.updAttr = function() {
+        if (typeof oldUpdAttr === 'function') oldUpdAttr();
+        var box = document.getElementById("boxBasic");
+        if (box && !document.getElementById("myRelationsUI")) {
+            var relHtml = "<div id='myRelationsUI' style='margin-top:10px; padding:10px; background:#f9f9f9; border-radius:6px; border:1px solid #eee; font-size:12px;'>" +
+                "<b style='color:#e91e63;'>💞 个人圈内关系指标</b><br>" +
+                "圈内人缘：<b style='color:#25d366;'>" + Math.min(100, Math.floor(ad.st.f / 1000000) + 50) + "</b>/100 (影响日常邀约)<br>" +
+                "粉圈凝聚：<b style='color:#0055ff;'>" + Math.min(100, 80 + ad.awd.length) + "</b>/100 (影响饭圈撕逼战力)" +
+                "</div>";
+            box.insertAdjacentHTML('beforeend', relHtml);
+        }
+    };
+
+    // ================= 3. 修复：AI记事处的颁奖典礼快捷行动 =================
+    var oldRefreshTodoStatus = window.refreshTodoStatus;
+    window.refreshTodoStatus = function() {
+        if (typeof oldRefreshTodoStatus === 'function') oldRefreshTodoStatus();
+        var isAwardMonth = [2,5,8,11].includes(time.m);
+        var statusBox = document.getElementById("uiTodoStatus");
+        if (isAwardMonth && statusBox && !document.getElementById("btnQuickAward")) {
+            statusBox.innerHTML += "<br><button id='btnQuickAward' class='sec inline' style='margin-top:8px;background:#c8a440;color:#fff;border:none;padding:6px 12px;cursor:pointer;' onclick=\"quickAction('award')\">🏆 快捷前往颁奖典礼</button>";
+        }
+    };
+
+    var oldQuickAction = window.quickAction;
+    window.quickAction = function(type) {
+        if (type === 'award') {
+            if(![2,5,8,11].includes(time.m)) return alert("当前不是颁奖月！");
+            if(!costEnergy(20)) return;
+            document.getElementById("inSchedulePlan").value = "盛装出席颁奖典礼，走红毯并等待大奖揭晓！";
+            
+            alert("📸 【红毯环节】你身穿绝美高定礼服走上红毯，全场闪光灯闪烁不停，抹杀无数菲林！");
+            setTimeout(function() {
+                alert("📜 【提名揭晓】大屏幕正在滚动本年度各项大奖的入围名单，全场屏息凝神...");
+                setTimeout(function() {
+                    if (typeof checkAutoAward === 'function') checkAutoAward(); 
+                    setTimeout(function() { if(typeof generateAiSchedule === 'function') generateAiSchedule(); }, 500); 
+                }, 1000);
+            }, 1000);
+            return;
+        }
+        if (typeof oldQuickAction === 'function') oldQuickAction(type);
+    };
+
+    // ================= 4. 修复：巡演歌单列表一片空白 =================
+    window.filterSetlist = function() {
+        var filterSel = document.getElementById("selSetlistFilter");
+        var inner = document.getElementById("setlistTracksInner");
+        if (!filterSel || !inner) return;
+
+        var filterIdx = filterSel.value;
+        var list = window.allSetlistTracks || [];
+        
+        if (filterIdx !== "ALL") {
+            var a = albs[parseInt(filterIdx)];
+            if (a) list = list.filter(function(t){ return a.s.some(function(s){ return s.n === t.n || s.id === t.id; }); });
+        }
+        
+        if (list.length === 0) {
+            inner.innerHTML = "<p style='color:#888;text-align:center;'>此分类下无可表演的歌曲</p>";
+        } else {
+            inner.innerHTML = list.map(function(t) {
+                var isChecked = window.setlistSelectedIds && window.setlistSelectedIds.includes(t.id) ? "checked" : "";
+                return "<div style='padding:6px 0; border-bottom:1px solid #eee; display:flex; align-items:center;'>" +
+                    "<input type='checkbox' class='setlist-chk' value='" + t.id + "' onchange=\"if(typeof toggleSetlistSong === 'function') toggleSetlistSong('" + t.id + "')\" " + isChecked + " style='width:auto; margin:0 10px 0 0;'>" +
+                    "<div style='flex:1;'><b style='font-size:13px;color:#333;'>" + escapeHTML(t.n) + "</b>" +
+                    "<span style='font-size:11px;color:#888;margin-left:5px;'>(全球: " + (t.stmGlobal||0).toLocaleString() + ")</span></div></div>";
+            }).join('');
+        }
+    };
+
+    // ================= 5. 修复：真实历史走势 (x-x-OUT，无数量限制) =================
+    var oldAdvTimeTrend = window.advTime;
+    window.advTime = function(weeks, showMsg) {
+        if (typeof oldAdvTimeTrend === 'function') oldAdvTimeTrend(weeks, showMsg);
+        
+        trackPool.forEach(function(t) {
+            if (!t._unlimitedTrend) t._unlimitedTrend = [];
+            if (t.type === 'track') {
+                var rank = t.lastW; 
+                if (!rank || rank > 100) rank = 'OUT';
+                
+                var lastRec = t._unlimitedTrend[t._unlimitedTrend.length - 1];
+                if (!(rank === 'OUT' && lastRec === 'OUT')) {
+                    t._unlimitedTrend.push(rank);
+                }
+            }
+        });
+    };
+
+    var oldViewSongStatsTrend = window.viewSongStats;
+    window.viewSongStats = function(songId) {
+        if (typeof oldViewSongStatsTrend === 'function') oldViewSongStatsTrend(songId);
+        
+        var t = trackPool.find(function(x){ return x.id === songId; });
+        if (t && document.getElementById("mGameInputDesc")) {
+            var html = document.getElementById("mGameInputDesc").innerHTML;
+            var trendStr = t._unlimitedTrend && t._unlimitedTrend.length > 0 ? t._unlimitedTrend.join(" - ") : (t.peakS || 1);
+            
+            // 强行替换掉单周走势，换成长线 x-x-x
+            html = html.replace(/📈 .*?(走势|历史).*?(<br>|<\/div>|\[)/g, "📈 完整历史走势：<br><span style='color:#0055ff; word-break:break-all;'>[ " + trendStr + " ]</span>$2");
+            document.getElementById("mGameInputDesc").innerHTML = html;
+        }
+    };
+
+})();
 
 // ==================== 代码结束 ====================
 </script>
