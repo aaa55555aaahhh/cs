@@ -15352,7 +15352,7 @@ window.confirmStartWrite = function() {
 
 // ==================== 全局密码与系统配置 (已修复冲突) ====================
 // 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013"];
+window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849"];
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
     
@@ -16751,6 +16751,159 @@ window.quickAction = function(type) {
         setTimeout(() => generateAiSchedule(), 300);
     } else {
         oldQuickAction(type);
+    }
+};
+// ==================== 终极补丁 7.1：巡演场次复制、专辑详细统计与出榜展示 ====================
+
+// 1. 修复：巡演场次增加“仿照上一场”按钮
+var oldRenderTourLegsForClone = window.renderTourLegs;
+window.renderTourLegs = function() {
+    oldRenderTourLegsForClone(); // 执行原版渲染
+    
+    // 渲染完成后，在每个场次的“X 移除”按钮旁边追加“仿照上一场”按钮
+    let container = document.getElementById("tourLegsList");
+    if (container) {
+        let cards = container.querySelectorAll(".card");
+        cards.forEach((card, i) => {
+            if (i > 0) { // 第一场不显示“仿照上一场”
+                let removeBtn = card.querySelector("button");
+                if (removeBtn && !card.innerHTML.includes("cloneTourLeg")) {
+                    removeBtn.insertAdjacentHTML('beforebegin', `
+                        <button class="sec inline" style="position:absolute;top:5px;right:60px;padding:2px 6px;font-size:10px;color:#0055ff;border-color:#0055ff;" onclick="cloneTourLeg(${i-1})">📄 仿照上一场</button>
+                    `);
+                }
+            }
+        });
+    }
+};
+
+window.cloneTourLeg = function(sourceIndex) {
+    if (tourLegs[sourceIndex]) {
+        let scale = document.getElementById("selTourScale") ? document.getElementById("selTourScale").value : 'medium';
+        let maxLimit = TOUR_LIMITS[scale] ? TOUR_LIMITS[scale].max : 10;
+        
+        if (tourLegs.length >= maxLimit) {
+            return alert(`⚠️ 巡演场次已达上限 (${maxLimit}场)！`);
+        }
+
+        // 深拷贝上一场的数据
+        let newLeg = JSON.parse(JSON.stringify(tourLegs[sourceIndex]));
+        newLeg.id = Date.now() + "_" + Math.floor(Math.random()*1000);
+        
+        // 日期自动往后推 2 天
+        newLeg.d += 2;
+        if (newLeg.d > 30) {
+            newLeg.d = newLeg.d - 30;
+            newLeg.m = (newLeg.m % 12) + 1;
+        }
+        
+        // 插入到当前数组的末尾
+        tourLegs.push(newLeg);
+        renderTourLegs();
+    }
+};
+
+// 2. 修复：专辑详细页面追加全专统计（总销量、总流媒、日增走势）
+var oldOpenAlbDetailForStats = window.openAlbDetail;
+window.openAlbDetail = function(idx) {
+    oldOpenAlbDetailForStats(idx);
+    
+    let a = albs[idx];
+    let tAlb = trackPool.find(x => x.isMe && x.n === a.n && x.type === "album");
+    if (tAlb && document.getElementById("mAlbDetailContent")) {
+        let contentBox = document.getElementById("mAlbDetailContent");
+        
+        // 提取走势数据
+        let trendStr = tAlb.trendChart && tAlb.trendChart.length > 0 ? tAlb.trendChart.join(" - ") : (tAlb.peakS || "1");
+        
+        let statsHtml = `
+        <div style="background:#f0f9ff; padding:10px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:15px; font-size:12px; line-height:1.8;">
+            <h4 style="color:#0369a1; margin-bottom:5px;">📊 全专数据统计</h4>
+            🌍 全专累计流媒：<b>${(tAlb.stmGlobal || 0).toLocaleString()}</b> <span style="font-size:10px;color:#0055ff;">(今日新增: +${(tAlb.stmGlobal_Day || 0).toLocaleString()})</span><br>
+            💿 累计折合销量：<b>${(tAlb.slTotal || 0).toLocaleString()}</b> 张<br>
+            📈 历史排位走势：<b>[ ${trendStr} ]</b>
+        </div>`;
+        
+        contentBox.insertAdjacentHTML('afterbegin', statsHtml);
+    }
+};
+
+// 3. 记录不同时间维度的历史排位 (用于判定出榜)
+var oldAdvTimeForHistory = window.advTime;
+window.advTime = function(weeks, showMsg) {
+    trackPool.forEach(t => {
+        // 每天/周/月记录历史排位，这里简化处理，将上期的排位存入 lastRank 系列变量
+        // 注意：这里的排位是在 updatePeakRanks 中计算的，推演前我们先备份
+        if (typeof t._displayRank !== 'undefined') {
+            t.lastD = t._displayRank; // 模拟上日
+            t.lastW = t._displayRank; // 上周
+            if (time.w === 4) t.lastM = t._displayRank; // 月末时记录为上月
+        }
+    });
+    
+    if (oldAdvTimeForHistory) oldAdvTimeForHistory(weeks, showMsg);
+};
+
+// 4. 重写榜单渲染：增加底部【上期出榜 (OUT)】显示区域
+var oldRenderChartForOut = window.renderChart;
+window.renderChart = function() {
+    oldRenderChartForOut(); // 执行原版榜单渲染 (前100名)
+    
+    let box = document.getElementById("mChartContent");
+    if(!box || !trackPool || trackPool.length === 0) return;
+    
+    let isAlbum = (curChType === 'album' || curChType === 'album_daily');
+    let list = trackPool.filter(x => isAlbum ? x.type === 'album' : x.type === 'track');
+    let maxDisplay = (curChartPlatform === 'BB' && isAlbum) ? 200 : 100;
+    
+    // 找出本期【未进入前100名】，但在【上期】进入了前100名的歌曲，即为“出榜”
+    let outList = [];
+    list.forEach(t => {
+        // 判断当前名次是否出局 (大于 100 或者触发了规则淘汰)
+        let isCurrentlyOut = !t._displayRank || t._displayRank > maxDisplay || t.isRecurrent;
+        
+        // 判断上期是否有成绩
+        let hadRank = false;
+        let lastRankVal = 999;
+        
+        if (curChTime === 'Day' && t.lastD && t.lastD <= maxDisplay) { hadRank = true; lastRankVal = t.lastD; }
+        else if (curChTime === 'Week' && t.lastW && t.lastW <= maxDisplay) { hadRank = true; lastRankVal = t.lastW; }
+        else if (curChTime === 'Month' && t.lastM && t.lastM <= maxDisplay) { hadRank = true; lastRankVal = t.lastM; }
+        
+        if (isCurrentlyOut && hadRank) {
+            outList.push({ t: t, oldRank: lastRankVal });
+        }
+    });
+
+    // 如果有出榜歌曲，追加在榜单的最底端
+    if (outList.length > 0) {
+        // 按上期名次排序
+        outList.sort((a,b) => a.oldRank - b.oldRank);
+        
+        let outHtml = `<div style="padding:10px; background:#f1f5f9; border-top:2px dashed #ccc; margin-top:10px; text-align:center;">
+            <b style="color:#64748b; font-size:12px;">📉 以下为上期出榜作品 (OUT)</b>
+        </div>`;
+        
+        outHtml += outList.map(item => {
+            let t = item.t;
+            let isMe = t.isMe ? 'background:#fff8e8;border-left:3px solid #64748b;' : 'background:#f8fafc;';
+            
+            return `
+            <div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #e2e8f0;${isMe} opacity:0.8;">
+                <div style="width:45px; text-align:center;">
+                    <span style="color:#64748b; font-weight:bold; font-size:12px;">OUT</span>
+                </div>
+                <div style="flex:1; padding-left:10px;">
+                    <b style="color:#64748b; text-decoration:line-through;">${escapeHTML(t.n)}</b><br>
+                    <span style="font-size:11px;color:#94a3b8;">${escapeHTML(t.artist)} | 上期排位: #${item.oldRank}</span>
+                </div>
+                <div style="text-align:right;font-size:12px;color:#94a3b8;">
+                    已落榜
+                </div>
+            </div>`;
+        }).join('');
+        
+        box.insertAdjacentHTML('beforeend', outHtml);
     }
 };
 
