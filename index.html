@@ -1264,11 +1264,12 @@ window.meetPeople = function(){ if(!costEnergy(10)) return; advHour(24); let n =
 
 // 好友互动与浪漫系统
 window.openInviteList = function() { 
+    if (typeof ensureWardrobe === 'function') ensureWardrobe();
     let listHTML = '<ul style="list-style:none; padding:0;">'; 
     conts.forEach(function(friend, idx){ 
         let aff = friend.affinity || 0; 
         let nameStr = `${escapeHTML(friend.n)} <span style="color:#e91e63;">❤️(${aff})</span>`; 
-        listHTML += `<li style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #eee;"><div style="flex:1;"><b>${nameStr}</b><br><span style="font-size:11px;color:#888;">${escapeHTML(friend.t)}</span></div><div style="display:flex; flex-wrap:wrap; gap:5px; max-width:200px; justify-content:flex-end;"><button class="inline sec" onclick="interactWithFriend(${idx}, 'message')">发消息(+1)</button><button class="inline sec" onclick="interactWithFriend(${idx}, 'invite')">邀请来家(+2)</button>${!friend.isCohabiting ? `<button class="inline sec" onclick="interactWithFriend(${idx}, 'visit')">去他家玩</button>` : ''}<div class="romance-btns">${renderRomanceButtons(friend, idx)}</div></div></li>`; 
+        listHTML += `<li style="display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-bottom:1px solid #eee;"><div style="flex:1;"><b>${nameStr}</b><br><span style="font-size:11px;color:#888;">${escapeHTML(friend.t)}</span><br><span style="font-size:10px;color:#c8a440;">礼物库存：${ad.wardrobe ? ad.wardrobe.gifts : 0}</span></div><div style="display:flex; flex-wrap:wrap; gap:5px; max-width:200px; justify-content:flex-end;"><button class="inline sec" onclick="interactWithFriend(${idx}, 'message')">发消息(+1)</button><button class="inline sec" onclick="interactWithFriend(${idx}, 'invite')">邀请来家(+2)</button>${!friend.isCohabiting ? `<button class="inline sec" onclick="interactWithFriend(${idx}, 'visit')">去他家玩</button>` : ''}<button class="inline sec" onclick="interactWithFriend(${idx}, 'gift')">送礼(+8)</button><div class="romance-btns">${renderRomanceButtons(friend, idx)}</div></div></li>`; 
     }); 
     listHTML += '</ul>'; 
     let container = document.getElementById('friend-list-container');
@@ -1287,10 +1288,17 @@ function renderRomanceButtons(friend, idx) {
     return btns; 
 }
 window.interactWithFriend = function(idx, action) { 
+    if (typeof ensureWardrobe === 'function') ensureWardrobe();
     let friend = conts[idx]; if (friend.affinity === undefined) friend.affinity = 0; 
     if (action === 'message') { friend.affinity += 1; alert(`好感度+1！`); } 
     else if (action === 'invite') { if(!costEnergy(10)) return; advHour(2); friend.affinity += 2; alert(`消耗10精力和2小时，好感度+2！`); } 
     else if (action === 'visit') { if(!costEnergy(10)) return; advHour(2); friend.affinity += 3; alert(`去朋友家玩，好感度+3！`); } 
+    else if (action === 'gift') {
+        if (!ad.wardrobe || ad.wardrobe.gifts <= 0) return alert("没有可赠送的精美礼物。可以去手机里的【商店】购买。");
+        ad.wardrobe.gifts--;
+        friend.affinity += 8;
+        alert(`送出 1 个精美礼物，${friend.n} 的好感度+8！`);
+    } 
     openInviteList(); saveGame(); 
 }
 window.romanceAction = function(idx, type) { 
@@ -16858,7 +16866,7 @@ window.advTime = function(weeks, showMsg) {
         }
     });
     
-    if (oldAdvTimeForHistory) oldAdvTimeForHistory(weeks, showMsg);
+    if (oldAdvTimeForHistory2) oldAdvTimeForHistory2(weeks, showMsg);
 };
 
 // 4. 重写榜单渲染：增加底部【上期出榜 (OUT)】显示区域
@@ -18289,6 +18297,18 @@ window.startCeremonyUI = function() {
 };
 
 // 商店系统
+if (typeof window.ensureWardrobe !== 'function') {
+    window.ensureWardrobe = function() {
+        if (typeof ad === 'undefined' || !ad) return { hc: 0, fakeHc: 0, gifts: 0, rtw: 0 };
+        if (!ad.wardrobe) ad.wardrobe = {};
+        if (typeof ad.wardrobe.hc !== 'number') ad.wardrobe.hc = 0;
+        if (typeof ad.wardrobe.fakeHc !== 'number') ad.wardrobe.fakeHc = 0;
+        if (typeof ad.wardrobe.gifts !== 'number') ad.wardrobe.gifts = 0;
+        if (typeof ad.wardrobe.rtw !== 'number') ad.wardrobe.rtw = 0;
+        return ad.wardrobe;
+    };
+}
+
 var oldOpenAppForStore2 = window.openApp;
 window.openApp = function(appId) {
     if (appId === 'Store') {
@@ -18298,6 +18318,11 @@ window.openApp = function(appId) {
                 <b style="font-size:14px;">🎁 精美礼品盲盒</b><br>
                 <span style="font-size:11px;color:#666;">送给通讯录好友增加好感度。售价: $5,000</span><br>
                 <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('gift')">购买</button>
+            </div>
+            <div class="card" style="border:1px solid #94a3b8;background:#f8fafc;">
+                <b style="font-size:14px;">👚 正版品牌成衣</b><br>
+                <span style="font-size:11px;color:#666;">日常活动/普通红毯可穿，稳定小幅提升时尚表现。售价: $50,000</span><br>
+                <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('rtw')">购买成衣</button>
             </div>
             <div class="card" style="border:1px solid #0055ff;background:#f0f9ff;">
                 <b style="font-size:14px;">👗 顶级正版高定礼服 (HC)</b><br>
@@ -18320,11 +18345,13 @@ window.openApp = function(appId) {
 };
 
 window.buyStoreItem = function(type) {
-    let cost = type === 'hc' ? 300000 : (type === 'fakeHc' ? 10000 : 5000);
+    ensureWardrobe();
+    let cost = type === 'hc' ? 300000 : (type === 'rtw' ? 50000 : (type === 'fakeHc' ? 10000 : 5000));
     if(ad.m < cost) return alert("资金不足！");
     ad.m -= cost;
     
     if(type === 'gift') { ad.wardrobe.gifts++; alert("✅ 购买成功！获得了 1 个精美礼物。"); }
+    else if(type === 'rtw') { ad.wardrobe.rtw++; alert("✅ 购买成功！获得 1 件正版品牌成衣，可在活动中自动穿戴。"); }
     else if(type === 'hc') { ad.wardrobe.hc++; alert("✅ 购买成功！获得 1 件正版高定礼服，下次走红毯自动穿戴！"); }
     else if(type === 'fakeHc') { ad.wardrobe.fakeHc++; alert("✅ 购买成功！获得 1 件山寨高定，风险极大，请小心使用！"); }
     
@@ -19079,7 +19106,28 @@ var luxuryBrands = [
 ];
 
 // 初始化玩家衣橱
-if(typeof ad.wardrobe === 'undefined') ad.wardrobe = { hc: 0, fakeHc: 0, gifts: 0 };
+window.ensureWardrobe = function() {
+    if (typeof ad === 'undefined' || !ad) return { hc: 0, fakeHc: 0, gifts: 0, rtw: 0 };
+    if (!ad.wardrobe) ad.wardrobe = {};
+    if (typeof ad.wardrobe.hc !== 'number') ad.wardrobe.hc = 0;
+    if (typeof ad.wardrobe.fakeHc !== 'number') ad.wardrobe.fakeHc = 0;
+    if (typeof ad.wardrobe.gifts !== 'number') ad.wardrobe.gifts = 0;
+    if (typeof ad.wardrobe.rtw !== 'number') ad.wardrobe.rtw = 0;
+    return ad.wardrobe;
+};
+ensureWardrobe();
+
+document.addEventListener("DOMContentLoaded", function() {
+    setTimeout(function() {
+        var phoneGrid = document.getElementById("phoneGrid");
+        if (phoneGrid && !document.getElementById("appStore")) {
+            phoneGrid.insertAdjacentHTML('beforeend', `
+            <div class="app-icon" id="appStore" style="background:#c8a440;color:#000;" onclick="openApp('Store')">
+                <div class="picon">🛍️</div>商店
+            </div>`);
+        }
+    }, 800);
+});
 
 window.renderFashionHouse = function() {
     let html = `
@@ -19146,12 +19194,16 @@ window.showMap = function(id) {
 
 // --- 红毯神级与灾难判定系统 ---
 window.redCarpetRNG = function(eventName) {
+    ensureWardrobe();
     let score = (ad.sk.fa||50) * 0.6 + (ad.sk.f||50) * 0.4 + (Math.random()*40 - 20);
     
     // 如果穿了高定，极大加成
     if (ad.wardrobe.hc > 0) {
         score += 30;
         ad.wardrobe.hc--; 
+    } else if (ad.wardrobe.rtw > 0) {
+        score += 10;
+        ad.wardrobe.rtw--;
     } else if (ad.wardrobe.fakeHc > 0) {
         // 山寨高定触发黑名单
         ad.wardrobe.fakeHc--;
@@ -19255,6 +19307,11 @@ window.openApp = function(appId) {
                 <span style="font-size:11px;color:#666;">送给通讯录好友增加好感度。售价: $5,000</span><br>
                 <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('gift')">购买</button>
             </div>
+            <div class="card" style="border:1px solid #94a3b8;background:#f8fafc;">
+                <b style="font-size:14px;">👚 正版品牌成衣</b><br>
+                <span style="font-size:11px;color:#666;">日常活动/普通红毯可穿，稳定小幅提升时尚表现。售价: $50,000</span><br>
+                <button class="sec" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('rtw')">购买成衣</button>
+            </div>
             <div class="card" style="border:1px solid #0055ff;background:#f0f9ff;">
                 <b style="font-size:14px;">👗 顶级正版高定礼服 (HC)</b><br>
                 <span style="font-size:11px;color:#666;">走红毯必穿，极大增加神级出圈概率。售价: $300,000</span><br>
@@ -19275,11 +19332,13 @@ window.openApp = function(appId) {
 };
 
 window.buyStoreItem = function(type) {
-    let cost = type === 'hc' ? 300000 : (type === 'fakeHc' ? 10000 : 5000);
+    ensureWardrobe();
+    let cost = type === 'hc' ? 300000 : (type === 'rtw' ? 50000 : (type === 'fakeHc' ? 10000 : 5000));
     if(ad.m < cost) return alert("资金不足！");
     ad.m -= cost;
     
     if(type === 'gift') { ad.wardrobe.gifts++; alert("✅ 购买成功！获得了 1 个精美礼物。"); }
+    else if(type === 'rtw') { ad.wardrobe.rtw++; alert("✅ 购买成功！获得 1 件正版品牌成衣，可在活动中自动穿戴。"); }
     else if(type === 'hc') { ad.wardrobe.hc++; alert("✅ 购买成功！获得 1 件正版高定礼服，下次走红毯自动穿戴！"); }
     else if(type === 'fakeHc') { ad.wardrobe.fakeHc++; alert("✅ 购买成功！获得 1 件山寨高定，风险极大，请小心使用！"); }
     
@@ -19641,6 +19700,328 @@ window.checkAutoAward = function() {
             document.getElementById("mGameInputDesc").innerHTML = content;
         }
     };
+
+    // ==================== 最终稳定覆盖补丁：奖项流程/时尚屋/头像/NPC/榜单 ====================
+    (function(){
+        function safeArr(x){ return Array.isArray(x) ? x : []; }
+        function monthOffset(baseMonth, offset) {
+            var m = (baseMonth || 12) - offset;
+            while (m <= 0) m += 12;
+            return m;
+        }
+        window.ensureAwardData = function() {
+            if (!ad.awardData) ad.awardData = {};
+            if (!ad.awardData.submissions) ad.awardData.submissions = {};
+            if (!ad.awardData.nominations) ad.awardData.nominations = {};
+            if (!ad.awardData.finished) ad.awardData.finished = {};
+            return ad.awardData;
+        };
+        window.getAwardYearForStage = function(awd, curY, curM, stage) {
+            var am = awd.month || 12;
+            if (stage === 'submit' && am <= curM) return curY + 1;
+            if (stage === 'nom' && am < curM) return curY + 1;
+            return curY;
+        };
+        window.getCurrentAwardStageInfo = function() {
+            var curM = time.m, curY = time.y;
+            var subAwds = safeArr(awardRegistry).filter(function(a){ return monthOffset(a.month || 12, 2) === curM; });
+            var nomAwds = safeArr(awardRegistry).filter(function(a){ return monthOffset(a.month || 12, 1) === curM; });
+            var cerAwds = safeArr(awardRegistry).filter(function(a){ return (a.month || 12) === curM; });
+            return { y: curY, m: curM, submit: subAwds, nomination: nomAwds, ceremony: cerAwds };
+        };
+        window.getMyEligibleTracksNewestFirst = function() {
+            return safeArr(trackPool).filter(function(x){ return x.isMe && x.type === "track"; }).sort(function(a,b){ return (a.weeks || 0) - (b.weeks || 0); });
+        };
+        window.getMyEligibleAlbumsNewestFirst = function() {
+            return safeArr(trackPool).filter(function(x){ return x.isMe && x.type === "album"; }).sort(function(a,b){ return (a.weeks || 0) - (b.weeks || 0); });
+        };
+        window.getMyEligibleMVsNewestFirst = function() {
+            return getMyEligibleTracksNewestFirst().filter(function(x){ return x.hasRealMV || x.hasLyricMV || (x.mvN || 0) > 0; });
+        };
+        window.openAwardSubmitUI = function() {
+            ensureAwardData();
+            var info = getCurrentAwardStageInfo();
+            if (!info.submit.length) return alert("当前不是奖项报名阶段。报名通常在颁奖月前两个月开放。");
+            var tracks = getMyEligibleTracksNewestFirst();
+            var albs = getMyEligibleAlbumsNewestFirst();
+            var mvs = getMyEligibleMVsNewestFirst();
+            var html = `<p style="font-size:12px;color:#666;line-height:1.6;">当前阶段：<b style="color:#0055ff;">奖项报名</b><br>规则：每个奖项最多报名 1 首单曲、1 张专辑、1 支 MV。艺人类奖项默认报名你本人。</p>`;
+            info.submit.forEach(function(awd, idx){
+                var ay = getAwardYearForStage(awd, info.y, info.m, 'submit');
+                var key = ay + "_" + awd.id;
+                var sub = ad.awardData.submissions[key] || {};
+                html += `<div class="card" style="border:1px solid #bae6fd;background:#f0f9ff;">
+                    <h4 style="color:#0369a1;margin-bottom:8px;">${escapeHTML(awd.name)} <span style="font-size:11px;color:#888;">(${ay}届)</span></h4>
+                    <label style="font-size:12px;">报名单曲：</label>
+                    <select id="awdSubTrack_${idx}"><option value="">不报名单曲</option>${tracks.map(function(t){ return `<option value="${t.id}" ${sub.track===t.id?'selected':''}>${escapeHTML(t.n)}（发行第${t.weeks||0}周）</option>`; }).join('')}</select>
+                    <label style="font-size:12px;">报名专辑：</label>
+                    <select id="awdSubAlbum_${idx}"><option value="">不报名专辑</option>${albs.map(function(t){ return `<option value="${t.id}" ${sub.album===t.id?'selected':''}>${escapeHTML(t.n)}（发行第${t.weeks||0}周）</option>`; }).join('')}</select>
+                    <label style="font-size:12px;">报名 MV：</label>
+                    <select id="awdSubMV_${idx}"><option value="">不报名MV</option>${mvs.map(function(t){ return `<option value="${t.id}" ${sub.mv===t.id?'selected':''}>${escapeHTML(t.n)}（MV次数:${t.mvN||0}）</option>`; }).join('')}</select>
+                    <button onclick="saveAwardSubmission(${idx})">保存该奖项报名</button>
+                </div>`;
+            });
+            document.getElementById("mInfoTitle").innerText = "📢 报名奖项";
+            document.getElementById("mInfoContent").innerHTML = html;
+            document.getElementById("mInfo").classList.add("open");
+        };
+        window.saveAwardSubmission = function(idx) {
+            ensureAwardData();
+            var info = getCurrentAwardStageInfo();
+            var awd = info.submit[idx];
+            if (!awd) return alert("奖项不存在。");
+            var ay = getAwardYearForStage(awd, info.y, info.m, 'submit');
+            var key = ay + "_" + awd.id;
+            ad.awardData.submissions[key] = {
+                track: (document.getElementById("awdSubTrack_"+idx) || {}).value || "",
+                album: (document.getElementById("awdSubAlbum_"+idx) || {}).value || "",
+                mv: (document.getElementById("awdSubMV_"+idx) || {}).value || "",
+                artist: true
+            };
+            saveGameImmediate();
+            alert("✅ 已保存【" + awd.name + "】报名。每类只保留你选择的一个作品。");
+        };
+
+        var baseGetAwardTop5Final = window.getAwardTop5;
+        window.getAwardTop5 = function(awd, cat, year) {
+            ensureAwardData();
+            var key = year + "_" + awd.id;
+            var sub = ad.awardData.submissions[key] || {};
+            var original = typeof baseGetAwardTop5Final === 'function' ? baseGetAwardTop5Final(awd, cat, year) : [];
+            var hasMe = original.some(function(x){ return x.isMe; });
+            if (!hasMe) {
+                var forced = null;
+                if (cat.targetType === "artist") forced = { id:"player_self", n:ad.s, artist:ad.s, isMe:true, score:ad.st ? ad.st.f : 0 };
+                if (cat.targetType === "album" && sub.album) {
+                    var a = trackPool.find(function(x){ return x.id === sub.album; });
+                    if (a) forced = { id:a.id, n:a.n, artist:ad.s, isMe:true, score:(a.Spub||50)*10000+(a.slTotal||0) };
+                }
+                if ((cat.targetType === "track" || cat.targetType === "mv") && (sub.track || sub.mv)) {
+                    var t = trackPool.find(function(x){ return x.id === (cat.targetType === "mv" ? sub.mv : sub.track); });
+                    if (t) forced = { id:t.id, n:t.n, artist:ad.s, isMe:true, score:(t.Spub||50)*10000+(t.slTotal||0)+((t.mvN||0)*100000) };
+                }
+                if (forced) original.push(forced);
+            }
+            original.sort(function(a,b){ return (b.score||0) - (a.score||0); });
+            return original.slice(0,5);
+        };
+
+        window.viewAwardHistoryUI = function() {
+            var html = `<p style="font-size:12px;color:#666;">以下为历届获奖记录。系统会统计记录数，并列出最近记录。</p>`;
+            html += `<div class="card"><b>总获奖记录数：</b>${safeArr(historyAwards).length}</div>`;
+            html += safeArr(historyAwards).length ? safeArr(historyAwards).map(function(x){ return `<div class="card" style="font-size:12px;line-height:1.6;">${x}</div>`; }).join('') : "<p style='color:#888;text-align:center;'>暂无历史获奖记录</p>";
+            document.getElementById("mInfoTitle").innerText = "🏆 历届获奖人数 / 获奖记录";
+            document.getElementById("mInfoContent").innerHTML = html;
+            document.getElementById("mInfo").classList.add("open");
+        };
+
+        var baseRefreshTodoStatusFinal = window.refreshTodoStatus;
+        window.refreshTodoStatus = function() {
+            if (typeof baseRefreshTodoStatusFinal === 'function') baseRefreshTodoStatusFinal();
+            var info = getCurrentAwardStageInfo();
+            var statusBox = document.getElementById("uiTodoStatus");
+            var stageText = "";
+            if (info.submit.length) stageText += `<br><span style="color:#0055ff;">📢 当前奖项阶段：报名期。可报名：${info.submit.map(function(a){return a.name;}).join("、")}</span>`;
+            if (info.nomination.length) stageText += `<br><span style="color:#a67c00;">📜 当前奖项阶段：提名公布期。可查看：${info.nomination.map(function(a){return a.name;}).join("、")}</span>`;
+            if (info.ceremony.length) stageText += `<br><span style="color:#e91e63;font-weight:bold;">🏆 当前奖项阶段：颁奖典礼。正在举办：${info.ceremony.map(function(a){return a.name;}).join("、")}</span>`;
+            if (!stageText) stageText = `<br><span style="color:#888;">🏆 当前奖项阶段：空窗期。报名在颁奖月前两个月，提名在前一个月。</span>`;
+            if (statusBox) statusBox.innerHTML = statusBox.innerHTML.replace(/<br><span[^>]*>📢 当前奖项阶段[\s\S]*?<\/span>|<br><span[^>]*>📜 当前奖项阶段[\s\S]*?<\/span>|<br><span[^>]*>🏆 当前奖项阶段[\s\S]*?<\/span>/g, "") + stageText;
+            var actionArea = document.getElementById("scheduleActionArea");
+            if (actionArea) {
+                actionArea.innerHTML = `
+                <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('write')">🎵 闭关写歌</button>
+                <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('relax')">🏖️ 休息放空</button>
+                <button class="sec inline" style="white-space:nowrap;" onclick="quickAction('promo')">📺 跑通告宣发</button>
+                <button class="sec inline" style="white-space:nowrap;display:block;margin-top:5px;width:100%;background:#e0f2fe;color:#0055ff;border:1px solid #0055ff;" onclick="openAwardSubmitUI()">📢 报名奖项</button>
+                <button class="sec inline" style="white-space:nowrap;display:block;margin-top:5px;width:100%;background:#fff8e8;color:#a67c00;border:1px solid #c8a440;" onclick="viewNominationsUI()">📜 查看提名奖项</button>
+                <button class="sec inline" style="white-space:nowrap;display:block;margin-top:5px;width:100%;" onclick="viewAwardHistoryUI()">🏆 查看历届获奖人数</button>`;
+                if (info.ceremony.length) actionArea.innerHTML += `<button class="sec inline" style="white-space:nowrap;display:block;margin-top:5px;width:100%;background:#fff0f5;color:#e91e63;border:1px solid #e91e63;font-weight:bold;" onclick="startCeremonyUI()">🏆 参加颁奖典礼</button>`;
+            }
+        };
+
+        window.injectAwardEditFields = function() {
+            var box = document.getElementById("mAwardEditUI");
+            if (!box || document.getElementById("inAwdWtSpub")) return;
+            var desc = document.getElementById("inAwdDesc");
+            if (desc) desc.insertAdjacentHTML("afterend", `
+                <label style="font-size:12px;color:#666;">举办月份(1-12):</label>
+                <input type="number" id="inAwdMonth" value="12" min="1" max="12">
+                <div style="font-size:12px;color:#666;margin-bottom:5px;">评选权重（系统会自动归一化）：</div>
+                <input type="number" id="inAwdWtSpub" value="33" placeholder="乐评/口碑权重">
+                <input type="number" id="inAwdWtSales" value="33" placeholder="销量/流媒权重">
+                <input type="number" id="inAwdWtCatchy" value="34" placeholder="洗脑度/流行权重">
+            `);
+        };
+        document.addEventListener("DOMContentLoaded", function(){ setTimeout(injectAwardEditFields, 500); });
+        var baseRenderAwardRegistryFinal = window.renderAwardRegistry;
+        window.renderAwardRegistry = function() {
+            injectAwardEditFields();
+            if (typeof baseRenderAwardRegistryFinal === 'function') baseRenderAwardRegistryFinal();
+            var box = document.getElementById("awardIntroBox");
+            if (!box || !awardRegistry) return;
+            box.innerHTML = awardRegistry.map(function(awd,i){
+                var rules = awd.rules || {};
+                return `<div class="card" style="padding:10px;border:1px solid #eee;">
+                    <b style="color:#c8a440;">🏆 ${escapeHTML(awd.name)}</b>
+                    <span style="font-size:11px;color:#888;"> ${awd.month||12}月举办</span>
+                    <p style="font-size:12px;">${escapeHTML(awd.desc||"")}</p>
+                    <div style="font-size:11px;color:#555;">权重：口碑${rules.weightSpub||0.33} / 商业${rules.weightSales||0.33} / 流行${rules.weightCatchy||0.34}</div>
+                    <div style="font-size:11px;color:#555;margin-top:4px;">分支：${safeArr(awd.categories).map(function(c){return escapeHTML(c.name);}).join("、") || "暂无"}</div>
+                    <button class="sec inline" onclick="editAwardFull(${i})">完整重构</button>
+                    <button class="sec inline" onclick="curEditAwardIdx=${i};document.getElementById('mCatAddUI').classList.add('open');">添加分支</button>
+                </div>`;
+            }).join('');
+        };
+        window.editAwardFull = function(i) {
+            injectAwardEditFields();
+            curEditAwardIdx = i;
+            var awd = awardRegistry[i];
+            if (!awd) return alert("奖项不存在。");
+            document.getElementById("mAwardEditTitle").innerText = "✏️ 完整重构奖项";
+            document.getElementById("inAwdName").value = awd.name || "";
+            document.getElementById("inAwdDesc").value = awd.desc || "";
+            document.getElementById("inAwdMonth").value = awd.month || 12;
+            document.getElementById("inAwdWtSpub").value = Math.round(((awd.rules||{}).weightSpub || 0.33) * 100);
+            document.getElementById("inAwdWtSales").value = Math.round(((awd.rules||{}).weightSales || 0.33) * 100);
+            document.getElementById("inAwdWtCatchy").value = Math.round(((awd.rules||{}).weightCatchy || 0.34) * 100);
+            document.getElementById("mAwardEditUI").classList.add("open");
+        };
+
+        window.uploadMyAvatar = function(input) {
+            if (!input || !input.files || !input.files[0]) return;
+            processAvatarUpload(input.files[0], function(base64) {
+                ad.avatar = base64;
+                var imgs = document.querySelectorAll("img");
+                imgs.forEach(function(img){
+                    var parentClick = img.parentElement ? img.parentElement.getAttribute("onclick") : "";
+                    if (parentClick && parentClick.indexOf("myAvatarInput") > -1) img.src = base64;
+                });
+                if (typeof updAttr === "function") updAttr();
+                saveGame();
+                input.value = "";
+                alert("✅ 头像上传/更换成功！");
+            });
+        };
+
+        var baseOpenNpcDetailFinal = window.openNpcDetail;
+        window.openNpcDetail = function(id) {
+            if (typeof baseOpenNpcDetailFinal === "function") baseOpenNpcDetailFinal(id);
+            var npc = worldArtists.find(function(x){ return x.id === id; });
+            var content = document.getElementById("mInfoContent");
+            if (npc && content && content.innerHTML.indexOf("deleteNPC") === -1) {
+                content.insertAdjacentHTML("beforeend", `<button class="red" style="margin-top:10px;" onclick="deleteNPC('${npc.id}')">🗑️ 删除该NPC艺人</button>`);
+            }
+        };
+
+        window.calculateRealisticScore = function(rawScore, aiAdj) {
+            var base = rawScore <= 100 ? rawScore * 0.68 : (rawScore <= 200 ? 68 + (rawScore - 100) * 0.13 : (rawScore <= 1000 ? 81 + (rawScore - 200) * 0.014 : 92));
+            var finalScore = base + (Math.random() * 10 - 7) + (aiAdj || 0);
+            if (finalScore >= 100) finalScore = Math.random() < 0.01 ? 100 : 99;
+            if (finalScore >= 98) finalScore = Math.random() < 0.08 ? finalScore : 97;
+            return Math.max(0, Math.min(100, Math.floor(finalScore)));
+        };
+
+        var baseAdvTimeChartFinal = window.advTime;
+        window.advTime = function(weeks, showMsg) {
+            if (typeof baseAdvTimeChartFinal === "function") baseAdvTimeChartFinal(weeks, showMsg);
+            safeArr(trackPool).forEach(function(t){
+                if (t.type === "track" || t.type === "album") {
+                    if (typeof t.chartWeeks !== "number") t.chartWeeks = 0;
+                    var inTop100 = t.lastW && t.lastW <= 100;
+                    if (inTop100 && t._lastChartWeekMark !== (time.y+"_"+time.m+"_"+time.w)) {
+                        t.chartWeeks++;
+                        t._lastChartWeekMark = time.y+"_"+time.m+"_"+time.w;
+                    }
+                }
+            });
+        };
+
+        if (typeof pushToTrend !== "function") {
+            window.globalTrends = [];
+            window.pushToTrend = function(topic, desc){ window.globalTrends.unshift({t:topic,c:desc}); };
+        }
+        window.maybeTrend = function(topic, desc, chance) {
+            if (Math.random() < chance && typeof pushToTrend === "function") pushToTrend(topic, desc);
+            if (posts && posts.mom && Math.random() < chance) posts.mom.unshift({t:topic,c:desc});
+        };
+        var basePreheatSongFinal = window.preheatSong;
+        window.preheatSong = function(name) {
+            if (typeof basePreheatSongFinal === "function") basePreheatSongFinal(name);
+            maybeTrend(`📢 # ${ad.s} 新作预热 ${name}`, `新专/新歌预热开始发酵，粉丝和路人都在猜这次的概念。`, 0.45);
+        };
+        var baseRedCarpetFinal = window.redCarpetRNG;
+        window.redCarpetRNG = function(eventName) {
+            var beforeFans = ad.st ? ad.st.f : 0;
+            if (typeof baseRedCarpetFinal === "function") baseRedCarpetFinal(eventName);
+            var afterFans = ad.st ? ad.st.f : beforeFans;
+            if (afterFans > beforeFans) maybeTrend(`✨ # ${ad.s} ${eventName} 红毯封神`, `造型和生图表现出圈，时尚讨论度飙升。`, 0.65);
+            if (afterFans < beforeFans) maybeTrend(`💩 # ${ad.s} ${eventName} 红毯出丑`, `造型争议太大，时尚博主和路人都在吐槽。`, 0.75);
+        };
+
+        function ensureFashionDefaults() {
+            if (ad.fashionMags && Array.isArray(ad.fashionMags)) fashionMags = ad.fashionMags;
+            if (ad.luxuryBrands && Array.isArray(ad.luxuryBrands)) luxuryBrands = ad.luxuryBrands;
+            fashionMags = safeArr(fashionMags);
+            luxuryBrands = safeArr(luxuryBrands);
+            fashionMags.forEach(function(m){ if(!m.history) m.history=[]; });
+            luxuryBrands.forEach(function(b){ if(!b.lines) b.lines=[]; if(!b.ambassadors) b.ambassadors=[]; if(!b.blacklist) b.blacklist=[]; if(!b.titles) b.titles=["全球品牌大使","品牌大使"]; });
+            ad.fashionMags = fashionMags;
+            ad.luxuryBrands = luxuryBrands;
+        }
+        function saveFashionConfig() {
+            ensureFashionDefaults();
+            ad.fashionMags = fashionMags;
+            ad.luxuryBrands = luxuryBrands;
+            saveGame();
+        }
+        var baseRenderFashionHouseFinal = window.renderFashionHouse;
+        window.renderFashionHouse = function() {
+            ensureFashionDefaults();
+            var html = `
+            <div class="sub-tab-bar" style="margin-bottom:10px;">
+                <div class="sub-tab active" onclick="switchSubTab(this, 'fashionMag', 'fashionTabs')">时尚杂志</div>
+                <div class="sub-tab" onclick="switchSubTab(this, 'fashionBrand', 'fashionTabs')">奢侈品品牌</div>
+                <div class="sub-tab" onclick="switchSubTab(this, 'fashionWeek', 'fashionTabs')">时装周</div>
+            </div>
+            <div style="display:flex;gap:5px;margin-bottom:10px;">
+                <button class="sec inline" onclick="addFashionMag()">新增杂志</button>
+                <button class="sec inline" onclick="addLuxuryBrand()">新增品牌</button>
+            </div>
+            <div id="fashionTabs">
+                <div id="fashionMag" class="sub-page active">${fashionMags.map(function(m,i){ return `<div class="card" style="padding:10px;"><b>${escapeHTML(m.n)}</b> <span style="font-size:10px;background:#111;color:#c8a440;padding:2px 6px;border-radius:4px;">${escapeHTML(m.tier||"T1")} ${escapeHTML(m.type||"杂志")}</span><br><button class="sec inline" onclick="editFashionMag(${i})">编辑</button><button class="sec inline" onclick="strollFashion('mag',${i})">随便逛逛</button><button class="sec inline" onclick="viewMagHistory(${i})">杂志人物</button><button class="sec inline" onclick="joinFashionGala('${escapeHTML(m.n)} 晚宴')">杂志晚宴</button></div>`; }).join('')}</div>
+                <div id="fashionBrand" class="sub-page">${luxuryBrands.map(function(b,i){ return `<div class="card" style="padding:10px;"><b>${escapeHTML(b.n)}</b> <span style="font-size:10px;background:#c8a440;color:#000;padding:2px 6px;border-radius:4px;">${escapeHTML(b.tier||"高奢")}</span><br><span style="font-size:11px;color:#888;">支线：${safeArr(b.lines).join(" / ")}<br>代言人梯度：${safeArr(b.titles).join(" / ")}</span><br><button class="sec inline" onclick="editLuxuryBrand(${i})">编辑</button><button class="sec inline" onclick="strollFashion('brand',${i})">随便逛逛</button><button class="sec inline" onclick="joinFashionGala('${escapeHTML(b.n)} 品牌晚宴')">品牌晚宴</button></div>`; }).join('')}</div>
+                <div id="fashionWeek" class="sub-page"><p style="font-size:11px;color:#888;">四大时装周入口。</p><button onclick="joinFashionWeek('巴黎时装周')">巴黎时装周</button><button onclick="joinFashionWeek('米兰时装周')">米兰时装周</button><button onclick="joinFashionWeek('纽约时装周')">纽约时装周</button><button onclick="joinFashionWeek('伦敦时装周')">伦敦时装周</button></div>
+            </div>`;
+            var mapFashion = document.getElementById("mapFashion");
+            if (mapFashion) mapFashion.innerHTML = `<h3 class="tg" style="margin-bottom:10px;">✨ 时装屋</h3>` + html;
+        };
+        window.editFashionMag = function(i) {
+            var m = fashionMags[i]; if(!m) return;
+            var n = prompt("杂志名称", m.n); if(n===null) return;
+            var tier = prompt("杂志梯度，如 T0/T1/T2", m.tier || "T1"); if(tier===null) return;
+            var type = prompt("杂志类型/定位", m.type || "杂志"); if(type===null) return;
+            m.n=n.trim()||m.n; m.tier=tier.trim()||m.tier; m.type=type.trim()||m.type; saveFashionConfig(); renderFashionHouse();
+        };
+        window.addFashionMag = function(){ fashionMags.push({n:"新杂志",tier:"T1",type:"杂志",history:[]}); saveFashionConfig(); renderFashionHouse(); };
+        window.editLuxuryBrand = function(i) {
+            var b = luxuryBrands[i]; if(!b) return;
+            var n = prompt("品牌名称", b.n); if(n===null) return;
+            var tier = prompt("品牌梯度，如 顶奢/高奢/轻奢", b.tier||"高奢"); if(tier===null) return;
+            var lines = prompt("支线，用逗号分隔", safeArr(b.lines).join(",")); if(lines===null) return;
+            var titles = prompt("代言人梯度，用逗号分隔；可不设置全球代言人", safeArr(b.titles).join(",")); if(titles===null) return;
+            b.n=n.trim()||b.n; b.tier=tier.trim()||b.tier; b.lines=lines.split(",").map(function(x){return x.trim();}).filter(Boolean); b.titles=titles.split(",").map(function(x){return x.trim();}).filter(Boolean);
+            saveFashionConfig(); renderFashionHouse();
+        };
+        window.addLuxuryBrand = function(){ luxuryBrands.push({n:"新品牌",tier:"高奢",lines:["成衣"],titles:["品牌大使"],ambassadors:[],blacklist:[]}); saveFashionConfig(); renderFashionHouse(); };
+
+        document.addEventListener("DOMContentLoaded", function(){
+            setTimeout(function(){
+                var btns = document.querySelectorAll("button");
+                btns.forEach(function(b){ if (b.innerText && b.innerText.indexOf("四大时尚周") > -1) b.innerText = "✨ 时装屋"; });
+                if (typeof refreshTodoStatus === "function") refreshTodoStatus();
+            }, 1000);
+        });
+    })();
 
     // 7. 解决报错，确保系统稳定执行
     console.log("✅ 星路制作人底层修复补丁 1.4.1 已加载完毕。");
