@@ -4,6 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星路制作人 - 真实乐坛重制版</title>
+<script>
+// 登录兜底：必须在页面按钮之前定义，避免主游戏脚本异常时入口不可用。
+(function(){
+  window.VALID_PASSWORDS = window.VALID_PASSWORDS || ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+  window.checkLoginPwd = window.checkLoginPwd || function() {
+    var input = document.getElementById("loginPwd");
+    var inputPwd = input ? input.value.trim() : "";
+    if (window.VALID_PASSWORDS.indexOf(inputPwd) === -1) {
+      alert("密码错误或已被弃用，请重新输入！");
+      return;
+    }
+    try {
+      localStorage.setItem("starPro_login_pwd", inputPwd);
+      localStorage.setItem("starPro_is_unlocked", "true");
+    } catch (e) {}
+    var loginPage = document.getElementById("loginPage");
+    if (loginPage) {
+      loginPage.classList.remove("active");
+      loginPage.style.display = "none";
+    }
+    var createPage = document.getElementById("createPage");
+    if (createPage) {
+      createPage.style.display = "block";
+      createPage.classList.add("active");
+    }
+  };
+})();
+</script>
 <style>
 /* 页面显隐核心样式，缺失就会多页面重叠、跳转失效 */
 .page {
@@ -9258,7 +9286,8 @@ window.initNpcRelations = function() {
 };
 document.addEventListener("DOMContentLoaded", function() {
     // 修改大盘底盘文案
-    let customMarketLabel = document.querySelector("#customMarketBase")?.previousElementSibling;
+    let customMarketBaseNode = document.querySelector("#customMarketBase");
+    let customMarketLabel = customMarketBaseNode ? customMarketBaseNode.previousElementSibling : null;
     if(customMarketLabel) {
         customMarketLabel.innerText = "大盘每日底盘(万) [即冠军每日流媒]:";
     }
@@ -10830,7 +10859,7 @@ window.confirmPick = async function() {
         idsToAdd.forEach(id => {
             let t = trackPool.find(x => x.id === id);
             if(t && !curAlbPj.s.some(s => s.id === t.id)) {
-                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 });
+                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: (ad && ad.sk ? ad.sk.v : 50)||50, w: (ad && ad.sk ? ad.sk.w : 50)||50 });
                 addedCount++;
             }
         });
@@ -12074,7 +12103,7 @@ window.confirmPick = async function() {
         idsToAdd.forEach(id => {
             let t = trackPool.find(x => x.id === id);
             if(t && !curAlbPj.s.some(s => s.id === t.id)) {
-                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 });
+                curAlbPj.s.push({ n: t.n, id: t.id, released: true, singleLabel: t.singleLabel || "主打", v: (ad && ad.sk ? ad.sk.v : 50)||50, w: (ad && ad.sk ? ad.sk.w : 50)||50 });
                 addedCount++;
             }
         });
@@ -12094,7 +12123,7 @@ window.confirmPick = async function() {
         
         let S_val = 1.0;
         // 注意：此处不再调用旧的 createEntity 代理方法，防止死循环
-            let tTrk = window.createEntity(s.n, ad.s, true, "track", s.g.join(), ad.st.f, ad?.sk?.w||50, ad?.sk?.v||50, time.y, time.m, time.w, false, s.ff, S_val);
+            let tTrk = window.createEntity(s.n, ad.s, true, "track", s.g.join(), ad.st.f, (ad && ad.sk ? ad.sk.w : 50)||50, (ad && ad.sk ? ad.sk.v : 50)||50, time.y, time.m, time.w, false, s.ff, S_val);
         tTrk.price = price;
         tTrk.singleLabel = "单曲";
         
@@ -12230,7 +12259,7 @@ window.confirmPick = async function() {
             if(t && !alb.s.some(s => s.id === t.id)) {
                 alb.s.push({ 
                     n: t.n, id: t.id, released: true, 
-                    singleLabel: t.singleLabel || "先行主打", v: ad?.sk?.v||50, w: ad?.sk?.w||50 
+                    singleLabel: t.singleLabel || "先行主打", v: (ad && ad.sk ? ad.sk.v : 50)||50, w: (ad && ad.sk ? ad.sk.w : 50)||50
                 });
                 addedCount++;
             }
@@ -13218,8 +13247,8 @@ window.advTime = function(weeks, showMsg) {
     worldArtists.forEach(npc => {
         if (!npc.isMe) {
             // 安全读取属性，防止旧NPC没有sk对象导致报错卡死
-            let n_w = npc?.sk?.w || 60;
-            let n_v = npc?.sk?.v || 60;
+            let n_w = (npc && npc.sk ? npc.sk.w : 60) || 60;
+            let n_v = (npc && npc.sk ? npc.sk.v : 60) || 60;
             
             // 判定是否回归发歌
             if (Math.random() < comebackChance) {
@@ -14258,7 +14287,7 @@ window.importData = function() {
         try {
             let data = JSON.parse(e.target.result);
             if (data.type === 'myWorks') {
-                if (confirm(`检测到作品库数据，包含 ${data.lib?.length||0} 首未录制、${data.std?.length||0} 首未发成品、${data.myWorks?.length||0} 首已发单曲。\n\n确定要将它们合并到你的当前存档中吗？`)) {
+                if (confirm(`检测到作品库数据，包含 ${(data.lib && data.lib.length)||0} 首未录制、${(data.std && data.std.length)||0} 首未发成品、${(data.myWorks && data.myWorks.length)||0} 首已发单曲。\n\n确定要将它们合并到你的当前存档中吗？`)) {
                     if (data.lib) lib = lib.concat(data.lib);
                     if (data.std) std = std.concat(data.std);
                     // 已发行单曲因为牵扯榜单池，只导入记录，不注入流媒池防止报错
@@ -14268,7 +14297,7 @@ window.importData = function() {
                     alert("✅ 作品库导入成功！");
                 }
             } else if (data.type === 'worldArtists') {
-                if (confirm(`检测到大盘艺人库，包含 ${data.worldArtists?.length||0} 位艺人。\n确定要将他们追加注入到当前世界中吗？`)) {
+                if (confirm(`检测到大盘艺人库，包含 ${(data.worldArtists && data.worldArtists.length)||0} 位艺人。\n确定要将他们追加注入到当前世界中吗？`)) {
                     if (data.worldArtists) {
                         data.worldArtists.forEach(npc => {
                             // 去重防冲突
@@ -18919,9 +18948,12 @@ window.advTime = function(weeks, showMsg) {
     let salesBaseInput = document.getElementById("customSalesBase");
     let targetSales = salesBaseInput ? parseInt(salesBaseInput.value) * 10000 : 150000;
 
-    let lD1 = parseFloat(document.getElementById("limitDay1")?.value || 3.5);
-    let lW1 = parseFloat(document.getElementById("limitWeek1")?.value || 2.5);
-    let lM1 = parseFloat(document.getElementById("limitMonth1")?.value || 1.5);
+    let limitDay1Node = document.getElementById("limitDay1");
+    let limitWeek1Node = document.getElementById("limitWeek1");
+    let limitMonth1Node = document.getElementById("limitMonth1");
+    let lD1 = parseFloat((limitDay1Node && limitDay1Node.value) || 3.5);
+    let lW1 = parseFloat((limitWeek1Node && limitWeek1Node.value) || 2.5);
+    let lM1 = parseFloat((limitMonth1Node && limitMonth1Node.value) || 1.5);
 
     trks.sort((a,b) => (b.stmGlobal_Week || 0) - (a.stmGlobal_Week || 0));
     if (trks.length > 0) {
