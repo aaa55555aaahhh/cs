@@ -104,17 +104,17 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
   </div>
 </div>
 
-<!-- ================= 1. 登录验证大厅 ================= -->
+<!-- === 1. 专属系统检测器 (只有第一次玩才显示) === -->
 <div id="loginPage" class="page active" style="position:fixed;inset:0;background:#f5f5f7;z-index:9999;display:flex;align-items:center;justify-content:center;">
   <div class="card" style="text-align:center; padding:30px; box-shadow:0 10px 30px rgba(0,0,0,0.1); width:90%; max-width:350px;">
     <h2 class="tg" style="font-size:24px;margin-bottom:10px;">星路制作人</h2>
     <p style="font-size:12px;color:#888;margin-bottom:20px;">系统身份检测装置已开启</p>
+    <!-- 这里把 type="password" 改成了 type="text"，输入内容不再变成黑点 -->
     <input type="text" id="loginPwd" placeholder="请输入检测识别码" style="text-align:center;font-size:16px;padding:12px;">
     <button onclick="checkLoginPwd()" style="padding:12px;font-size:16px;">验证并进入大厅</button>
     <p style="font-size:11px;color:#aaa;margin-top:10px;">(验证成功后永久免密)</p>
   </div>
 </div>
-
 <!-- ================= 2. 存档与新建大厅 ================= -->
 <div id="createPage" class="page" style="display:none; padding-top:20px;">
   <div class="card" style="text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
@@ -641,64 +641,6 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <button class="sec" onclick="closeM('mGamePrompt')">取消</button>
     </div>
 </div>
-// ==================== 全局密码与系统配置 (已修复冲突) ====================
-// 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
-window.checkLoginPwd = function() {
-    let inputPwd = document.getElementById("loginPwd").value.trim();
-    
-    // 验证密码
-    if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！");
-        return;
-    }
-
-    // 保存免密
-    try {
-        localStorage.setItem("starPro_login_pwd", inputPwd);
-        localStorage.setItem("starPro_is_unlocked", "true"); 
-    } catch (e) {}
-    
-    // 隐藏密码页
-    document.getElementById("loginPage").classList.remove("active");
-    document.getElementById("loginPage").style.display = "none";
-    
-    // 显示创建大厅
-    let createPage = document.getElementById("createPage");
-    if (createPage) {
-        createPage.style.display = "block";
-        createPage.classList.add("active");
-    }
-    
-    // 强制使用纯净原生弹窗，解除死锁卡死
-    window.constructor.prototype.alert.call(window, "登录成功！进入大厅。");
-};
-
-// 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
-document.addEventListener('DOMContentLoaded', function() {
-    // 强制先隐藏所有页面，防止重叠
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-        p.style.display = 'none';
-    });
-    
-    let isUnlocked = localStorage.getItem("starPro_is_unlocked");
-    let savedPwd = localStorage.getItem("starPro_login_pwd");
-    
-    // 严格判断：必须免密且密码存在于现在的有效数组中才放行
-    if (isUnlocked === "true" && window.VALID_PASSWORDS.includes(savedPwd)) {
-        let cp = document.getElementById('createPage');
-        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-    } else {
-        // 密码作废或未登录，清理缓存并展示登录页
-        localStorage.removeItem("starPro_is_unlocked");
-        localStorage.removeItem("starPro_login_pwd");
-        let lp = document.getElementById('loginPage');
-        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
-    }
-});
-
-
 <script>
 // ==================== 0. 全局工具与防崩溃守护 ====================
 const $ = id => document.getElementById(id);
@@ -4199,3 +4141,7 @@ window.openYouTube = function() {
     document.getElementById('mInfoTitle').innerText = "▶ YouTube Trending MV";
     document.getElementById('mInfo').classList.add('open');
 };
+
+</script>
+</body>
+</html>
