@@ -10465,7 +10465,7 @@ window.doAlbPromo = function(type) {
 // 拦截大盘推演，清除以前乱加的通货膨胀，严格根据您输入的数值计算
 var oldAdvTimeForStrictBase2 = window.advTime;
 window.advTime = function(weeks, showMsg) {
-    oldAdvTimeForStrictBase(weeks, showMsg);
+    if (typeof oldAdvTimeForStrictBase2 === 'function') oldAdvTimeForStrictBase2(weeks, showMsg);
     
     let baseInput = document.getElementById("customMarketBase");
     // 您输入的是 300（万），那么每日冠军流媒就是 300万
@@ -18005,7 +18005,7 @@ function getOffsetMonth(baseMonth, offset) {
 
 var oldRefreshTodoStatusForDynamicAwards = window.refreshTodoStatus;
 window.refreshTodoStatus = function() {
-    if (oldRefreshTodoStatusForDynamicAwards) oldRefreshTodoStatusForCeremony(); // 继承前一个补丁的逻辑
+    if (typeof oldRefreshTodoStatusForDynamicAwards === 'function') oldRefreshTodoStatusForDynamicAwards(); // 继承前一个补丁的逻辑
     
     // 清理掉之前的硬编码判断，完全采用动态月份
     standardizeAwards();
