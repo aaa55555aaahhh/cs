@@ -20014,6 +20014,184 @@ window.checkAutoAward = function() {
         };
         window.addLuxuryBrand = function(){ luxuryBrands.push({n:"新品牌",tier:"高奢",lines:["成衣"],titles:["品牌大使"],ambassadors:[],blacklist:[]}); saveFashionConfig(); renderFashionHouse(); };
 
+        window.confirmGameInput = window.confirmGameInput || function() {
+            var field = document.getElementById("mGameInputField");
+            var val = field ? field.value : "";
+            if (typeof window.gameInputCallback === "function") {
+                var cb = window.gameInputCallback;
+                window.gameInputCallback = null;
+                closeM("mGameInput");
+                cb(val);
+            } else {
+                closeM("mGameInput");
+            }
+        };
+
+        window.openInlineEditor = function(title, html, onSaveName) {
+            document.getElementById("mInfoTitle").innerText = title;
+            document.getElementById("mInfoContent").innerHTML = html + `<button style="margin-top:10px;" onclick="${onSaveName}()">保存</button><button class="sec" onclick="closeM('mInfo')">取消</button>`;
+            document.getElementById("mInfo").classList.add("open");
+        };
+
+        window.getMonthAbs = function(){ return (time.y || 2026) * 12 + (time.m || 1); };
+        window.monthListText = function(arr){ return (arr || []).map(function(x){return x + "月";}).join("、"); };
+
+        window.editFashionMag = function(i) {
+            ensureFashionDefaults();
+            var m = fashionMags[i]; if(!m) return;
+            window.editingFashionMagIdx = i;
+            openInlineEditor("📰 编辑杂志", `
+                <label style="font-size:12px;">杂志名称</label><input id="editMagName" value="${escapeHTML(m.n||"")}">
+                <label style="font-size:12px;">梯度</label><input id="editMagTier" value="${escapeHTML(m.tier||"T1")}">
+                <label style="font-size:12px;">类型/定位</label><input id="editMagType" value="${escapeHTML(m.type||"杂志")}">
+                <label style="font-size:12px;">晚宴举办月份，用逗号分隔</label><input id="editMagGalaMonths" value="${safeArr(m.galaMonths||[3,9]).join(",")}">
+            `, "saveFashionMagEditor");
+        };
+        window.saveFashionMagEditor = function() {
+            var m = fashionMags[window.editingFashionMagIdx]; if(!m) return;
+            m.n = document.getElementById("editMagName").value.trim() || m.n;
+            m.tier = document.getElementById("editMagTier").value.trim() || m.tier;
+            m.type = document.getElementById("editMagType").value.trim() || m.type;
+            m.galaMonths = document.getElementById("editMagGalaMonths").value.split(",").map(function(x){return parseInt(x.trim());}).filter(function(x){return x>=1 && x<=12;});
+            saveFashionConfig(); closeM("mInfo"); renderFashionHouse();
+        };
+
+        window.editLuxuryBrand = function(i) {
+            ensureFashionDefaults();
+            var b = luxuryBrands[i]; if(!b) return;
+            window.editingLuxuryBrandIdx = i;
+            openInlineEditor("💎 编辑奢侈品品牌", `
+                <label style="font-size:12px;">品牌名称</label><input id="editBrandName" value="${escapeHTML(b.n||"")}">
+                <label style="font-size:12px;">品牌梯度</label><input id="editBrandTier" value="${escapeHTML(b.tier||"高奢")}">
+                <label style="font-size:12px;">全部支线，用逗号分隔</label><input id="editBrandLines" value="${safeArr(b.lines).join(",")}">
+                <label style="font-size:12px;">主支线/核心业务，可多选，用逗号分隔</label><input id="editBrandMainLines" value="${safeArr(b.mainLines||[]).join(",")}">
+                <label style="font-size:12px;">代言人梯度，用逗号分隔</label><input id="editBrandTitles" value="${safeArr(b.titles).join(",")}">
+                <label style="font-size:12px;">品牌晚宴举办月份，用逗号分隔</label><input id="editBrandGalaMonths" value="${safeArr(b.galaMonths||[5,11]).join(",")}">
+            `, "saveLuxuryBrandEditor");
+        };
+        window.saveLuxuryBrandEditor = function() {
+            var b = luxuryBrands[window.editingLuxuryBrandIdx]; if(!b) return;
+            b.n = document.getElementById("editBrandName").value.trim() || b.n;
+            b.tier = document.getElementById("editBrandTier").value.trim() || b.tier;
+            b.lines = document.getElementById("editBrandLines").value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+            b.mainLines = document.getElementById("editBrandMainLines").value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+            b.titles = document.getElementById("editBrandTitles").value.split(",").map(function(x){return x.trim();}).filter(Boolean);
+            b.galaMonths = document.getElementById("editBrandGalaMonths").value.split(",").map(function(x){return parseInt(x.trim());}).filter(function(x){return x>=1 && x<=12;});
+            saveFashionConfig(); closeM("mInfo"); renderFashionHouse();
+        };
+
+        var finalRenderFashionHouse2 = window.renderFashionHouse;
+        window.renderFashionHouse = function() {
+            ensureFashionDefaults();
+            luxuryBrands.forEach(function(b){
+                if (!b.lines || !b.lines.length) b.lines = ["成衣","珠宝"];
+                if (b.lines.indexOf("珠宝") === -1) b.lines.push("珠宝");
+                if (!b.mainLines) b.mainLines = [];
+                if (!b.galaMonths) b.galaMonths = [5,11];
+            });
+            fashionMags.forEach(function(m){ if(!m.galaMonths) m.galaMonths = [3,9]; });
+            var html = `
+            <div class="sub-tab-bar" style="margin-bottom:10px;">
+                <div class="sub-tab active" onclick="switchSubTab(this, 'fashionMag', 'fashionTabs')">时尚杂志</div>
+                <div class="sub-tab" onclick="switchSubTab(this, 'fashionBrand', 'fashionTabs')">奢侈品品牌</div>
+                <div class="sub-tab" onclick="switchSubTab(this, 'fashionWeek', 'fashionTabs')">时装周</div>
+            </div>
+            <div style="display:flex;gap:5px;margin-bottom:10px;"><button class="sec inline" onclick="addFashionMag()">新增杂志</button><button class="sec inline" onclick="addLuxuryBrand()">新增品牌</button></div>
+            <div id="fashionTabs">
+                <div id="fashionMag" class="sub-page active">${fashionMags.map(function(m,i){ return `<div class="card" style="padding:10px;"><b>${escapeHTML(m.n)}</b> <span style="font-size:10px;background:#111;color:#c8a440;padding:2px 6px;border-radius:4px;">${escapeHTML(m.tier||"T1")} ${escapeHTML(m.type||"杂志")}</span><br><span style="font-size:11px;color:#888;">晚宴月份：${monthListText(m.galaMonths)}</span><br><button class="sec inline" onclick="editFashionMag(${i})">编辑</button><button class="sec inline" onclick="strollFashion('mag',${i})">随便逛逛</button><button class="sec inline" onclick="viewMagHistory(${i})">杂志人物</button><button class="sec inline" onclick="joinFashionGalaByType('mag',${i})">杂志晚宴</button></div>`; }).join('')}</div>
+                <div id="fashionBrand" class="sub-page">${luxuryBrands.map(function(b,i){ return `<div class="card" style="padding:10px;"><b>${escapeHTML(b.n)}</b> <span style="font-size:10px;background:#c8a440;color:#000;padding:2px 6px;border-radius:4px;">${escapeHTML(b.tier||"高奢")}</span><br><span style="font-size:11px;color:#888;">支线：${safeArr(b.lines).join(" / ")}<br>主支线：${safeArr(b.mainLines).join(" / ") || "未指定"}<br>代言人梯度：${safeArr(b.titles).join(" / ")}<br>晚宴月份：${monthListText(b.galaMonths)}</span><br><button class="sec inline" onclick="editLuxuryBrand(${i})">编辑</button><button class="sec inline" onclick="strollFashion('brand',${i})">随便逛逛</button><button class="sec inline" onclick="joinFashionGalaByType('brand',${i})">品牌晚宴</button></div>`; }).join('')}</div>
+                <div id="fashionWeek" class="sub-page"><p style="font-size:11px;color:#888;">时装周固定时间：2-3月秋冬、9-10月春夏。</p><button onclick="joinFashionWeek('巴黎时装周')">巴黎时装周</button><button onclick="joinFashionWeek('米兰时装周')">米兰时装周</button><button onclick="joinFashionWeek('纽约时装周')">纽约时装周</button><button onclick="joinFashionWeek('伦敦时装周')">伦敦时装周</button></div>
+            </div>`;
+            var mapFashion = document.getElementById("mapFashion");
+            if (mapFashion) mapFashion.innerHTML = `<h3 class="tg" style="margin-bottom:10px;">✨ 时装屋</h3>` + html;
+            saveFashionConfig();
+        };
+
+        window.joinFashionGalaByType = function(type, idx) {
+            ensureFashionDefaults();
+            var entity = type === "mag" ? fashionMags[idx] : luxuryBrands[idx];
+            if (!entity) return;
+            var months = entity.galaMonths || (type === "mag" ? [3,9] : [5,11]);
+            if (months.indexOf(time.m) === -1) return alert(`${entity.n} 晚宴不在本月举办。\n举办月份：${monthListText(months)}`);
+            joinFashionGala(entity.n + (type === "mag" ? " 杂志晚宴" : " 品牌晚宴"));
+        };
+        var baseJoinFashionWeek2 = window.joinFashionWeek;
+        window.joinFashionWeek = function(weekName) {
+            if ([2,3,9,10].indexOf(time.m) === -1) return alert("当前不是时装周季。四大时装周固定在2-3月与9-10月。");
+            if (typeof baseJoinFashionWeek2 === "function") baseJoinFashionWeek2(weekName);
+        };
+
+        window.calculateRealisticScore = function(rawScore, aiAdj) {
+            var luck = Math.random();
+            var coreBonus = aiAdj || 0;
+            var base = 74 + Math.random() * 12;
+            if (rawScore > 200) base += Math.min(6, Math.log(rawScore / 200) * 3);
+            if (luck < 0.10 || coreBonus >= 8) base = 88 + Math.random() * 7;
+            if (luck < 0.015 || coreBonus >= 15) base = 96 + Math.random() * 5;
+            return Math.max(0, Math.min(100, Math.floor(base)));
+        };
+
+        var baseOpenSetlistUI2 = window.openSetlistUI;
+        window.openSetlistUI = function(title) {
+            if (typeof baseOpenSetlistUI2 === "function") baseOpenSetlistUI2(title);
+            var box = document.getElementById("setlistTracks");
+            if (!box) return;
+            var saved = ad.lastSetlistIds || [];
+            if (!document.getElementById("btnUseLastSetlist")) {
+                box.insertAdjacentHTML("beforebegin", `<div style="display:flex;gap:5px;margin-bottom:8px;"><button class="sec inline" id="btnUseLastSetlist" onclick="useLastSetlist()">沿用上次歌单</button><button class="sec inline" onclick="saveCurrentSetlist()">保存当前歌单</button></div>`);
+            }
+            if (saved.length) useLastSetlist(false);
+        };
+        window.useLastSetlist = function(showAlert) {
+            var saved = ad.lastSetlistIds || [];
+            document.querySelectorAll(".setlist-chk").forEach(function(chk){ chk.checked = saved.indexOf(chk.value) > -1; });
+            if (typeof checkSetlistLimit === "function") checkSetlistLimit();
+            if (showAlert !== false) alert("已沿用上次歌单。");
+        };
+        window.saveCurrentSetlist = function() {
+            ad.lastSetlistIds = Array.from(document.querySelectorAll(".setlist-chk:checked")).map(function(c){return c.value;});
+            saveGame();
+            alert("已保存当前歌单，下次演唱会可一键沿用。");
+        };
+        var baseConfirmPerformance2 = window.confirmPerformance;
+        window.confirmPerformance = function() {
+            ad.lastSetlistIds = Array.from(document.querySelectorAll(".setlist-chk:checked")).map(function(c){return c.value;});
+            saveGame();
+            if (typeof baseConfirmPerformance2 === "function") baseConfirmPerformance2();
+        };
+
+        var baseEnsureWardrobe2 = window.ensureWardrobe;
+        window.ensureWardrobe = function() {
+            var w = typeof baseEnsureWardrobe2 === "function" ? baseEnsureWardrobe2() : (ad.wardrobe || {});
+            if (!ad.wardrobe) ad.wardrobe = w;
+            if (typeof ad.wardrobe.fakeRtw !== "number") ad.wardrobe.fakeRtw = 0;
+            return ad.wardrobe;
+        };
+        var baseBuyStoreItem2 = window.buyStoreItem;
+        window.buyStoreItem = function(type) {
+            ensureWardrobe();
+            if (type === "fakeRtw") {
+                var cost = 3000;
+                if (ad.m < cost) return alert("资金不足！");
+                ad.m -= cost; ad.wardrobe.fakeRtw++;
+                alert("✅ 购买成功！获得 1 件山寨成衣，风险低于山寨高定，但仍可能被品牌发现。");
+                updAttr(); saveGame(); return;
+            }
+            if (typeof baseBuyStoreItem2 === "function") baseBuyStoreItem2(type);
+        };
+        var baseOpenAppStore2 = window.openApp;
+        window.openApp = function(appId) {
+            if (appId === "Store") {
+                if (typeof baseOpenAppStore2 === "function") baseOpenAppStore2(appId);
+                var content = document.getElementById("mInfoContent");
+                if (content && content.innerHTML.indexOf("fakeRtw") === -1) {
+                    content.insertAdjacentHTML("beforeend", `<div class="card" style="border:1px solid #f97316;background:#fff7ed;"><b style="font-size:14px;">👕 山寨品牌成衣</b><br><span style="font-size:11px;color:#666;">廉价仿品。被发现会掉时尚口碑并可能进黑名单。售价: $3,000</span><br><button class="red" style="margin-top:5px;font-size:12px;padding:6px;" onclick="buyStoreItem('fakeRtw')">购买山寨成衣</button></div>`);
+                }
+                return;
+            }
+            if (typeof baseOpenAppStore2 === "function") baseOpenAppStore2(appId);
+        };
+
         document.addEventListener("DOMContentLoaded", function(){
             setTimeout(function(){
                 var btns = document.querySelectorAll("button");
