@@ -641,6 +641,63 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
         <button class="sec" onclick="closeM('mGamePrompt')">取消</button>
     </div>
 </div>
+// ==================== 全局密码与系统配置 (已修复冲突) ====================
+// 这里是可以随时扩充的有效密码列表
+window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+window.checkLoginPwd = function() {
+    let inputPwd = document.getElementById("loginPwd").value.trim();
+    
+    // 验证密码
+    if (!window.VALID_PASSWORDS.includes(inputPwd)) {
+        window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！");
+        return;
+    }
+
+    // 保存免密
+    try {
+        localStorage.setItem("starPro_login_pwd", inputPwd);
+        localStorage.setItem("starPro_is_unlocked", "true"); 
+    } catch (e) {}
+    
+    // 隐藏密码页
+    document.getElementById("loginPage").classList.remove("active");
+    document.getElementById("loginPage").style.display = "none";
+    
+    // 显示创建大厅
+    let createPage = document.getElementById("createPage");
+    if (createPage) {
+        createPage.style.display = "block";
+        createPage.classList.add("active");
+    }
+    
+    // 强制使用纯净原生弹窗，解除死锁卡死
+    window.constructor.prototype.alert.call(window, "登录成功！进入大厅。");
+};
+
+// 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
+document.addEventListener('DOMContentLoaded', function() {
+    // 强制先隐藏所有页面，防止重叠
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = 'none';
+    });
+    
+    let isUnlocked = localStorage.getItem("starPro_is_unlocked");
+    let savedPwd = localStorage.getItem("starPro_login_pwd");
+    
+    // 严格判断：必须免密且密码存在于现在的有效数组中才放行
+    if (isUnlocked === "true" && window.VALID_PASSWORDS.includes(savedPwd)) {
+        let cp = document.getElementById('createPage');
+        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
+    } else {
+        // 密码作废或未登录，清理缓存并展示登录页
+        localStorage.removeItem("starPro_is_unlocked");
+        localStorage.removeItem("starPro_login_pwd");
+        let lp = document.getElementById('loginPage');
+        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
+    }
+});
+
 
 <script>
 // ==================== 0. 全局工具与防崩溃守护 ====================
