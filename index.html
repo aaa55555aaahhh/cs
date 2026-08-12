@@ -15357,58 +15357,67 @@ window.confirmStartWrite = function() {
 window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
-    
+
     // 验证密码
     if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！");
+        // 密码错误：用原生 alert 兜底（绕过 gameAlert 劫持），避免模态层卡死
+        try { window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！"); }
+        catch(e){ window.gameAlert("密码错误或已被弃用，请重新输入！"); }
         return;
     }
 
     // 保存免密
     try {
         localStorage.setItem("starPro_login_pwd", inputPwd);
-        localStorage.setItem("starPro_is_unlocked", "true"); 
+        localStorage.setItem("starPro_is_unlocked", "true");
     } catch (e) {}
-    
-    // 隐藏密码页
-    document.getElementById("loginPage").classList.remove("active");
-    document.getElementById("loginPage").style.display = "none";
-    
-    // 显示创建大厅
+
+    // 先切换页面（核心动作，不能被弹窗阻塞）
+    let loginPage = document.getElementById("loginPage");
+    if (loginPage) {
+        loginPage.classList.remove("active");
+        loginPage.style.display = "none";
+    }
     let createPage = document.getElementById("createPage");
     if (createPage) {
         createPage.style.display = "block";
         createPage.classList.add("active");
     }
-    
-    // 强制使用纯净原生弹窗，解除死锁卡死
-    window.constructor.prototype.alert.call(window, "登录成功！进入大厅。");
+
+    // 最后再提示，用 setTimeout 确保页面切换先完成，且用原生 alert 兜底
+    setTimeout(function(){
+        try { window.constructor.prototype.alert.call(window, "登录成功！进入大厅。"); }
+        catch(e){ window.gameAlert("登录成功！进入大厅。"); }
+    }, 50);
 };
 
 // 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
 document.addEventListener('DOMContentLoaded', function() {
-    // 强制先隐藏所有页面，防止重叠
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-        p.style.display = 'none';
-    });
-    
-    let isUnlocked = localStorage.getItem("starPro_is_unlocked");
-    let savedPwd = localStorage.getItem("starPro_login_pwd");
-    
-    // 严格判断：必须免密且密码存在于现在的有效数组中才放行
-    if (isUnlocked === "true" && window.VALID_PASSWORDS.includes(savedPwd)) {
-        let cp = document.getElementById('createPage');
-        if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-    } else {
-        // 密码作废或未登录，清理缓存并展示登录页
-        localStorage.removeItem("starPro_is_unlocked");
-        localStorage.removeItem("starPro_login_pwd");
-        let lp = document.getElementById('loginPage');
-        if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
-    }
-});
+    // 用 setTimeout(0) 延迟到所有其他 DOMContentLoaded 监听器执行完毕后再跑，
+    // 避免被后续 40+ 个监听器覆盖掉免密放行结果。
+    setTimeout(function() {
+        // 强制先隐藏所有页面，防止重叠
+        document.querySelectorAll('.page').forEach(p => {
+            p.classList.remove('active');
+            p.style.display = 'none';
+        });
 
+        let isUnlocked = localStorage.getItem("starPro_is_unlocked");
+        let savedPwd = localStorage.getItem("starPro_login_pwd");
+
+        // 严格判断：必须免密且密码存在于现在的有效数组中才放行
+        if (isUnlocked === "true" && window.VALID_PASSWORDS && window.VALID_PASSWORDS.includes(savedPwd)) {
+            let cp = document.getElementById('createPage');
+            if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
+        } else {
+            // 密码作废或未登录，清理缓存并展示登录页
+            localStorage.removeItem("starPro_is_unlocked");
+            localStorage.removeItem("starPro_login_pwd");
+            let lp = document.getElementById('loginPage');
+            if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
+        }
+    }, 0);
+});
 // ====== 全局致命错误捕获弹窗 ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     if (msg && (msg.includes("reading 'f'") || msg.includes("reading 'player'"))) {
@@ -19456,32 +19465,11 @@ window.checkAutoAward = function() {
         console.log("旧版 checkAutoAward 被新版替换以防止内存溢出。请依赖 generateNominations 进行动态颁奖！");
     };
 (function(){
-    // 1. 修复 checkLoginPwd 未定义与登录大厅卡死问题
+(function(){
+    // 1. 登录逻辑已由 15358 行的统一版本接管，此处不再重复定义 checkLoginPwd，
+    //    避免普通 alert 被全局 gameAlert 劫持后造成模态层卡死。
+    //    仅保留密码表，供主逻辑使用。
     window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
-    window.checkLoginPwd = function() {
-        let inputPwd = document.getElementById("loginPwd") ? document.getElementById("loginPwd").value.trim() : "";
-        if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-            alert("识别码错误，请重新输入！");
-            return;
-        }
-        try {
-            localStorage.setItem("starPro_login_pwd", inputPwd);
-            localStorage.setItem("starPro_is_unlocked", "true"); 
-        } catch (e) {}
-        
-        let loginPage = document.getElementById("loginPage");
-        if(loginPage) {
-            loginPage.classList.remove("active");
-            loginPage.style.display = "none";
-        }
-        let createPage = document.getElementById("createPage");
-        if (createPage) {
-            createPage.style.display = "block";
-            createPage.classList.add("active");
-        }
-        alert("验证成功！欢迎进入大厅。");
-    };
-
     // 2. 修复玩家头像无法更改：每次上传后强制清空 input 值
     window.uploadMyAvatar = function(input) {
         if (input.files && input.files[0]) {
