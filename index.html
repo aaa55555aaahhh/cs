@@ -1763,6 +1763,23 @@ setTimeout(function installFinalUserRequestedFixes(){
         var main=theme.color;
         return {main:main,border:mixThemeColor(main,"#4b3f4d",.46),strong:mixThemeColor(main,"#342d36",.60),text:mixThemeColor(main,"#262228",.76),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
     }
+    function darkerButtonBorder(background){
+        var nums=String(background||"").match(/[\d.]+/g);
+        if(!nums||nums.length<3||Number(nums[3])===0)return getComputedStyle(document.documentElement).getPropertyValue("--baby-yellow-border").trim()||"#b99a3f";
+        var target=[45,42,48],ratio=.34;
+        return "rgb("+[0,1,2].map(function(i){return Math.max(0,Math.round(Number(nums[i])*(1-ratio)+target[i]*ratio));}).join(",")+")";
+    }
+    function outlineUIButtons(root){
+        var buttons=[];
+        if(root&&root.nodeType===1&&root.matches("button"))buttons.push(root);
+        if(root&&root.querySelectorAll)buttons=buttons.concat(Array.from(root.querySelectorAll("button")));
+        buttons.forEach(function(button){
+            var bg=getComputedStyle(button).backgroundColor;
+            button.style.setProperty("border-color",darkerButtonBorder(bg),"important");
+            button.style.setProperty("border-style","solid","important");
+            button.style.setProperty("border-width","1px","important");
+        });
+    }
     window.applyUITheme=function(theme,persist){
         theme=normalizeUITheme(theme);var p=themePalette(theme),root=document.documentElement.style;
         root.setProperty("--baby-yellow",p.main);root.setProperty("--baby-yellow-border",p.border);root.setProperty("--baby-yellow-strong",p.strong);root.setProperty("--baby-yellow-text",p.text);
@@ -1772,6 +1789,7 @@ setTimeout(function installFinalUserRequestedFixes(){
             root.setProperty("--baby-yellow-soft","#fffaf0");root.setProperty("--baby-yellow-muted","#f8ebbd");root.setProperty("--ui-theme-body","#fffdf7");
         }
         if(persist!==false){try{localStorage.setItem(UI_THEME_KEY,JSON.stringify(theme));}catch(e){}}
+        requestAnimationFrame(function(){outlineUIButtons(document);});
         return theme;
     };
     function selectedThemeFromPanel(){
@@ -1813,6 +1831,11 @@ setTimeout(function installFinalUserRequestedFixes(){
     if(apiPage&&!$("uiThemeSettingsCard")){
         var themeCard=document.createElement("div");themeCard.id="uiThemeSettingsCard";themeCard.className="card";themeCard.innerHTML=`<h2 class="tg" style="font-size:16px;margin-bottom:8px;">界面主题</h2><p style="font-size:12px;color:#666;margin-bottom:8px;">设置 Baby 色主题、自定义色号及应用范围。</p><button onclick="openUIThemeSettings()">更改 UI 颜色</button>`;apiPage.insertBefore(themeCard,apiPage.firstChild);
     }
+    outlineUIButtons(document);
+    var buttonOutlineObserver=new MutationObserver(function(records){
+        records.forEach(function(record){Array.from(record.addedNodes||[]).forEach(function(node){if(node.nodeType===1)outlineUIButtons(node);});});
+    });
+    buttonOutlineObserver.observe(document.body,{childList:true,subtree:true});
 
     var songRecorder=null,songRecorderChunks=[];
     window.setSongAudioFromInput=async function(input,id){if(!input.files||!input.files[0])return;await saveImmersiveMedia("songAudio_"+id,input.files[0]);await openSongAudioPanel(id);};
@@ -2087,6 +2110,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 
 body { background:var(--ui-theme-body); }
 .tg,.top-energy { color:var(--baby-yellow-text); }
+button { border:1px solid var(--baby-yellow-border); }
 button:not([style*="background"]),.top-btn:not([style*="background"]),.nav-btn.active,.sub-tab.active,.g-tag.selected,
 .attr-bar-fill,.prog-fill {
   background:var(--baby-yellow) !important;
