@@ -2462,7 +2462,7 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
     <div class="sub-tab-bar" style="justify-content:center;" id="timeSpanBar">
         <div class="sub-tab active" onclick="switchChartTime('Day')">日榜</div>
         <div class="sub-tab" onclick="switchChartTime('Week')">周榜</div>
-        <div class="sub-tab" onclick="switchChartTime('Decade')">固定十年榜</div>
+        <div class="sub-tab" data-chart-decade-tab="1" onclick="switchChartTime('Decade')">20s</div>
         <div class="sub-tab" onclick="switchChartTime('Year')">年榜</div>
     </div>
     
@@ -22796,7 +22796,12 @@ document.addEventListener("DOMContentLoaded", function(){
             try{
                 var saved=JSON.parse(localStorage.getItem(FINAL_MARKET_KEY)||"null")||{};
                 var source=(typeof ad!=="undefined"&&ad.marketSettings)||{};
-                return {dailyBase:Math.max(100000,Number(source.dailyBase||saved.dailyBase||fallback.dailyBase)),salesBase:Math.max(0,Number(source.salesBase||saved.salesBase||fallback.salesBase)),billboardCap:Math.max(50,Number(source.billboardCap||saved.billboardCap||fallback.billboardCap))};
+                var cfg={dailyBase:Math.max(100000,Number(source.dailyBase||saved.dailyBase||fallback.dailyBase)),salesBase:Math.max(0,Number(source.salesBase||saved.salesBase||fallback.salesBase)),billboardCap:Math.max(50,Number(source.billboardCap||saved.billboardCap||fallback.billboardCap))};
+                var daily=document.getElementById("customMarketBase"),sales=document.getElementById("customSalesBase"),cap=document.getElementById("customBillboardCap");
+                if(daily&&Number(daily.value)>0)cfg.dailyBase=Number(daily.value)*10000;
+                if(sales&&Number(sales.value)>=0)cfg.salesBase=Number(sales.value)*10000;
+                if(cap&&Number(cap.value)>0)cfg.billboardCap=Number(cap.value);
+                return cfg;
             }catch(e){return fallback;}
         }
         function finalReadMarketInputs(){
@@ -22839,18 +22844,43 @@ document.addEventListener("DOMContentLoaded", function(){
             }
             t._decadeLabel=finalDecadeLabel(key);t.stmGlobal_Decade=Number(t.decadeStats[key]||0);t.stmUS_Decade=Number((t.decadeUSStats||{})[key]||0);
         }
+        function finalSalesUnits(t){
+            var explicit=Number(t.salesWeek||t.weeklySales||t.pureSalesWeek||0);
+            if(explicit>0)return Math.max(0,explicit);
+            var age=Math.max(1,Number(t.weeks||1)),historical=Math.max(0,Number(t.slTotal||0));
+            return Math.min(5000,Math.floor(historical/(age*20)));
+        }
         function finalRawBillboard(t){
-            var stmUS=Number(t.stmUS_Week||0),sales=Math.floor(Number(t.stmGlobal_Week||0)/150)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
+            var stmUS=Number(t.stmUS_Week||0),sales=finalSalesUnits(t)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
             return Math.max(0,(sales/150)+(stmUS*.7/15000)+(stmUS*.3/45000)+(radio*3));
+        }
+        function finalNormalizeMarketStreams(){
+            var cfg=finalMarketSettings(),tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=tracks.reduce(function(m,t){return Math.max(m,Number(t.stmGlobal_Day||0));},0);
+            if(top<=cfg.dailyBase||top<=0)return;
+            var scale=cfg.dailyBase/top;
+            tracks.forEach(function(t){
+                t.stmGlobal_Day=Math.max(0,Math.floor(Number(t.stmGlobal_Day||0)*scale));
+                t.stmGlobal_Week=Math.max(0,Math.floor(Number(t.stmGlobal_Week||0)*scale));
+                if(!t.stmGlobal_Week)t.stmGlobal_Week=t.stmGlobal_Day*7;
+                t.stmUS_Day=Math.min(t.stmGlobal_Day,Math.max(0,Math.floor(Number(t.stmUS_Day||0)*scale)));
+                t.stmUS_Week=Math.min(t.stmGlobal_Week,Math.max(0,Math.floor(Number(t.stmUS_Week||0)*scale)));
+            });
+        }
+        function finalSetBillboardParts(t){
+            var stmUS=Number(t.stmUS_Week||0),salesUnits=finalSalesUnits(t)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
+            var parts={stream:(stmUS*.7/15000)+(stmUS*.3/45000),sales:salesUnits/150,radio:radio*3},total=parts.stream+parts.sales+parts.radio;
+            if(!isFinite(total)||total<=0){t._pctStm=0;t._pctSales=0;t._pctRadio=0;return;}
+            t._pctStm=Math.round(parts.stream/total*100);t._pctSales=Math.round(parts.sales/total*100);t._pctRadio=Math.max(0,100-t._pctStm-t._pctSales);
         }
         function finalNormalizeBillboardPoints(){
             var cfg=finalMarketSettings(),tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";});
             tracks.forEach(finalEnsureDecadeStats);var max=tracks.reduce(function(m,t){return Math.max(m,finalRawBillboard(t));},0),scale=max>0?cfg.billboardCap/max:1;
-            tracks.forEach(function(t){t._bbPtsExact=Math.max(0,Math.round(finalRawBillboard(t)*scale));t._chartPts=t._bbPtsExact;t._chartStr=t._bbPtsExact.toLocaleString()+" Pts";});
+            tracks.forEach(function(t){finalSetBillboardParts(t);t._bbPtsExact=Math.max(0,Math.round(finalRawBillboard(t)*scale));t._chartPts=t._bbPtsExact;t._chartStr=t._bbPtsExact.toLocaleString()+" Pts";});
         }
         var finalOriginalRenderChart=window.renderChart;
         window.renderChart=function(){
             finalInstallMarketFields();
+            finalNormalizeMarketStreams();
             var decade=String(curChTime||"")==="Decade",saved=[];
             Array.from(trackPool||[]).forEach(function(t){finalEnsureDecadeStats(t);if(decade){saved.push([t,t.stmGlobal,t.stmUS]);t.stmGlobal=t.stmGlobal_Decade||0;t.stmUS=t.stmUS_Decade||0;}});
             if(curChartPlatform==="BB"&&curChReg==="Global")curChReg="US";
@@ -22859,7 +22889,16 @@ document.addEventListener("DOMContentLoaded", function(){
             finalNormalizeBillboardPoints();
             if(curChartPlatform==="BB"){
                 var rows=Array.from(document.querySelectorAll("#mChartContent > div")),ordered=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}).sort(function(a,b){return (b._chartPts||0)-(a._chartPts||0);});
-                rows.forEach(function(row,i){var t=ordered[i],node=row.lastElementChild;if(t&&node&&/Pts/.test(node.textContent||""))node.firstChild&&(node.firstChild.nodeValue=t._chartPts.toLocaleString()+" Pts");});
+                rows.forEach(function(row,i){
+                    var t=ordered[i],node=row.lastElementChild;if(!t||!node)return;
+                    var score=node.querySelector("b");if(score)score.textContent=t._chartPts.toLocaleString()+" Pts";
+                    var bars=Array.from(row.querySelectorAll("div[style*='width']")).filter(function(x){return /height:\s*4px/.test(x.getAttribute("style")||"");});
+                    if(bars[0])bars[0].style.width=t._pctStm+"%";if(bars[1])bars[1].style.width=t._pctSales+"%";if(bars[2])bars[2].style.width=t._pctRadio+"%";
+                    Array.from(row.querySelectorAll("span")).forEach(function(span){
+                        var text=String(span.textContent||"");
+                        if(/[🎧流媒]/.test(text)&&/[🛒销量实销]/.test(text))span.textContent="🎧流媒"+t._pctStm+"%　🛒销量"+t._pctSales+"%　📻电台"+t._pctRadio+"%";
+                    });
+                });
             }
             return result;
         };
@@ -22868,17 +22907,207 @@ document.addEventListener("DOMContentLoaded", function(){
             var result=typeof finalOriginalAdvTimeForMarket==="function"?finalOriginalAdvTimeForMarket.apply(this,arguments):undefined,cfg=finalSaveMarketSettings();
             var tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=tracks.reduce(function(m,t){return Math.max(m,Number(t.stmGlobal_Day||0));},0);
             if(top>0){var scale=cfg.dailyBase/top;tracks.forEach(function(t){t.stmGlobal_Day=Math.max(0,Math.floor(Number(t.stmGlobal_Day||0)*scale));t.stmGlobal_Week=t.stmGlobal_Day*7;t.stmUS_Day=Math.floor(t.stmGlobal_Day*.35);t.stmUS_Week=t.stmUS_Day*7;});}
-            tracks.forEach(finalEnsureDecadeStats);finalNormalizeBillboardPoints();return result;
+            finalNormalizeMarketStreams();tracks.forEach(finalEnsureDecadeStats);finalNormalizeBillboardPoints();return result;
         };
         var finalOriginalSwitchChartRegion=window.switchChartRegion;
         window.switchChartRegion=function(region){if(curChartPlatform==="BB")region="US";return typeof finalOriginalSwitchChartRegion==="function"?finalOriginalSwitchChartRegion.apply(this,[region]):undefined;};
         var finalOriginalSwitchChartTime=window.switchChartTime;
-        window.switchChartTime=function(timeStr){if(timeStr==="Month")timeStr="Decade";return typeof finalOriginalSwitchChartTime==="function"?finalOriginalSwitchChartTime.apply(this,[timeStr]):undefined;};
+        window.switchChartTime=function(timeStr){if(timeStr==="Month")timeStr="Decade";var result=typeof finalOriginalSwitchChartTime==="function"?finalOriginalSwitchChartTime.apply(this,[timeStr]):undefined;finalHideUnsupportedChartTabs();return result;};
         function finalHideUnsupportedChartTabs(){
-            Array.from(document.querySelectorAll("#mChart .sub-tab,#mChart button")).forEach(function(el){var s=String(el.textContent||"");if(s.indexOf("月榜")>=0||(/全球/.test(s)&&curChartPlatform==="BB"))el.style.display="none";if(s.indexOf("总榜")>=0)el.textContent="固定十年榜";});
+            var decadeLabel=finalDecadeLabel(finalDecadeKey(time&&time.y||2026));
+            Array.from(document.querySelectorAll("#mChart .sub-tab,#mChart button")).forEach(function(el){var s=String(el.textContent||"");if(s.indexOf("月榜")>=0||(/全球/.test(s)&&curChartPlatform==="BB"))el.style.display="none";if(el.dataset.chartDecadeTab==="1"||s.indexOf("固定十年榜")>=0||s==="总榜")el.textContent=decadeLabel;});
             var global=document.getElementById("btnChartGlobal");if(global)global.remove();
         }
         finalHideUnsupportedChartTabs();setTimeout(finalInstallMarketFields,2200);setTimeout(finalHideUnsupportedChartTabs,2200);
+        // Apple Music: a separate global music service. Regions are weighted inputs,
+        // never separate app modes, and AM playback cannot exceed Spotify playback.
+        var AM_REGION_WEIGHTS={US:1.00,UK:0.82,CA:0.78,AU:0.72,JP:0.68,DE:0.62,FR:0.58,KR:0.55,BR:0.48};
+        function amRegionsFor(t){
+            if(!t)return {};
+            if(!t.amRegions||typeof t.amRegions!=="object"){
+                var global=Math.max(0,Number(t.stmGlobal_Day||0)),us=Math.min(global,Math.max(0,Number(t.stmUS_Day||0)));
+                t.amRegions={US:Math.floor(us*.28),UK:Math.floor(global*.08),CA:Math.floor(global*.06),AU:Math.floor(global*.045),JP:Math.floor(global*.07),DE:Math.floor(global*.05),FR:Math.floor(global*.04),KR:Math.floor(global*.035),BR:Math.floor(global*.06)};
+            }
+            return t.amRegions;
+        }
+        function amActivityMultiplier(t){return Math.max(.55,Math.min(2.4,Number(t.amActivityMultiplier||1)*(t.amEventMultiplier||1)));}
+        function amDecayMultiplier(t){var age=Math.max(0,Number(t.weeks||0));return Math.max(.72,age<=4?1:Math.exp(-(age-4)/180));}
+        function calculateAppleMusicTrack(t,mutate){
+            if(!t||t.type!=="track")return {raw:0,weighted:0,total:0,parts:{}};
+            var regions=amRegionsFor(t),parts={},raw=0,total=0;
+            Object.keys(AM_REGION_WEIGHTS).forEach(function(key){var plays=Math.max(0,Number(regions[key]||0));total+=plays;parts[key]={plays:plays,weight:AM_REGION_WEIGHTS[key],weighted:plays*AM_REGION_WEIGHTS[key]};raw+=parts[key].weighted;});
+            var spotify=Math.max(0,Number(t.stmGlobal_Day||0)),amTotal=Math.min(total,spotify),ratio=total>0?amTotal/total:0;
+            if(ratio<1){raw*=ratio;Object.keys(parts).forEach(function(k){parts[k].plays=Math.floor(parts[k].plays*ratio);parts[k].weighted=parts[k].plays*parts[k].weight;});}
+            var watering=Number(t.waterRisk||0),correction=Number(t.amWaterCorrection||0),penalty=Math.max(.2,Math.min(1,1-watering*.006-correction));
+            var finalRaw=raw*penalty;
+            if(mutate){t.amDailyTotal=Math.floor(amTotal);t.amRawScore=raw;t.amWaterCorrection=correction;t.amPenalty=penalty;t.amParts=parts;}
+            return {raw:raw,weighted:finalRaw,total:amTotal,parts:parts,penalty:penalty};
+        }
+        function calculateAppleMusicChart(){
+            var songs=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=songs.slice().sort(function(a,b){return calculateAppleMusicTrack(b).raw-calculateAppleMusicTrack(a).raw;}).slice(0,100),rawMarket=top.reduce(function(sum,t){return sum+calculateAppleMusicTrack(t,true).raw;},0),scale=rawMarket>0?1100000/rawMarket:0;
+            songs.forEach(function(t){var result=calculateAppleMusicTrack(t,true);t.amFinalScore=Math.floor(result.raw*scale*result.penalty);t.amPureScore=t.amFinalScore;t.amChartScale=scale;});
+            return songs.slice().sort(function(a,b){return Number(b.amFinalScore||0)-Number(a.amFinalScore||0);});
+        }
+        function advanceAppleMusicDay(){
+            Array.from(trackPool||[]).forEach(function(t){if(!t||t.type!=="track")return;var regions=amRegionsFor(t),decay=amDecayMultiplier(t),event=amActivityMultiplier(t);Object.keys(regions).forEach(function(k){regions[k]=Math.floor(Math.max(0,Number(regions[k]||0))*decay*event);});calculateAppleMusicTrack(t,true);});
+            calculateAppleMusicChart();
+        }
+        window.calculateAppleMusicChart=calculateAppleMusicChart;
+        window.openAppleMusic=function(){
+            var rows=calculateAppleMusicChart().slice(0,100),name=typeof E==="function"?E(ad.s):String(ad.s||"");
+            var rowsHtml=rows.slice(0,50).map(function(t,i){var x=calculateAppleMusicTrack(t),p=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||"--";return `<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${i+1}. ${E(t.n)}</b><b style="color:#b45309;">${Number(t.amFinalScore||0).toLocaleString()} AM分</b></div><span style="font-size:10px;color:#777;">${E(t.artist||"")} · AM ${Number(t.amDailyTotal||0).toLocaleString()} 次 · 主要地区 ${p} · 惩罚修正 ${(Number(t.amPenalty||1)*100).toFixed(0)}%</span></div>`;}).join("")||"<p style='color:#888;text-align:center;'>暂无 Apple Music 数据</p>";
+            var html="<div style='font-size:12px;line-height:1.7;'><div class='card' style='background:#fff7ed;border-color:#fed7aa;'><b>Apple Music 全球榜</b><br><span style='font-size:11px;color:#666;'>地区数据按权重合并；AM 总播放不会高于 Spotify 全球播放。Top 100 原始 AM 总分缩放至 1,100,000。</span></div>"+rowsHtml+"</div>";
+            $("mInfoTitle").innerText=" Apple Music";$("mInfoContent").innerHTML=html;$("mInfo").classList.add("open");
+        };
+        function installAppleMusicApp(){var grid=$("phoneGrid");if(grid&&!$("appAppleMusic")){grid.insertAdjacentHTML("beforeend",`<div class="app-icon" id="appAppleMusic" style="background:#f43f5e;color:#fff;" onclick="openApp('AppleMusic')"><div class="picon"></div>Apple Music</div>`);}}
+        installAppleMusicApp();
+        var finalOpenAppForAppleMusic=window.openApp;
+        window.openApp=function(appId){if(appId==="AppleMusic")return window.openAppleMusic();return typeof finalOpenAppForAppleMusic==="function"?finalOpenAppForAppleMusic.apply(this,arguments):undefined;};
+        var finalAdvTimeForAppleMusic=window.advTime;
+        window.advTime=function(weeks,showMsg){var result=typeof finalAdvTimeForAppleMusic==="function"?finalAdvTimeForAppleMusic.apply(this,arguments):undefined;for(var i=0;i<Math.max(1,Number(weeks)||1);i++)advanceAppleMusicDay();return result;};
+        var finalAdvHourForAppleMusic=window.advHour;
+        window.advHour=function(hours){var before=finalDateKey(),result=typeof finalAdvHourForAppleMusic==="function"?finalAdvHourForAppleMusic.apply(this,arguments):undefined;if(finalDateKey()!==before)advanceAppleMusicDay();return result;};
+        calculateAppleMusicChart();
+
+        var ITUNES_REGION_WEIGHTS={US:1.00,UK:.86,CA:.80,AU:.74,JP:.70,DE:.64,FR:.60,BR:.50,MX:.46};
+        function itunesRegionsFor(t){
+            if(!t)return {};
+            if(!t.itunesRegions||typeof t.itunesRegions!=="object"){
+                var age=Math.max(1,Number(t.weeks||1)),weekly=Math.max(0,Number(t.salesWeek||t.weeklySales||t.pureSalesWeek||0));
+                if(!weekly)weekly=Math.min(5000,Math.floor(Math.max(0,Number(t.slTotal||0))/(age*20)));
+                var daily=Math.floor(weekly/7);
+                t.itunesRegions={US:Math.floor(daily*.44),UK:Math.floor(daily*.12),CA:Math.floor(daily*.08),AU:Math.floor(daily*.06),JP:Math.floor(daily*.09),DE:Math.floor(daily*.06),FR:Math.floor(daily*.05),BR:Math.floor(daily*.06),MX:Math.floor(daily*.04)};
+            }
+            return t.itunesRegions;
+        }
+        function itunesDecay(t){var age=Math.max(0,Number(t.weeks||0));return Math.max(.62,age<=2?.98:Math.exp(-(age-2)/95));}
+        function itunesEvent(t){return Math.max(0,Math.min(3,Number(t.itunesEventMultiplier||t.salesEventMultiplier||1)));}
+        function calculateITunesTrack(t,mutate){
+            if(!t||t.type!=="track")return {raw:0,pure:0,total:0,parts:{},penalty:1};
+            var regions=itunesRegionsFor(t),parts={},raw=0,total=0;
+            Object.keys(ITUNES_REGION_WEIGHTS).forEach(function(k){var amount=Math.max(0,Number(regions[k]||0));total+=amount;parts[k]={amount:amount,weight:ITUNES_REGION_WEIGHTS[k],weighted:amount*ITUNES_REGION_WEIGHTS[k]};raw+=parts[k].weighted;});
+            var risk=Math.max(0,Number(t.waterRisk||0)),manual=Math.max(0,Number(t.itunesCheatPenalty||0)),cheat=Math.max(.15,Math.min(1,1-risk*.0085-manual));
+            if(mutate){t.itunesRawScore=raw;t.itunesRawDailyDownloads=Math.floor(total);t.itunesUSRawDownloads=Math.floor(Number(regions.US||0));t.itunesCheatFactor=cheat;t.itunesParts=parts;}
+            return {raw:raw,pure:raw*cheat,total:total,parts:parts,penalty:cheat};
+        }
+        function calculateITunesChart(){
+            var songs=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=songs.slice().sort(function(a,b){return calculateITunesTrack(b).raw-calculateITunesTrack(a).raw;}).slice(0,100),rawMarket=top.reduce(function(sum,t){return sum+calculateITunesTrack(t,true).raw;},0),target=Math.max(1000,finalMarketSettings().salesBase/7),scale=rawMarket>0?target/rawMarket:0;
+            songs.forEach(function(t){
+                var result=calculateITunesTrack(t,true),usRaw=Math.max(0,Number(result.parts.US&&result.parts.US.amount||0));
+                t.itunesScale=scale;
+                t.itunesFinalScore=Math.floor(result.raw*scale*result.penalty);
+                t.itunesDailyDownloads=Math.floor(result.total*scale*result.penalty);
+                t.itunesUSDownloads=Math.floor(usRaw*scale*result.penalty);
+            });
+            return songs.slice().sort(function(a,b){return Number(b.itunesFinalScore||0)-Number(a.itunesFinalScore||0);});
+        }
+        function advanceITunesDay(){
+            Array.from(trackPool||[]).forEach(function(t){if(!t||t.type!=="track")return;var regions=itunesRegionsFor(t),decay=itunesDecay(t),event=itunesEvent(t);Object.keys(regions).forEach(function(k){regions[k]=Math.floor(Math.max(0,Number(regions[k]||0))*decay*event);});calculateITunesTrack(t,true);});calculateITunesChart();
+        }
+        window.calculateITunesChart=calculateITunesChart;
+        window.openITunes=function(){
+            var rows=calculateITunesChart().slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||"--";return `<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${i+1}. ${E(t.n)}</b><b style="color:#be123c;">${Number(t.itunesFinalScore||0).toLocaleString()} 分</b></div><span style="font-size:10px;color:#777;">下载 ${Number(t.itunesDailyDownloads||0).toLocaleString()} · 美区 ${Number(t.itunesUSDownloads||0).toLocaleString()} · 主要地区 ${main} · 风控 ${(Number(t.itunesCheatFactor||1)*100).toFixed(0)}%</span></div>`;}).join("")||"<p style='color:#888;text-align:center;'>暂无 iTunes 数据</p>";
+            $("mInfoTitle").innerText="iTunes";$("mInfoContent").innerHTML="<div style='font-size:12px;line-height:1.7;'><div class='card' style='background:#fff1f2;border-color:#fecdd3;'><b>iTunes 全球下载榜</b><br><span style='font-size:11px;color:#666;'>各地区下载量按权重合并，Top100 按当日下载大盘缩放，之后应用灌水风控修正。</span></div>"+rowsHtml+"</div>";$("mInfo").classList.add("open");
+        };
+        function installITunesApp(){var grid=$("phoneGrid");if(grid&&!$("appITunes"))grid.insertAdjacentHTML("beforeend",`<div class="app-icon" id="appITunes" style="background:#ec4899;color:#fff;" onclick="openApp('ITunes')"><div class="picon">♪</div>iTunes</div>`);}
+        installITunesApp();
+        var finalOpenAppForITunes=window.openApp;
+        window.openApp=function(appId){if(appId==="ITunes")return window.openITunes();return typeof finalOpenAppForITunes==="function"?finalOpenAppForITunes.apply(this,arguments):undefined;};
+
+        function hot100Consumption(t){
+            calculateAppleMusicTrack(t,true);calculateITunesTrack(t,true);
+            var spotifyUS=Math.max(0,Number(t.stmUS_Week||0)),spotifyPaid=spotifyUS*.7,spotifyFree=spotifyUS*.3,amUS=Math.max(0,Number(t.amRegions&&t.amRegions.US||0))*7;
+            var itunesUS=Math.max(0,Number(t.itunesUSDownloads||0))*7;
+            var otherPureSales=Math.max(0,Number(t.physicalSalesWeek||t.directSalesWeek||t.salesWeek||t.weeklySales||t.pureSalesWeek||0));
+            var paid=amUS+spotifyPaid,free=spotifyFree/3,sales=(itunesUS+otherPureSales)*150,radio=Math.max(0,Number(t.radioAud||0))*100000;
+            return {paid:paid,free:free,itunesUS:itunesUS,otherPureSales:otherPureSales,sales:sales,radio:radio,total:paid+free+sales+radio};
+        }
+        finalRawBillboard=function(t){return hot100Consumption(t).total;};
+        finalSetBillboardParts=function(t){
+            var x=hot100Consumption(t),stream=x.paid+x.free,total=x.total;
+            t.hot100PaidEquivalent=x.paid;t.hot100FreeEquivalent=x.free;t.hot100ITunesUSUnits=x.itunesUS;t.hot100OtherPureSalesUnits=x.otherPureSales;t.hot100SalesEquivalent=x.sales;t.hot100RadioEquivalent=x.radio;t.hot100ConsumptionTotal=total;
+            if(total<=0){t._pctStm=0;t._pctSales=0;t._pctRadio=0;return;}
+            t._pctStm=Math.round(stream/total*100);t._pctSales=Math.round(x.sales/total*100);t._pctRadio=Math.max(0,100-t._pctStm-t._pctSales);
+        };
+
+        // Award ceremonies settle once per calendar year and always publish every winner.
+        function ensureAutomaticAwardState(){
+            if(!ad.awardData||typeof ad.awardData!=="object")ad.awardData={};
+            if(!ad.awardData.nominations)ad.awardData.nominations={};
+            if(!ad.awardData.finished)ad.awardData.finished={};
+            if(!ad.awardData.ceremonyResults)ad.awardData.ceremonyResults={};
+            if(!Array.isArray(ad.awd))ad.awd=[];
+            if(!Array.isArray(historyAwards))historyAwards=[];
+            return ad.awardData;
+        }
+        function automaticAwardCategories(awd){
+            var cats=Array.isArray(awd&&awd.categories)?awd.categories:[];
+            return cats.length?cats:[{id:"main",name:"综合大奖",targetType:"track"}];
+        }
+        function automaticAwardNominations(awd,year){
+            var state=ensureAutomaticAwardState(),key=year+"_"+awd.id,noms=state.nominations[key]||{};
+            automaticAwardCategories(awd).forEach(function(cat){
+                if(!Array.isArray(noms[cat.id])||!noms[cat.id].length)noms[cat.id]=typeof window.getAwardTop5==="function"?window.getAwardTop5(awd,cat,year):[];
+            });
+            state.nominations[key]=noms;
+            return noms;
+        }
+        function automaticAwardWinner(top5){
+            if(!Array.isArray(top5)||!top5.length)return null;
+            var winner=top5[0],roll=Math.random();
+            if(top5.length>2&&roll<.10)winner=top5[2];else if(top5.length>1&&roll<.30)winner=top5[1];
+            var strongPlayer=top5.find(function(item,index){return item&&item.isMe&&index<2;});
+            if(strongPlayer&&Math.random()<.60)winner=strongPlayer;
+            return winner;
+        }
+        function automaticAwardWinnerName(winner,cat){
+            if(!winner)return "本届空缺";
+            var artist=String(winner.artist||winner.n||"未知艺人");
+            return cat.targetType==="artist"?artist:artist+" - 《"+String(winner.n||"未命名作品")+"》";
+        }
+        function renderAutomaticAwardResults(year,results){
+            if(!results.length)return;
+            var esc=typeof E==="function"?E:(typeof escapeHTML==="function"?escapeHTML:function(x){return String(x||"");});
+            var wins=0,html=results.map(function(group){
+                var rows=group.winners.map(function(row){if(row.isMe)wins++;return `<div style="padding:9px 0;border-top:1px solid #eee;"><b>${esc(row.category)}</b><br><span style="font-size:12px;color:${row.isMe?'#be123c':'#333'};">得主：${row.isMe?'✨ ':''}${esc(row.name)}${row.isMe?'（你）':''}</span></div>`;}).join("");
+                return `<section style="margin-bottom:14px;"><h4 style="color:#9a6d00;margin:0 0 5px;">🏆 ${esc(group.award)}</h4>${rows}</section>`;
+            }).join("");
+            var title=document.getElementById("mInfoTitle"),content=document.getElementById("mInfoContent"),modal=document.getElementById("mInfo");
+            if(!title||!content||!modal)return;
+            title.innerText="🏆 "+year+"年颁奖结果";
+            content.innerHTML=`<div style="font-size:12px;line-height:1.6;"><div class="card" style="background:#fff8e8;border-color:#d1c290;"><b>${wins?"恭喜，你获得了 "+wins+" 个奖项！":"本届获奖名单已经揭晓"}</b><br><span style="color:#666;">以下为本届全部奖项得主。</span></div>${html}<button onclick="closeM('mInfo')">查看完毕</button></div>`;
+            modal.classList.add("open");
+        }
+        function settleAutomaticAwardCeremonies(forceDisplay){
+            if(typeof ad==="undefined"||typeof time==="undefined")return [];
+            var state=ensureAutomaticAwardState(),year=Number(time.y),month=Number(time.m),ceremonies=Array.from(awardRegistry||[]).filter(function(awd){return Number(awd.month||12)===month;}),fresh=[],newResults=[];
+            ceremonies.forEach(function(awd){
+                var key=year+"_"+awd.id,result=state.ceremonyResults[key];
+                if(!result){
+                    var noms=automaticAwardNominations(awd,year),winners=[];
+                    automaticAwardCategories(awd).forEach(function(cat){
+                        var winner=automaticAwardWinner(noms[cat.id]),name=automaticAwardWinnerName(winner,cat),isMe=!!(winner&&winner.isMe);
+                        winners.push({category:cat.name||"综合大奖",name:name,isMe:isMe,id:winner&&winner.id||""});
+                        historyAwards.unshift(`<b>${year}年 - ${awd.name}</b><br><span style="font-size:11px;color:#555;">【${cat.name||"综合大奖"}】得主：${typeof E==="function"?E(name):name}</span>`);
+                        if(isMe)ad.awd.unshift(year+"年 "+awd.name+"【"+(cat.name||"综合大奖")+"】："+name);
+                    });
+                    result={award:awd.name,winners:winners,year:year,month:month};state.ceremonyResults[key]=result;state.finished[key]=true;fresh.push(result);newResults.push(result);
+                }else if(forceDisplay){fresh.push(result);}
+            });
+            var playerWins=newResults.reduce(function(sum,group){return sum+group.winners.filter(function(x){return x.isMe;}).length;},0);
+            if(playerWins&&ad.st){ad.st.f=Math.max(0,Number(ad.st.f||0))+playerWins*200000;}
+            if(newResults.length){if(typeof saveGameImmediate==="function")saveGameImmediate();else if(typeof saveGame==="function")saveGame();}
+            if(fresh.length)renderAutomaticAwardResults(year,fresh);
+            return fresh;
+        }
+        window.settleAutomaticAwardCeremonies=settleAutomaticAwardCeremonies;
+        window.startCeremonyUI=function(){var shown=settleAutomaticAwardCeremonies(true);if(!shown.length)alert("本月没有颁奖典礼。");};
+        var finalAdvTimeForITunes=window.advTime;
+        window.advTime=function(weeks,showMsg){var result=typeof finalAdvTimeForITunes==="function"?finalAdvTimeForITunes.apply(this,arguments):undefined;for(var i=0;i<Math.max(1,Number(weeks)||1);i++)advanceITunesDay();finalNormalizeBillboardPoints();settleAutomaticAwardCeremonies(false);return result;};
+        var finalAdvHourForITunes=window.advHour;
+        window.advHour=function(hours){var before=finalDateKey(),result=typeof finalAdvHourForITunes==="function"?finalAdvHourForITunes.apply(this,arguments):undefined;if(finalDateKey()!==before){advanceITunesDay();finalNormalizeBillboardPoints();settleAutomaticAwardCeremonies(false);}return result;};
+        calculateITunesChart();finalNormalizeBillboardPoints();setTimeout(function(){settleAutomaticAwardCeremonies(false);},500);
+
         syncLoadedRuntimeSystems();
     },0);
 });
