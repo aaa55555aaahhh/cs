@@ -31,6 +31,575 @@
     }
   };
 })();
+// ==================== 最终音乐数据一致性修复：同名新歌、概率复评、榜单走势 ====================
+document.addEventListener("DOMContentLoaded", function installFinalMusicDataFixes(){
+    function arr(v){ return Array.isArray(v) ? v : []; }
+    function nowWeekKey(){ return String(time.y) + "_" + String(time.m) + "_" + String(time.w); }
+    function rankValue(v){ return (typeof v === "number" && v >= 1 && v <= 100) ? v : "OUT"; }
+    function rankText(v){ return (typeof v === "number" && v >= 1 && v <= 100) ? ("#" + v) : "OUT"; }
+    function newId(prefix){ return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 9); }
+    function ensureEntity(t){
+        if(!t) return t;
+        if(!t.id) t.id = newId(t.type === "album" ? "alb" : "tk");
+        if(!t._entityCreatedAt) t._entityCreatedAt = Date.now() + Math.floor(Math.random() * 1000);
+        if(!Array.isArray(t.chartHistory)) t.chartHistory = [];
+        if(!Array.isArray(t.reviewHistory)) t.reviewHistory = [];
+        if(typeof t.chartWeeks !== "number") t.chartWeeks = 0;
+        if(typeof t.usChartWeeks !== "number") t.usChartWeeks = 0;
+        if(typeof t._reviewCooldown !== "number") t._reviewCooldown = 0;
+        return t;
+    }
+    function normalizeEntities(){
+        arr(trackPool).forEach(ensureEntity);
+        arr(albs).forEach(function(a){
+            if(!a || !Array.isArray(a.s)) return;
+            a.s.forEach(function(song){
+                if(!song || (song.id && arr(trackPool).some(function(t){ return t.id === song.id; }))) return;
+                var candidates = arr(trackPool).filter(function(t){
+                    return t && t.isMe && t.type === "track" && t.artist === ad.s && t.n === song.n;
+                }).sort(function(x,y){ return (y._entityCreatedAt||0) - (x._entityCreatedAt||0); });
+                if(candidates[0]) song.id = candidates[0].id;
+            });
+        });
+    }
+    function findTrackForAlbumSong(song){
+        normalizeEntities();
+        if(song && song.id){
+            var byId = arr(trackPool).find(function(t){ return t.id === song.id; });
+            if(byId) return ensureEntity(byId);
+        }
+        var byName = arr(trackPool).filter(function(t){
+            return song && t && t.isMe && t.type === "track" && t.artist === ad.s && t.n === song.n;
+        }).sort(function(a,b){ return (b._entityCreatedAt||0) - (a._entityCreatedAt||0); })[0];
+        if(song && byName) song.id = byName.id;
+        return ensureEntity(byName);
+    }
+    normalizeEntities();
+
+    var baseCreateEntityFinalMusic = window.createEntity;
+    if(typeof baseCreateEntityFinalMusic === "function"){
+        window.createEntity = function(){
+            var t = baseCreateEntityFinalMusic.apply(this, arguments);
+            ensureEntity(t);
+            if(t){
+                t.lastW = 999; t.lastB = 999;
+                t.peakS = 999; t.peakB = 999; t.peakDaily = 999;
+                t.chartWeeks = 0; t.usChartWeeks = 0;
+                t.chartHistory = []; t.reviewHistory = [];
+                t._lastChartWeekMark = "";
+                t._reviewCooldown = 0;
+                t.weeks = 1;
+            }
+            return t;
+        };
+    }
+
+    var baseUpdatePeakRanksFinalMusic = window.updatePeakRanks;
+    window.updatePeakRanks = function(){
+        if(typeof baseUpdatePeakRanksFinalMusic === "function") baseUpdatePeakRanksFinalMusic();
+        var items = arr(trackPool).filter(function(t){ return t && (t.type === "track" || t.type === "album"); });
+        items.forEach(function(t){ ensureEntity(t); t.lastW = 999; t.lastB = 999; });
+        items.slice().sort(function(a,b){ return (b.stmGlobal_Week||0) - (a.stmGlobal_Week||0); }).forEach(function(t,i){
+            var r = i + 1;
+            if(r <= 100){ t.lastW = r; t.peakS = Math.min(Number(t.peakS)||999, r); }
+        });
+        items.slice().sort(function(a,b){ return (b.stmUS_Week||0) - (a.stmUS_Week||0); }).forEach(function(t,i){
+            var r = i + 1;
+            if(r <= 100){ t.lastB = r; t.peakB = Math.min(Number(t.peakB)||999, r); }
+        });
+        var key = nowWeekKey();
+        items.forEach(function(t){
+            var g = rankValue(t.lastW), b = rankValue(t.lastB);
+            var last = t.chartHistory[t.chartHistory.length - 1];
+            if(!last || last.key !== key){
+                t.chartHistory.push({key:key,y:time.y,m:time.m,w:time.w,global:g,us:b,inGlobal:g!=="OUT",inUS:b!=="OUT"});
+                if(t.chartHistory.length > 52) t.chartHistory.shift();
+            }else{
+                last.global = g; last.us = b; last.inGlobal = g !== "OUT"; last.inUS = b !== "OUT";
+            }
+            t.chartWeeks = t.chartHistory.filter(function(x){ return x.inGlobal; }).length;
+            t.usChartWeeks = t.chartHistory.filter(function(x){ return x.inUS; }).length;
+            t.trendChart = t.chartHistory.map(function(x){ return x.global; });
+            t.trueTrend = t.trendChart.slice();
+        });
+    };
+
+    function rerollReview(t, force){
+        if(!t || t.type !== "track") return false;
+        if(!force && (t._reviewCooldown || 0) > 0) return false;
+        if(!force && Math.random() >= 0.08) return false;
+        var old = Number(t.Spub) || 80;
+        var luck = Math.random();
+        var score = 76 + Math.random() * 9 + Math.max(-3, Math.min(3, (old - 80) * 0.08));
+        if(luck < 0.08) score = 88 + Math.random() * 6;
+        if(luck < 0.012) score = 96 + Math.random() * 4;
+        score = Math.max(50, Math.min(100, Math.floor(score)));
+        t.Spub = score;
+        t.rs = "[Rolling Stone " + Math.max(50, Math.min(100, Math.floor(score + Math.random()*9 - 4))) + "]";
+        t.bx = "[Pitchfork " + Math.max(5, Math.min(10, score/10 + Math.random()*0.8 - 0.4)).toFixed(1) + "]";
+        t.reviewHistory.push({y:time.y,m:time.m,w:time.w,score:score,rs:t.rs,bx:t.bx});
+        if(t.reviewHistory.length > 20) t.reviewHistory.shift();
+        t._reviewCooldown = 3 + Math.floor(Math.random()*4);
+        return true;
+    }
+    window.reReviewSong = function(songId, force){
+        var t = arr(trackPool).find(function(x){ return x.id === songId; });
+        var ok = rerollReview(t, force !== false);
+        if(ok){ updatePeakRanks(); saveGame(); }
+        return ok;
+    };
+
+    var baseAdvTimeFinalMusic = window.advTime;
+    window.advTime = function(weeks, showMsg){
+        if(typeof baseAdvTimeFinalMusic === "function") baseAdvTimeFinalMusic(weeks, showMsg);
+        var n = Math.max(1, Number(weeks)||1);
+        arr(trackPool).forEach(function(t){
+            if(t && t.type === "track"){
+                t._reviewCooldown = Math.max(0, (t._reviewCooldown||0) - n);
+                for(var i=0;i<n;i++) rerollReview(t, false);
+            }
+        });
+        updatePeakRanks();
+        saveGame();
+    };
+
+    window.viewSongStats = function(songId){
+        var t = arr(trackPool).find(function(x){ return x.id === songId; });
+        if(!t) return;
+        ensureEntity(t);
+        var gTrend = t.chartHistory.map(function(x){ return rankText(x.global); }).join(" → ") || "暂无";
+        var bTrend = t.chartHistory.map(function(x){ return rankText(x.us); }).join(" → ") || "暂无";
+        var reviewHist = t.reviewHistory.length ? t.reviewHistory.slice(-5).map(function(x){ return x.y+"年"+x.m+"月W"+x.w+"："+x.score; }).join(" / ") : "暂无复评记录";
+        var html = `<div style="background:#fefcf5;padding:15px;border-radius:8px;border:1px solid #d1c290;max-height:68vh;overflow-y:auto;position:relative;">
+            <button class="sec" style="position:absolute;right:10px;top:10px;width:auto;padding:4px 10px;" onclick="closeM('mGameInput')">关闭</button>
+            <h3 class="tg" style="padding-right:50px;">${escapeHTML(t.n)}</h3>
+            <div style="font-size:12px;line-height:1.8;color:#555;">
+                SPO（全球）当前：<b>${rankText(t.lastW)}</b>　峰值：<b>${rankText(t.peakS)}</b><br>
+                SPO（美国）当前：<b>${rankText(t.lastB)}</b>　峰值：<b>${rankText(t.peakB)}</b><br>
+                BB：<b>${rankText(t.lastB)}</b>　全球在榜周数：<b>${t.chartWeeks||0}</b>　美国在榜周数：<b>${t.usChartWeeks||0}</b>
+            </div>
+            <hr style="border:0;border-top:1px dashed #ccc;">
+            <div style="font-size:12px;line-height:1.8;">
+                SPO（全球）：<b>${gTrend}</b><br>
+                SPO（美国）：<b>${bTrend}</b><br>
+                BB：<b>${bTrend}</b>
+            </div>
+            <hr style="border:0;border-top:1px dashed #ccc;">
+            <div style="font-size:12px;line-height:1.8;">
+                乐评分：<b>${Number(t.Spub||0).toFixed(1)}</b>　${escapeHTML(t.bx||"")} ${escapeHTML(t.rs||"")}<br>
+                复评记录：${escapeHTML(reviewHist)}<br>
+                全球累计流媒：<b>${(t.stmGlobal||0).toLocaleString()}</b><br>
+                美国累计流媒：<b>${(t.stmUS||0).toLocaleString()}</b><br>
+                累计销量：<b>${(t.slTotal||0).toLocaleString()}</b>
+            </div>
+        </div>`;
+        document.getElementById("mGameInputTitle").innerText = "歌曲榜单与乐评详情";
+        document.getElementById("mGameInputDesc").innerHTML = html;
+        document.getElementById("mGameInputField").style.display = "none";
+        document.getElementById("mGameInput").classList.add("open");
+    };
+
+    window.openAlbDetail = function(idx){
+        var a = arr(albs)[idx];
+        if(!a) return;
+        var html = arr(a.s).map(function(song){
+            var t = findTrackForAlbumSong(song);
+            if(!t) return `<div class="card"><b>${escapeHTML(song && song.n || "")}</b>（暂无独立榜单数据）</div>`;
+            return `<div class="card" style="padding:10px;margin-bottom:5px;"><b>${escapeHTML(t.n)}</b><br>
+                <span style="font-size:11px;color:#666;">SPO（全球）${rankText(t.lastW)} / SPO（美国）${rankText(t.lastB)} / 在榜 ${t.chartWeeks||0} 周</span><br>
+                <button class="sec inline" onclick="viewSongStats('${t.id}')">查看榜单走势</button>
+            </div>`;
+        }).join("");
+        document.getElementById("mAlbDetailTitle").innerText = "《" + (a.n || "") + "》歌曲一览";
+        document.getElementById("mAlbDetailContent").innerHTML = html || "<p>暂无歌曲。</p>";
+        document.getElementById("mAlbDetail").classList.add("open");
+        saveGame();
+    };
+    if(typeof window.updatePeakRanks === "function") window.updatePeakRanks();
+});
+// ==================== 最终覆盖：Billboard美国口径、榜单详情页、巡演统计、后劲、封面与视频社媒 ====================
+document.addEventListener("DOMContentLoaded", function(){
+setTimeout(function installFinalUXAndChartFixes(){
+    function A(v){ return Array.isArray(v) ? v : []; }
+    function E(s){ return typeof escapeHTML === "function" ? escapeHTML(String(s == null ? "" : s)) : String(s == null ? "" : s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];}); }
+    function rk(v){ return (typeof v === "number" && v >= 1 && v <= 100) ? ("#" + v) : "OUT"; }
+    function rv(v){ return (typeof v === "number" && v >= 1 && v <= 100) ? v : "OUT"; }
+    function wkKey(){ return String(time.y)+"_"+String(time.m)+"_"+String(time.w); }
+    function getTracks(){ return A(trackPool).filter(function(t){return t && t.type === "track";}); }
+    function findById(id){ return A(trackPool).find(function(t){return t && t.id === id;}); }
+    function ensureCoverStore(){ if(!ad.covers) ad.covers = { albums:{}, tracks:{}, videos:{} }; return ad.covers; }
+    function colorCover(title){
+        var colors = ["#111827","#7c2d12","#1e3a8a","#581c87","#064e3b","#831843","#3f3f46"];
+        var bg = colors[Math.abs(String(title||"").split("").reduce(function(a,c){return a+c.charCodeAt(0);},0)) % colors.length];
+        return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><rect width='100%' height='100%' fill='"+bg+"'/><text x='50%' y='50%' fill='#f8fafc' font-size='42' font-family='Arial' text-anchor='middle' dominant-baseline='middle'>"+E(title||"Cover").slice(0,24)+"</text></svg>");
+    }
+    function coverOf(t, kind){
+        ensureCoverStore();
+        var box = kind === "album" ? ad.covers.albums : ad.covers.tracks;
+        return box[t.id] || t.cover || colorCover(t.n || "Cover");
+    }
+    function setCoverFromInput(inputId, itemId, kind){
+        var input = document.getElementById(inputId);
+        if(!input || !input.files || !input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function(){
+            ensureCoverStore();
+            if(kind === "album") ad.covers.albums[itemId] = reader.result;
+            else ad.covers.tracks[itemId] = reader.result;
+            saveGame();
+            if(kind === "album") { if(typeof renderAlb === "function") renderAlb(); }
+            else if(typeof viewSongStats === "function") viewSongStats(itemId);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+    window.setCoverFromInput = setCoverFromInput;
+
+    function calcBBParts(t){
+        var sales = Math.max(0, Number(t.slTotal || 0));
+        var stmUS = Math.max(0, Number(t.stmUS_Week || t.stmUS || 0));
+        var radio = Math.max(0, Number(t.radioAud || 0));
+        var ptsSales = sales * 10;
+        var ptsStream = (stmUS * 0.7 / 125) + (stmUS * 0.3 / 375);
+        var ptsRadio = radio * 333;
+        var total = Math.max(1, ptsSales + ptsStream + ptsRadio);
+        return {
+            sales: ptsSales, stream: ptsStream, radio: ptsRadio, total: total,
+            pctSales: Math.round(ptsSales / total * 100),
+            pctStream: Math.round(ptsStream / total * 100),
+            pctRadio: Math.round(ptsRadio / total * 100)
+        };
+    }
+    window.getBillboardParts = calcBBParts;
+
+    var baseUpdateRanksUX = window.updatePeakRanks;
+    window.updatePeakRanks = function(){
+        if(typeof baseUpdateRanksUX === "function") baseUpdateRanksUX();
+        var items = A(trackPool).filter(function(t){ return t && (t.type === "track" || t.type === "album"); });
+        var dayGlobal = items.slice().sort(function(a,b){return (b.stmGlobal_Day||0)-(a.stmGlobal_Day||0);});
+        var dayUS = items.slice().sort(function(a,b){return (b.stmUS_Day||0)-(a.stmUS_Day||0);});
+        items.forEach(function(t){ t.lastDailyGlobal = 999; t.lastDailyUS = 999; });
+        dayGlobal.forEach(function(t,i){ if(i < 100){ t.lastDailyGlobal = i+1; t.peakDailyGlobal = Math.min(Number(t.peakDailyGlobal)||999, i+1); } });
+        dayUS.forEach(function(t,i){ if(i < 100){ t.lastDailyUS = i+1; t.peakDailyUS = Math.min(Number(t.peakDailyUS)||999, i+1); } });
+        var key = wkKey();
+        items.forEach(function(t){
+            if(!Array.isArray(t.chartHistory)) t.chartHistory = [];
+            var last = t.chartHistory[t.chartHistory.length - 1];
+            if(!last || last.key !== key){
+                t.chartHistory.push({key:key,y:time.y,m:time.m,w:time.w,global:rv(t.lastW),us:rv(t.lastB),dailyGlobal:rv(t.lastDailyGlobal),dailyUS:rv(t.lastDailyUS),inGlobal:rv(t.lastW)!=="OUT",inUS:rv(t.lastB)!=="OUT"});
+                if(t.chartHistory.length > 104) t.chartHistory.shift();
+            } else {
+                last.global = rv(t.lastW); last.us = rv(t.lastB); last.dailyGlobal = rv(t.lastDailyGlobal); last.dailyUS = rv(t.lastDailyUS);
+                last.inGlobal = rv(t.lastW)!=="OUT"; last.inUS = rv(t.lastB)!=="OUT";
+            }
+            t.chartWeeks = t.chartHistory.filter(function(x){return x.inGlobal;}).length;
+            t.usChartWeeks = t.chartHistory.filter(function(x){return x.inUS;}).length;
+            t.peakWeeksGlobal = t.chartHistory.filter(function(x){return x.global === t.peakS;}).length;
+            t.peakWeeksBB = t.chartHistory.filter(function(x){return x.us === t.peakB;}).length;
+        });
+    };
+
+    var baseRenderChartUX = window.renderChart;
+    window.renderChart = function(){
+        if(curChartPlatform !== "BB") {
+            if(typeof baseRenderChartUX === "function") return baseRenderChartUX();
+        }
+        var isAlbum = curChType === "Album";
+        var list = A(trackPool).filter(function(t){ return isAlbum ? t.type === "album" : t.type === "track"; });
+        list.forEach(function(t){
+            if(isAlbum){
+                var pureSales = Number(t.slTotal || 0);
+                var sea = Math.floor((t.stmUS_Week || t.stmGlobal_Week || 0) / 1500);
+                t._chartPts = pureSales + sea;
+                t._chartStr = t._chartPts.toLocaleString() + " EAU";
+                return;
+            }
+            var p = calcBBParts(t);
+            t._chartPts = Math.floor(p.total);
+            t._chartStr = t._chartPts.toLocaleString() + " Pts";
+            t._pctStm = p.pctStream; t._pctSales = p.pctSales; t._pctRadio = p.pctRadio;
+        });
+        list.sort(function(a,b){ return (b._chartPts||0) - (a._chartPts||0); });
+        var maxDisplay = isAlbum ? 200 : 100;
+        var html = list.slice(0,maxDisplay).map(function(t,i){
+            var me = t.isMe ? "background:#fff7ed;border-left:3px solid #e6683c;" : "";
+            var detailBtn = (!isAlbum && t.isMe) ? `<br><button class="sec inline" style="font-size:10px;padding:2px 6px;" onclick="viewSongStats('${t.id}')">详情</button>` : "";
+            var bars = "";
+            if(!isAlbum){
+                bars = `<div style="height:6px;display:flex;width:120px;background:#eee;border-radius:4px;overflow:hidden;margin-top:4px;">
+                    <div style="width:${t._pctStm||0}%;background:#25d366;" title="流媒"></div>
+                    <div style="width:${t._pctSales||0}%;background:#f59e0b;" title="销量"></div>
+                    <div style="width:${t._pctRadio||0}%;background:#8b5cf6;" title="电台"></div>
+                </div><div style="font-size:9px;color:#888;">流媒${t._pctStm||0}% / 销量${t._pctSales||0}% / 电台${t._pctRadio||0}%</div>`;
+            }
+            return `<div style="display:flex;align-items:center;padding:10px;border-bottom:1px solid #eee;${me}">
+                <b style="width:30px;color:#888;font-size:16px;">${i+1}</b>
+                <div style="flex:1;"><b>${E(t.n)}</b><br><span style="font-size:11px;color:#666;">${E(t.artist||"")}</span>${detailBtn}</div>
+                <div style="text-align:right;font-size:12px;color:#c8a440;font-weight:bold;">${t._chartStr}${bars}</div>
+            </div>`;
+        }).join("");
+        document.getElementById("mChartContent").innerHTML = html || "<p style='color:#888;text-align:center;'>暂无榜单数据</p>";
+    };
+
+    function applyRealisticLongevity(){
+        getTracks().forEach(function(t){
+            if((t.viralWk||0) > 0 || (t.longViral||0) > 0) return;
+            var cw = Number(t.chartWeeks || 0);
+            var peak = Number(t.peakS || 999);
+            var sales = Number(t.slTotal || 0);
+            var isMonster = sales >= 3000000 || (peak <= 3 && cw <= 80);
+            var isSolid = sales >= 1000000 || peak <= 10;
+            var cap = null;
+            if(!isMonster && !isSolid && cw > 18) cap = 0.58;
+            else if(!isMonster && cw > 30) cap = 0.68;
+            else if(isMonster && cw > 80) cap = 0.82;
+            if(cap !== null && t._lastWeekBeforeDecay){
+                var maxWeek = Math.floor(t._lastWeekBeforeDecay * cap);
+                if((t.stmGlobal_Week||0) > maxWeek) t.stmGlobal_Week = Math.max(1000, maxWeek);
+                t.stmGlobal_Day = Math.floor((t.stmGlobal_Week||0) / 7);
+                t.stmUS_Week = Math.min(t.stmUS_Week||0, Math.floor(t.stmGlobal_Week * 0.65));
+                t.stmUS_Day = Math.floor((t.stmUS_Week||0) / 7);
+            }
+            t._lastWeekBeforeDecay = Number(t.stmGlobal_Week || 0);
+        });
+    }
+    var baseAdvUX = window.advTime;
+    window.advTime = function(weeks, showMsg){
+        getTracks().forEach(function(t){ t._lastWeekBeforeDecay = Number(t.stmGlobal_Week || 0); });
+        if(typeof baseAdvUX === "function") baseAdvUX(weeks, showMsg);
+        applyRealisticLongevity();
+        if(typeof updatePeakRanks === "function") updatePeakRanks();
+        if(typeof saveGame === "function") saveGame();
+    };
+
+    function ensureTourStats(){ if(!ad.tourStats) ad.tourStats = { totalBoxOffice:0, totalAttendance:0 }; return ad.tourStats; }
+    function addTourStats(boxOffice, attendance){
+        var s = ensureTourStats();
+        boxOffice = Math.max(0, Math.floor(Number(boxOffice)||0));
+        attendance = Math.max(0, Math.floor(Number(attendance)||0));
+        if(!boxOffice && !attendance) return;
+        s.totalBoxOffice += boxOffice;
+        s.totalAttendance += attendance || Math.floor(boxOffice / 120);
+        if(document.getElementById("txtTourBoxOffice")) document.getElementById("txtTourBoxOffice").innerText = s.totalBoxOffice.toLocaleString();
+        if(document.getElementById("txtTourAttendance")) document.getElementById("txtTourAttendance").innerText = s.totalAttendance.toLocaleString();
+    }
+    var baseStartTourStats = window.startMultiLegTour;
+    if(typeof baseStartTourStats === "function"){
+        window.startMultiLegTour = function(){
+            var before = Number(ad.m || 0), legs = A(window.tourLegs || tourLegs).length || 1;
+            baseStartTourStats.apply(this, arguments);
+            var delta = Math.max(0, Number(ad.m || 0) - before);
+            if(delta > 0) addTourStats(delta, Math.floor(delta / 120) + legs * 8000);
+        };
+    }
+    var baseConfirmPerfStats = window.confirmPerformance;
+    if(typeof baseConfirmPerfStats === "function"){
+        window.confirmPerformance = function(){
+            var isTour = window.performContext && window.performContext.type === "tour";
+            var before = Number(ad.m || 0);
+            baseConfirmPerfStats.apply(this, arguments);
+            if(isTour){
+                var delta = Math.max(0, Number(ad.m || 0) - before);
+                addTourStats(delta, Math.floor(delta / 120));
+            }
+        };
+    }
+
+    var baseAwardHistoryUX = window.viewAwardHistoryUI;
+    window.viewAwardHistoryUI = function(){
+        var html = `<div style="font-size:12px;line-height:1.7;max-height:70vh;overflow-y:auto;">
+            <div class="card"><b>总获奖记录数：</b>${A(historyAwards).length}</div>
+            ${A(historyAwards).length ? A(historyAwards).map(function(x){return `<div class="card" style="font-size:12px;line-height:1.7;">${x}</div>`;}).join("") : "<p style='color:#888;text-align:center;'>暂无历史获奖记录</p>"}
+        </div>`;
+        document.getElementById("mInfoTitle").innerText = "🏆 完整奖项记录";
+        document.getElementById("mInfoContent").innerHTML = html;
+        document.getElementById("mInfo").classList.add("open");
+    };
+    var baseRenderAwardsMapUX = window.renderAwardsMap;
+    window.renderAwardsMap = function(){
+        if(typeof baseRenderAwardsMapUX === "function") baseRenderAwardsMapUX();
+        var box = document.getElementById("listAwardsLog");
+        if(box) {
+            box.style.maxHeight = "65vh";
+            box.style.overflowY = "auto";
+            box.innerHTML = A(historyAwards).length ? A(historyAwards).map(function(x){return `<div class="card" style="font-size:12px;line-height:1.7;">${x}</div>`;}).join("") : "暂无历史记录";
+        }
+    };
+
+    window.openSongChartDetail = function(songId){
+        var t = findById(songId); if(!t) return;
+        var h = A(t.chartHistory);
+        function seq(field){ return h.map(function(x){return rk(x[field]);}).join(" → ") || "暂无"; }
+        function best(field){ var nums = h.map(function(x){return x[field];}).filter(function(x){return typeof x === "number";}); return nums.length ? Math.min.apply(null, nums) : "OUT"; }
+        var yearRank = rk(t.yearRank || t._yearRank);
+        var decadeRank = rk(t.decadeRank || t._decadeRank);
+        var html = `<div style="max-height:72vh;overflow-y:auto;font-size:12px;line-height:1.8;">
+            <h3 class="tg">${E(t.n)} 榜单详情</h3>
+            <div class="card">
+                <b>周榜总览</b><br>
+                SPO全球：当前 ${rk(t.lastW)} / 最高 ${rk(t.peakS)} / 最高位周数 ${t.peakWeeksGlobal||0} / 在榜 ${t.chartWeeks||0} 周<br>
+                SPO美国：当前 ${rk(t.lastB)} / 最高 ${rk(t.peakB)} / 在榜 ${t.usChartWeeks||0} 周<br>
+                Billboard Hot 100（美国）：当前 ${rk(t.lastB)} / 最高 ${rk(t.peakB)} / 最高位周数 ${t.peakWeeksBB||0}
+            </div>
+            <div class="card"><b>日榜走势</b><br>SPO全球日榜：${seq("dailyGlobal")}<br>SPO美国日榜：${seq("dailyUS")}</div>
+            <div class="card"><b>周榜走势</b><br>SPO全球周榜：${seq("global")}<br>SPO美国周榜：${seq("us")}<br>Billboard：${seq("us")}</div>
+            <div class="card"><b>年榜 / 十年榜</b><br>年榜名次：${yearRank}<br>十年榜名次：${decadeRank}</div>
+        </div>`;
+        document.getElementById("mInfoTitle").innerText = "📊 榜单数据";
+        document.getElementById("mInfoContent").innerHTML = html;
+        document.getElementById("mInfo").classList.add("open");
+    };
+
+    window.openVideoDetail = function(songId, type){
+        var t = findById(songId); if(!t) return;
+        if(!t.videoPosts) t.videoPosts = [];
+        var title = type === "fancam" ? `${t.n} 直拍` : (type === "show" ? `${t.n} 综艺舞台` : `${t.n} MV`);
+        var vid = t.videoPosts.find(function(v){return v.type === type;});
+        if(!vid){ vid = {type:type, title:title, likes:Math.floor((t.stmGlobal||0)/300), shares:Math.floor((t.stmGlobal||0)/1500), comments:[]}; t.videoPosts.push(vid); }
+        var img = (ad.covers && ad.covers.videos && ad.covers.videos[t.id+"_"+type]) || coverOf(t, "track");
+        var comments = A(vid.comments).map(function(c,i){return `<div style="border-top:1px solid #eee;padding:6px 0;"><b>${E(c.me?"我":"粉丝")}</b>：${E(c.text)}</div>`;}).join("") || "<p style='color:#888;'>暂无评论</p>";
+        document.getElementById("mInfoTitle").innerText = "▶ " + title;
+        document.getElementById("mInfoContent").innerHTML = `<div style="font-size:12px;line-height:1.7;">
+            <img src="${img}" style="width:100%;border-radius:10px;max-height:260px;object-fit:cover;background:#111;">
+            <input type="file" accept="image/*" id="videoCover_${t.id}_${type}" onchange="setVideoCoverFromInput(this,'${t.id}','${type}')">
+            <h3>${E(title)}</h3>
+            <div>👍 ${vid.likes.toLocaleString()}　💬 ${A(vid.comments).length.toLocaleString()}　🔁 ${vid.shares.toLocaleString()}</div>
+            <div style="display:flex;gap:5px;margin:8px 0;"><input id="videoCommentInput" placeholder="发表评论..." style="margin:0;flex:1;"><button class="sec inline" onclick="addVideoComment('${t.id}','${type}')">发送</button></div>
+            <div>${comments}</div>
+        </div>`;
+        document.getElementById("mInfo").classList.add("open");
+        saveGame();
+    };
+    window.setVideoCoverFromInput = function(input, id, type){
+        if(!input.files || !input.files[0]) return;
+        var r = new FileReader();
+        r.onload = function(){ ensureCoverStore(); ad.covers.videos[id+"_"+type] = r.result; saveGame(); openVideoDetail(id,type); };
+        r.readAsDataURL(input.files[0]);
+    };
+    window.addVideoComment = function(id,type){
+        var t = findById(id), val = (document.getElementById("videoCommentInput")||{}).value || "";
+        if(!t || !val.trim()) return;
+        var vid = A(t.videoPosts).find(function(v){return v.type===type;});
+        if(vid){ vid.comments.push({me:true,text:val.trim()}); vid.likes += Math.floor(Math.random()*200+20); }
+        saveGame(); openVideoDetail(id,type);
+    };
+
+    window.openYouTube = function(){
+        var vids = getTracks().filter(function(t){return t.mvN > 0 || t.hasRealMV || t.hasLyricMV || t.isMe;}).sort(function(a,b){return (b.stmGlobal||0)-(a.stmGlobal||0);});
+        var mine = vids.filter(function(t){return t.isMe;});
+        var html = `<div style="max-height:72vh;overflow-y:auto;">
+            <div class="card"><b>${E(ad.s)} 的 YouTube 主页</b><br><span style="font-size:12px;color:#666;">这里展示你的 MV、打单直拍、综艺舞台，也会推荐粉丝视频和 NPC 作品。</span></div>
+            <h4 class="tg">我的视频</h4>
+            ${(mine.length?mine:vids.slice(0,5)).map(function(t){return `<div class="card" onclick="openVideoDetail('${t.id}','mv')" style="display:flex;gap:10px;align-items:center;cursor:pointer;"><img src="${coverOf(t,"track")}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;"><div><b>${E(t.n)} MV</b><br><span style="font-size:11px;color:#888;">播放 ${(Math.floor((t.stmGlobal||0)*0.6)+(t.mvN||0)*2500000).toLocaleString()}</span><br><button class="sec inline" onclick="event.stopPropagation();openVideoDetail('${t.id}','fancam')">直拍</button><button class="sec inline" onclick="event.stopPropagation();openVideoDetail('${t.id}','show')">综艺</button></div></div>`;}).join("")}
+            <h4 class="tg">主页推荐</h4>
+            ${vids.slice(0,8).map(function(t){return `<div class="card" onclick="openVideoDetail('${t.id}','mv')" style="font-size:12px;">▶ ${E(t.artist||"粉丝频道")} - ${E(t.n)} ${t.isMe?"粉丝剪辑":"MV"}</div>`;}).join("")}
+        </div>`;
+        document.getElementById("mInfoTitle").innerText = "▶ YouTube";
+        document.getElementById("mInfoContent").innerHTML = html;
+        document.getElementById("mInfo").classList.add("open");
+    };
+
+    var baseOpenAppUX = window.openApp;
+    window.openApp = function(appId){
+        if(appId === "YouTube") return openYouTube();
+        return typeof baseOpenAppUX === "function" ? baseOpenAppUX(appId) : undefined;
+    };
+
+    window.openMediaPostDetail = function(platform, idx){
+        var list = posts && posts[platform] ? posts[platform] : A(posts.mom);
+        var p = list[idx]; if(!p) return;
+        if(!p.comments) p.comments = [];
+        if(!p.likes) p.likes = Math.floor(Math.random()*20000+500);
+        if(!p.shares) p.shares = Math.floor(Math.random()*3000+50);
+        var comments = A(p.comments).map(function(c){return `<div style="border-top:1px solid #eee;padding:6px 0;"><b>${E(c.me?"我":"网友")}</b>：${E(c.text)}</div>`;}).join("") || "<p style='color:#888;'>暂无评论</p>";
+        document.getElementById("mInfoTitle").innerText = E(p.t || "帖子详情");
+        document.getElementById("mInfoContent").innerHTML = `<div style="font-size:12px;line-height:1.7;"><p>${E(p.c||"")}</p><div>👍 ${p.likes.toLocaleString()}　➕ 关注　🔁 ${p.shares.toLocaleString()}　💬 ${A(p.comments).length}</div><div style="display:flex;gap:5px;margin:8px 0;"><input id="postCommentInput" placeholder="发表评论..." style="margin:0;flex:1;"><button class="sec inline" onclick="addMediaPostComment('${platform}',${idx})">发送</button></div>${comments}</div>`;
+        document.getElementById("mInfo").classList.add("open");
+    };
+    window.addMediaPostComment = function(platform, idx){
+        var list = posts && posts[platform] ? posts[platform] : A(posts.mom);
+        var p = list[idx], val = (document.getElementById("postCommentInput")||{}).value || "";
+        if(!p || !val.trim()) return;
+        if(!p.comments) p.comments = [];
+        p.comments.push({me:true,text:val.trim()});
+        p.likes = (p.likes||0) + Math.floor(Math.random()*300+20);
+        saveGame(); openMediaPostDetail(platform, idx);
+    };
+    window.viewPostDetail = function(title, content, isMine){
+        if(!window._loosePostDetail) window._loosePostDetail = {};
+        var key = String(title||"帖子") + "::" + String(content||"");
+        var p = window._loosePostDetail[key] || (window._loosePostDetail[key] = {
+            t:title || "帖子详情", c:content || "", likes:Math.floor(Math.random()*20000+500),
+            shares:Math.floor(Math.random()*3000+50), comments:[]
+        });
+        window._currentLoosePostKey = key;
+        var comments = A(p.comments).map(function(c){return `<div style="border-top:1px solid #eee;padding:6px 0;"><b>${E(c.me?"我":"网友")}</b>：${E(c.text)}</div>`;}).join("") || "<p style='color:#888;'>暂无评论</p>";
+        document.getElementById("mInfoTitle").innerText = E(p.t);
+        document.getElementById("mInfoContent").innerHTML = `<div style="font-size:12px;line-height:1.7;">
+            <p>${E(p.c)}</p>
+            <div>👍 ${p.likes.toLocaleString()}　➕ 关注　🔁 ${p.shares.toLocaleString()}　💬 ${A(p.comments).length}</div>
+            <div style="display:flex;gap:5px;margin:8px 0;"><input id="loosePostCommentInput" placeholder="${isMine?'在自己的帖子下面发评价':'发表评论...'}" style="margin:0;flex:1;"><button class="sec inline" onclick="addLoosePostComment()">发送</button></div>
+            ${comments}
+        </div>`;
+        document.getElementById("mInfo").classList.add("open");
+    };
+    window.addLoosePostComment = function(){
+        var key = window._currentLoosePostKey;
+        var p = window._loosePostDetail && window._loosePostDetail[key];
+        var val = (document.getElementById("loosePostCommentInput")||{}).value || "";
+        if(!p || !val.trim()) return;
+        p.comments.push({me:true,text:val.trim()});
+        p.likes += Math.floor(Math.random()*300+20);
+        viewPostDetail(p.t, p.c, true);
+    };
+
+    var baseViewSongUX = window.viewSongStats;
+    window.viewSongStats = function(songId){
+        var t = findById(songId); if(!t) return;
+        var isSingle = !!(t.singleLabel && t.singleLabel.indexOf("非") === -1) || (t.promoCount||0)>0 || t.hasRealMV;
+        var cover = coverOf(t, "track");
+        var coverInput = isSingle ? `<input type="file" accept="image/*" id="trkCover_${t.id}" onchange="setCoverFromInput('trkCover_${t.id}','${t.id}','track')">` : `<div style="font-size:11px;color:#888;">只有打单/主打歌曲可以更换单曲封面。</div>`;
+        var html = `<div style="max-height:70vh;overflow-y:auto;font-size:12px;line-height:1.8;">
+            <img src="${cover}" style="width:100%;max-height:240px;object-fit:cover;border-radius:10px;background:#111;">${coverInput}
+            <h3 class="tg">${E(t.n)}</h3>
+            <div class="card">乐评分：<b>${Number(t.Spub||0).toFixed(1)}</b><br>全球流媒：${(t.stmGlobal||0).toLocaleString()}<br>美国流媒：${(t.stmUS||0).toLocaleString()}<br>销量：${(t.slTotal||0).toLocaleString()}</div>
+            <button onclick="openSongChartDetail('${t.id}')">📊 打开详细榜单数据</button>
+            <button class="sec" onclick="openVideoDetail('${t.id}','mv')">▶ 打开 YouTube 视频页</button>
+        </div>`;
+        document.getElementById("mGameInputTitle").innerText = "歌曲详情";
+        document.getElementById("mGameInputDesc").innerHTML = html;
+        document.getElementById("mGameInputField").style.display = "none";
+        document.getElementById("mGameInput").classList.add("open");
+    };
+
+    var baseRenderAlbUX = window.renderAlb;
+    window.renderAlb = function(){
+        var box = document.getElementById("listAList");
+        if(!box) return typeof baseRenderAlbUX === "function" ? baseRenderAlbUX() : undefined;
+        box.innerHTML = A(albs).map(function(a,i){
+            var ref = a.trackRef || {};
+            return `<div class="card"><img src="${coverOf(ref.id?ref:a,'album')}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;float:left;margin-right:10px;"><b>${E(a.n)}</b> (${E(a.st||"")})<br><span style="font-size:12px;color:#666;">收录:${A(a.s).length}首</span><br>累计销量:${(ref.slTotal||0).toLocaleString()}<br><input type="file" accept="image/*" id="albCover_${ref.id||i}" onchange="setCoverFromInput('albCover_${ref.id||i}','${ref.id||i}','album')"><button class="sec inline" onclick="openAlbDetail(${i})">歌曲一览/统计</button><div style="clear:both;"></div></div>`;
+        }).join("");
+    };
+
+    var baseOpenAlbDetailUX = window.openAlbDetail;
+    window.openAlbDetail = function(idx){
+        var a = A(albs)[idx]; if(!a) return;
+        var tracks = A(a.s).map(function(s){ return s && s.id ? findById(s.id) : getTracks().filter(function(t){return t.isMe && t.n === s.n;}).slice(-1)[0]; }).filter(Boolean);
+        var counts = {n1:0,n2:0,n3:0,t5:0,t10:0,t20:0,t50:0,t100:0};
+        tracks.forEach(function(t){
+            var p = Number(t.peakS || 999);
+            if(p===1) counts.n1++; if(p===2) counts.n2++; if(p===3) counts.n3++;
+            if(p<=5) counts.t5++; if(p<=10) counts.t10++; if(p<=20) counts.t20++; if(p<=50) counts.t50++; if(p<=100) counts.t100++;
+        });
+        var summary = `<div class="card" style="font-size:12px;line-height:1.7;"><b>专辑榜单统计</b><br>#1：${counts.n1}　#2：${counts.n2}　#3：${counts.n3}<br>Top5：${counts.t5}　Top10：${counts.t10}　Top20：${counts.t20}<br>Top50：${counts.t50}　Top100：${counts.t100}</div>`;
+        if(typeof baseOpenAlbDetailUX === "function") baseOpenAlbDetailUX(idx);
+        var c = document.getElementById("mAlbDetailContent");
+        if(c && c.innerHTML.indexOf("专辑榜单统计") === -1) c.insertAdjacentHTML("afterbegin", summary);
+    };
+
+    if(typeof updatePeakRanks === "function") updatePeakRanks();
+}, 0);
+});
 </script>
 <style>
 /* 页面显隐核心样式，缺失就会多页面重叠、跳转失效 */
