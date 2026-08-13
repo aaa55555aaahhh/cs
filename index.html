@@ -3489,7 +3489,7 @@ function updAttr(){
     
     $("boxBasic").innerHTML = `
     <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-        <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
+        <div style="position:relative;cursor:pointer;" onclick="var input=document.getElementById('myAvatarInput');if(input)input.click()">
             ${avatarHtml}
             <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
         </div>
@@ -9348,7 +9348,7 @@ window.updAttr = function() {
     
     document.getElementById("boxBasic").innerHTML = `
     <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-        <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
+        <div style="position:relative;cursor:pointer;" onclick="var input=document.getElementById('myAvatarInput');if(input)input.click()">
             ${avatarHtml}
             <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
         </div>
@@ -18299,7 +18299,7 @@ window.updAttr = function() {
     if(boxBasic) {
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="var input=document.getElementById('myAvatarInput');if(input)input.click()">
                 ${avatarHtml}
                 <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
             </div>
@@ -18426,7 +18426,7 @@ window.updAttr = function() {
         let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="var input=document.getElementById('myAvatarInput');if(input)input.click()">
                 ${avatarHtml}
                 <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
             </div>
@@ -18955,7 +18955,7 @@ window.updAttr = function() {
     if(boxBasic) {
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="var input=document.getElementById('myAvatarInput');if(input)input.click()">
                 ${avatarHtml}
             </div>
             <div style="line-height:1.6;">
@@ -23266,7 +23266,8 @@ function installRuntimeAuthority(){
         var file=input&&input.files&&input.files[0];if(!file)return;
         var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){var max=180,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);ad.avatar=canvas.toDataURL('image/jpeg',.86);input.value='';saveNow();if(typeof updAttr==='function')updAttr();setTimeout(mountAvatarInput,0);};img.src=ev.target.result;};reader.readAsDataURL(file);
     };
-    var baseUpd=window.updAttr;if(typeof baseUpd==='function')window.updAttr=function(){var r=baseUpd.apply(this,arguments);setTimeout(mountAvatarInput,0);return r;};mountAvatarInput();
+    var baseUpd=window.updAttr;if(typeof baseUpd==='function')window.updAttr=function(){var r=baseUpd.apply(this,arguments);mountAvatarInput();return r;};mountAvatarInput();
+    var avatarBox=document.getElementById('boxBasic');if(avatarBox)new MutationObserver(function(){mountAvatarInput();}).observe(avatarBox,{childList:true,subtree:true});
 
     function ensureGlobalChartButton(){
         var us=document.getElementById('btnChartUS');if(!us)return null;var global=document.getElementById('btnChartGlobal');
@@ -23295,16 +23296,84 @@ function installRuntimeAuthority(){
         var r=chartBeforeDaily.apply(this,arguments);saved.forEach(function(x){x[0].stmGlobal_Week=x[1];x[0].stmUS_Week=x[2];});return r;
     };
 
+    function validChartRank(value){var n=Number(value);return Number.isFinite(n)&&n>=1&&n<=100?Math.floor(n):null;}
+    function chartPeriodKey(kind){return kind==='day'?[time.y,time.m,time.d].join('_'):[time.y,time.m,time.w].join('_');}
+    function compactLegacyRanks(values){
+        var records=[],entered=false,out=false;
+        (Array.isArray(values)?values:[]).forEach(function(value,index){
+            var rank=validChartRank(value);
+            if(rank){records.push({key:'legacy_'+index,rank:rank});entered=true;out=false;}
+            else if(entered&&!out){records.push({key:'legacy_'+index,rank:'OUT'});out=true;}
+        });
+        return records;
+    }
+    function legacyRanksFor(t,chart){
+        if(chart==='spotifyGlobal')return Array.isArray(t.chartHistory)?t.chartHistory.map(function(x){return x&&x.global;}):[];
+        if(chart==='spotifyUS')return Array.isArray(t.spotifyUSHistory)?t.spotifyUSHistory:[];
+        if(chart==='billboard')return Array.isArray(t.chartHistory)?t.chartHistory.map(function(x){return x&&(x.billboard!==undefined?x.billboard:x.us);}):[];
+        if(chart==='appleMusic')return Array.isArray(t.appleMusicHistory)?t.appleMusicHistory:[];
+        if(chart==='itunes')return Array.isArray(t.itunesHistory)?t.itunesHistory:[];
+        return [];
+    }
+    function ensureChartState(t,chart){
+        if(!t.chartStats||typeof t.chartStats!=='object')t.chartStats={};
+        var state=t.chartStats[chart];
+        if(!state||!Array.isArray(state.records)){
+            state={records:compactLegacyRanks(legacyRanksFor(t,chart))};t.chartStats[chart]=state;
+        }
+        recalcChartState(state);return state;
+    }
+    function recalcChartState(state){
+        var ranked=state.records.filter(function(x){return validChartRank(x.rank)!==null;}),last=state.records[state.records.length-1],before=state.records[state.records.length-2];
+        state.everCharted=ranked.length>0;state.current=last&&validChartRank(last.rank)!==null?validChartRank(last.rank):999;
+        state.isOut=state.everCharted&&!!last&&last.rank==='OUT';
+        state.previous=before?(validChartRank(before.rank)!==null?validChartRank(before.rank):'OUT'):'NOT_IN';
+        state.weeks=ranked.length;state.peak=ranked.length?Math.min.apply(null,ranked.map(function(x){return Number(x.rank);})) : 999;
+        state.peakWeeks=state.peak<=100?ranked.filter(function(x){return Number(x.rank)===state.peak;}).length:0;
+    }
+    function setChartRank(t,chart,value,key){
+        var state=ensureChartState(t,chart),rank=validChartRank(value),last=state.records[state.records.length-1];
+        if(last&&last.key===key){
+            if(rank)last.rank=rank;
+            else if(state.records.slice(0,-1).some(function(x){return validChartRank(x.rank)!==null;}))last.rank='OUT';
+            else state.records.pop();
+        }else if(rank)state.records.push({key:key,rank:rank});
+        else if(state.everCharted&&!state.isOut)state.records.push({key:key,rank:'OUT'});
+        if(state.records.length>520)state.records=state.records.slice(-520);
+        recalcChartState(state);return state;
+    }
+    function chartStatus(state,value){var rank=validChartRank(value);if(rank)return '#'+rank;return state&&state.everCharted&&state.isOut?'OUT':'Not In';}
+    function peakLabel(state){return state&&state.peak<=100?'Peak #'+state.peak+' × '+state.peakWeeks:'Peak Not In';}
+    function trendLabel(state){return state&&state.records.length?state.records.map(function(x){return x.rank==='OUT'?'OUT':'#'+x.rank;}).join(' → '):'Not In';}
+    function syncWeeklyChartStates(){
+        var key=chartPeriodKey('week');
+        (trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){
+            var globalRank=Number(t.stmGlobal_Day||t.stmGlobal_Week||0)>0?t.lastW:999;
+            var usRank=Number(t.stmUS_Day||t.stmUS_Week||0)>0?t.lastSpotifyUS:999;
+            var bbRank=Number(t.stmUS_Day||t.stmUS_Week||t.radioAud||t.slTotal||0)>0?t.lastB:999;
+            var global=setChartRank(t,'spotifyGlobal',globalRank,key),spotifyUS=setChartRank(t,'spotifyUS',usRank,key),billboard=setChartRank(t,'billboard',bbRank,key);
+            t.chartWeeks=global.weeks;t.peakWeeksGlobal=global.peakWeeks;t.usChartWeeks=spotifyUS.weeks;t.peakWeeksSpotifyUS=spotifyUS.peakWeeks;t.billboardChartWeeks=billboard.weeks;t.peakWeeksBB=billboard.peakWeeks;
+        });
+    }
+    var basePeakAuthority=window.updatePeakRanks;
+    if(typeof basePeakAuthority==='function')window.updatePeakRanks=function(){var r=basePeakAuthority.apply(this,arguments);syncWeeklyChartStates();return r;};
+    syncWeeklyChartStates();
+
     function rankDelta(t,rank,field){
         var prev=Number(t[field]||0),delta=prev?prev-rank:null;t[field]=rank;return delta===null?'NEW':delta>0?'↑'+delta:delta<0?'↓'+Math.abs(delta):'→';
     }
     function rankBadge(delta){var color=delta==='NEW'?'#2563eb':String(delta).charAt(0)==='↑'?'#16a34a':String(delta).charAt(0)==='↓'?'#dc2626':'#777';return '<span style="font-size:11px;font-weight:bold;color:'+color+';margin-left:5px;">'+delta+'</span>';}
+    function stateDelta(state){if(!state||!state.everCharted)return '';if(state.previous==='NOT_IN')return 'NEW';if(state.previous==='OUT')return 'RE';var previous=validChartRank(state.previous),current=validChartRank(state.current);if(!current)return 'OUT';if(!previous)return 'NEW';var delta=previous-current;return delta>0?'↑'+delta:delta<0?'↓'+Math.abs(delta):'→';}
     var baseAppleChartAuthority=window.calculateAppleMusicChart;
-    if(typeof baseAppleChartAuthority==='function')window.calculateAppleMusicChart=function(){var rows=baseAppleChartAuthority.apply(this,arguments),seen={};rows.forEach(function(t,i){var rank=i+1;t._amRankDelta=rankDelta(t,rank,'_amLastRank');seen[t.id]=1;});return rows;};
+    if(typeof baseAppleChartAuthority==='function')window.calculateAppleMusicChart=function(){var rows=baseAppleChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._amCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.amFinalScore||0)>0)t._amCurrentRank=i+1;});return rows;};
     var baseITunesChartAuthority=window.calculateITunesChart;
-    if(typeof baseITunesChartAuthority==='function')window.calculateITunesChart=function(){var rows=baseITunesChartAuthority.apply(this,arguments),seen={};rows.forEach(function(t,i){var rank=i+1;t._itunesRankDelta=rankDelta(t,rank,'_itunesLastRank');seen[t.id]=1;});return rows;};
-    window.openAppleMusic=function(){var rows=window.calculateAppleMusicChart().slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateAppleMusicTrack(t),p=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>'+esc(i+1)+'. '+esc(t.n)+rankBadge(t._amRankDelta)+'</b><b style="color:#b45309;">'+Number(t.amFinalScore||0).toLocaleString()+' AM分</b></div><span style="font-size:10px;color:#777;">'+esc(t.artist||'')+' · AM '+Number(t.amDailyTotal||0).toLocaleString()+' 次 · 主要地区 '+p+' · 惩罚修正 '+(Number(t.amPenalty||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 Apple Music 数据</p>';$('mInfoTitle').innerText=' Apple Music';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff7ed;border-color:#fed7aa;"><b>Apple Music 全球榜</b><br><span style="font-size:11px;color:#666;">排名变化基于上一期榜单。</span></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
-    window.openITunes=function(){var rows=window.calculateITunesChart().slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>'+esc(i+1)+'. '+esc(t.n)+rankBadge(t._itunesRankDelta)+'</b><b style="color:#be123c;">'+Number(t.itunesFinalScore||0).toLocaleString()+' 分</b></div><span style="font-size:10px;color:#777;">下载 '+Number(t.itunesDailyDownloads||0).toLocaleString()+' · 美区 '+Number(t.itunesUSDownloads||0).toLocaleString()+' · 主要地区 '+main+' · 风控 '+(Number(t.itunesCheatFactor||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 iTunes 数据</p>';$('mInfoTitle').innerText='iTunes';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff1f2;border-color:#fecdd3;"><b>iTunes 全球下载榜</b><br><span style="font-size:11px;color:#666;">排名变化基于上一期榜单。</span></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
+    if(typeof baseITunesChartAuthority==='function')window.calculateITunesChart=function(){var rows=baseITunesChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._itunesCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.itunesFinalScore||0)>0)t._itunesCurrentRank=i+1;});return rows;};
+    window.openAppleMusic=function(){var rows=window.calculateAppleMusicChart().filter(function(t){return Number(t.amFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateAppleMusicTrack(t),p=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+'</b><b style="color:#b45309;">'+Number(t.amFinalScore||0).toLocaleString()+' AM分</b></div><span style="font-size:10px;color:#777;">'+esc(t.artist||'')+' · AM '+Number(t.amDailyTotal||0).toLocaleString()+' 次 · 主要地区 '+p+' · 惩罚修正 '+(Number(t.amPenalty||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 Apple Music 数据</p>';$('mInfoTitle').innerText=' Apple Music';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff7ed;border-color:#fed7aa;"><b>Apple Music 全球实时榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
+    window.openITunes=function(){var rows=window.calculateITunesChart().filter(function(t){return Number(t.itunesFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+'</b><b style="color:#be123c;">'+Number(t.itunesFinalScore||0).toLocaleString()+' 分</b></div><span style="font-size:10px;color:#777;">下载 '+Number(t.itunesDailyDownloads||0).toLocaleString()+' · 美区 '+Number(t.itunesUSDownloads||0).toLocaleString()+' · 主要地区 '+main+' · 风控 '+(Number(t.itunesCheatFactor||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 iTunes 数据</p>';$('mInfoTitle').innerText='iTunes';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff1f2;border-color:#fecdd3;"><b>iTunes 全球实时下载榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
+    window.openSongChartDetail=function(songId){var t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);});if(!t)return alert('找不到歌曲。');var charts=[['Spotify 全球榜','spotifyGlobal'],['Spotify 美国榜','spotifyUS'],['Billboard Hot 100','billboard']],html=charts.map(function(item){var st=ensureChartState(t,item[1]);return '<div class="card"><b>'+item[0]+'</b><br>上期 '+chartStatus(st,st.previous)+' / 本期 '+chartStatus(st,st.current)+' / '+peakLabel(st)+' / 在榜 '+st.weeks+' 期<br><span style="font-size:11px;color:#666;">走势：'+trendLabel(st)+'</span></div>';}).join('');html+='<div class="card"><b>Apple Music 实时榜</b><br>当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'</div><div class="card"><b>iTunes 实时下载榜</b><br>当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In')+'</div>';$('mGameInputTitle').innerText='详细榜单数据';$('mGameInputDesc').innerHTML='<div style="font-size:12px;line-height:1.8;"><button class="sec" onclick="viewSongStats(\''+esc(t.id)+'\')">← 返回歌曲详情</button>'+html+'</div>';$('mGameInputField').style.display='none';$('mGameInput').classList.add('open');};
+    var baseViewSongAuthority=window.viewSongStats;
+    if(typeof baseViewSongAuthority==='function')window.viewSongStats=function(songId){var r=baseViewSongAuthority.apply(this,arguments),t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);}),box=$('mGameInputDesc');if(!t||!box)return r;var old=box.querySelector('[data-authority-chart-summary]');if(old)old.remove();var charts=[['SPO全球','spotifyGlobal'],['SPO美国','spotifyUS'],['Billboard','billboard']],summary=document.createElement('div');summary.dataset.authorityChartSummary='1';summary.className='card';summary.style.cssText='margin:8px 0;background:#f8fafc;border-color:#cbd5e1;font-size:11px;line-height:1.8;';summary.innerHTML='<b>榜单状态</b><br>'+charts.map(function(item){var st=ensureChartState(t,item[1]);return item[0]+'：本期 '+chartStatus(st,st.current)+' · '+peakLabel(st)+' · 在榜 '+st.weeks+' 期';}).join('<br>')+'<br>Apple Music：当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'<br>iTunes：当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In');box.insertBefore(summary,box.firstChild);return r;};
+    window.__chartSemantics={ensure:ensureChartState,set:setChartRank,status:chartStatus,trend:trendLabel,peak:peakLabel};
 
     function fashionData(){if(!Array.isArray(ad.coutureBrands))ad.coutureBrands=[];if(!Array.isArray(ad.specialCustomLooks))ad.specialCustomLooks=[];return {mags:Array.isArray(window.fashionMags)?window.fashionMags:[],brands:Array.isArray(window.luxuryBrands)?window.luxuryBrands:[],couture:ad.coutureBrands};}
     function tab(id,label,active){return '<div class="sub-tab '+(active?'active':'')+'" onclick="switchSubTab(this,\''+id+'\',\'fashionTabs\')">'+label+'</div>';}
