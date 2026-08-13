@@ -1731,8 +1731,8 @@ setTimeout(function installFinalUserRequestedFixes(){
 
     var UI_THEME_KEY="starPro_ui_theme_v1";
     var UI_THEME_PRESETS={
-        yellow:{name:"Baby 黄",color:"#fff2a8"},
-        pink:{name:"Baby 粉",color:"#ffc1d6"},
+        yellow:{name:"Baby 黄",color:"#f1d477"},
+        pink:{name:"Baby 粉",color:"#f3c8d5"},
         blue:{name:"Baby 蓝",color:"#bfe3ff"},
         purple:{name:"Baby 紫",color:"#ddc8ff"},
         green:{name:"Baby 绿",color:"#c9f2cf"},
@@ -1744,7 +1744,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         return /^#[0-9a-f]{6}$/i.test(value)?value.toLowerCase():null;
     }
     function mixThemeColor(a,b,amount){
-        a=validThemeHex(a)||"#fff2a8";b=validThemeHex(b)||"#ffffff";
+        a=validThemeHex(a)||"#f1d477";b=validThemeHex(b)||"#ffffff";
         var out="#";
         for(var i=1;i<7;i+=2){var av=parseInt(a.slice(i,i+2),16),bv=parseInt(b.slice(i,i+2),16);out+=(Math.round(av+(bv-av)*amount)).toString(16).padStart(2,"0");}
         return out;
@@ -1752,14 +1752,16 @@ setTimeout(function installFinalUserRequestedFixes(){
     function normalizeUITheme(theme){
         theme=theme&&typeof theme==="object"?theme:{};
         var preset=UI_THEME_PRESETS[theme.preset]||UI_THEME_PRESETS.yellow;
-        return {preset:theme.preset&&UI_THEME_PRESETS[theme.preset]?theme.preset:(theme.preset==="custom"?"custom":"yellow"),color:validThemeHex(theme.color)||preset.color,scope:theme.scope==="fill"?"fill":"global"};
+        var presetName=theme.preset&&UI_THEME_PRESETS[theme.preset]?theme.preset:(theme.preset==="custom"?"custom":"yellow");
+        if(String(theme.color||"").toLowerCase()==="#fff2a8"){presetName="yellow";theme.color=UI_THEME_PRESETS.yellow.color;}
+        return {preset:presetName,color:validThemeHex(theme.color)||preset.color,scope:theme.scope==="fill"?"fill":"global"};
     }
     function readUITheme(){
         try{return normalizeUITheme(JSON.parse(localStorage.getItem(UI_THEME_KEY)||"null"));}catch(e){return normalizeUITheme();}
     }
     function themePalette(theme){
         var main=theme.color;
-        return {main:main,border:mixThemeColor(main,"#6b5600",.48),strong:mixThemeColor(main,"#554300",.62),text:mixThemeColor(main,"#251f0d",.76),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
+        return {main:main,border:mixThemeColor(main,"#4b3f4d",.46),strong:mixThemeColor(main,"#342d36",.60),text:mixThemeColor(main,"#262228",.76),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
     }
     window.applyUITheme=function(theme,persist){
         theme=normalizeUITheme(theme);var p=themePalette(theme),root=document.documentElement.style;
@@ -1767,7 +1769,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         if(theme.scope==="global"){
             root.setProperty("--baby-yellow-soft",p.soft);root.setProperty("--baby-yellow-muted",p.muted);root.setProperty("--ui-theme-body",p.body);
         }else{
-            root.setProperty("--baby-yellow-soft","#fffbea");root.setProperty("--baby-yellow-muted","#fff7c7");root.setProperty("--ui-theme-body","#fffdf5");
+            root.setProperty("--baby-yellow-soft","#fffaf0");root.setProperty("--baby-yellow-muted","#f8ebbd");root.setProperty("--ui-theme-body","#fffdf7");
         }
         if(persist!==false){try{localStorage.setItem(UI_THEME_KEY,JSON.stringify(theme));}catch(e){}}
         return theme;
@@ -1778,20 +1780,21 @@ setTimeout(function installFinalUserRequestedFixes(){
         return color?{preset:preset,color:color,scope:scope?scope.value:"global"}:null;
     }
     window.selectUIThemePreset=function(preset){
-        A(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.toggle("selected",x.dataset.preset===preset);});
+        Array.from(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.toggle("selected",x.dataset.preset===preset);});
         var custom=$("uiThemeCustomHex"),picker=$("uiThemeColorPicker"),color=UI_THEME_PRESETS[preset]&&UI_THEME_PRESETS[preset].color;
         if(color){custom.value=color;picker.value=color;}previewUITheme();
     };
     window.syncCustomUITheme=function(value){
         var color=validThemeHex(value);if(!color)return;
-        A(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.remove("selected");});
+        Array.from(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.remove("selected");});
         if($("uiThemeCustomHex"))$("uiThemeCustomHex").value=color;if($("uiThemeColorPicker"))$("uiThemeColorPicker").value=color;previewUITheme();
     };
     window.previewUITheme=function(){
         var theme=selectedThemeFromPanel();if(!theme)return;
         var p=themePalette(theme),box=$("uiThemePreview"),chip=$("uiThemePreviewChip");
-        if(box){box.style.background=theme.scope==="global"?p.soft:"#fffbea";box.style.borderColor=p.border;}
+        if(box){box.style.background=theme.scope==="global"?p.soft:"#fffaf0";box.style.borderColor=p.border;}
         if(chip){chip.style.background=p.main;chip.style.borderColor=p.border;chip.style.color=p.text;}
+        applyUITheme(theme,false);
     };
     window.saveUITheme=function(){
         var theme=selectedThemeFromPanel();if(!theme)return alert("请输入有效的十六进制色号，例如 #bfe3ff。");
@@ -1803,7 +1806,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.openUIThemeSettings=function(){
         var theme=readUITheme(),swatches=Object.keys(UI_THEME_PRESETS).map(function(key){var item=UI_THEME_PRESETS[key],border=themePalette({color:item.color}).border;return `<button type="button" class="ui-theme-swatch ${theme.preset===key?"selected":""}" data-preset="${key}" style="--swatch-color:${item.color};--swatch-border:${border};" onclick="selectUIThemePreset('${key}')">${item.name}</button>`;}).join("");
         $("mInfoTitle").innerText="更改 UI 颜色";
-        $("mInfoContent").innerHTML=`<p style="font-size:12px;color:#666;line-height:1.6;">选择预设色或输入自定义色号。描边会自动生成比主色更深的颜色。</p><div class="ui-theme-swatches">${swatches}</div><label>自定义颜色</label><div style="display:grid;grid-template-columns:52px 1fr;gap:8px;"><input id="uiThemeColorPicker" type="color" value="${theme.color}" style="height:42px;padding:3px;" oninput="syncCustomUITheme(this.value)"><input id="uiThemeCustomHex" value="${theme.color}" placeholder="#bfe3ff" oninput="syncCustomUITheme(this.value)"></div><label>应用范围</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;"><input type="radio" name="uiThemeScope" value="fill" ${theme.scope==="fill"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">只更改主填充和对应描边</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;"><input type="radio" name="uiThemeScope" value="global" ${theme.scope==="global"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">全局覆盖主题背景、次级按钮和文字</label><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复 Baby Yellow</button>`;
+        $("mInfoContent").innerHTML=`<p style="font-size:12px;color:#666;line-height:1.6;">选择预设色或输入自定义色号。描边会自动生成比主色更深的同系颜色。</p><div class="ui-theme-swatches">${swatches}</div><label>自定义颜色</label><div style="display:grid;grid-template-columns:52px 1fr;gap:8px;"><input id="uiThemeColorPicker" type="color" value="${theme.color}" style="height:42px;padding:3px;" oninput="syncCustomUITheme(this.value)"><input id="uiThemeCustomHex" value="${theme.color}" placeholder="#bfe3ff" oninput="syncCustomUITheme(this.value)"></div><label>应用范围</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;"><input type="radio" name="uiThemeScope" value="fill" ${theme.scope==="fill"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">只更改主填充和对应描边</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;"><input type="radio" name="uiThemeScope" value="global" ${theme.scope==="global"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">全局覆盖主题背景、次级按钮和文字</label><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复默认 Baby Yellow</button>`;
         $("mInfo").classList.add("open");previewUITheme();
     };
     applyUITheme(readUITheme(),false);
@@ -2071,15 +2074,15 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 .modal { pointer-events: none !important; }
 .modal-box { pointer-events: auto !important; }
 
-/* Baby Yellow UI theme: only replaces the original ochre theme palette. */
+/* Muted cream yellow is the default theme; brighter colors remain optional. */
 :root {
-  --baby-yellow: #fff2a8;
-  --baby-yellow-soft: #fffbea;
-  --baby-yellow-muted: #fff7c7;
-  --baby-yellow-border: #d8b52f;
-  --baby-yellow-strong: #bd9413;
-  --baby-yellow-text: #705900;
-  --ui-theme-body: #fffdf5;
+  --baby-yellow: #f1d477;
+  --baby-yellow-soft: #fffaf0;
+  --baby-yellow-muted: #f8ebbd;
+  --baby-yellow-border: #b99a3f;
+  --baby-yellow-strong: #977a2f;
+  --baby-yellow-text: #66531f;
+  --ui-theme-body: #fffdf7;
 }
 
 body { background:var(--ui-theme-body); }
@@ -2090,6 +2093,7 @@ button:not([style*="background"]),.top-btn:not([style*="background"]),.nav-btn.a
   color:#2f280d !important;
   border-color:var(--baby-yellow-border) !important;
 }
+button:active,.top-btn:active { background:var(--baby-yellow-strong) !important;color:#fff !important; }
 button.sec:not([style*="background"]) {
   background:var(--baby-yellow-muted) !important;
   color:#3f3515 !important;
@@ -2137,6 +2141,10 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
 .ui-theme-swatch.selected { box-shadow:0 0 0 3px rgba(17,24,39,.14); }
 .ui-theme-preview { padding:12px;border:2px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);border-radius:8px;margin:10px 0; }
 .ui-theme-preview-chip { display:inline-block;padding:6px 12px;border-radius:6px;background:var(--baby-yellow);border:1px solid var(--baby-yellow-border);font-size:12px;font-weight:bold;color:#2f280d; }
+
+#loginPage { background:#fffdf7 !important; }
+#loginPage .card { border:1px solid var(--baby-yellow-border);background:#fff !important; }
+#loginPage h2,#createPage > h2 { color:var(--baby-yellow-text) !important; }
 
 
 </style>
