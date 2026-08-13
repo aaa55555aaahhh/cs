@@ -809,8 +809,8 @@ setTimeout(function installFinalUserRequestedFixes(){
         modal = document.createElement("div");
         modal.id = "mAlbumSingleManager";
         modal.className = "modal";
-        modal.innerHTML = `<div class="modal-content" style="max-width:560px;">
-            <span class="close" onclick="closeM('mAlbumSingleManager')">&times;</span>
+        modal.innerHTML = `<div class="modal-box" style="max-width:560px;background:#fff;color:#111;">
+            <button class="modal-x" onclick="closeM('mAlbumSingleManager')">关闭</button>
             <h3 id="mAlbumSingleManagerTitle" class="tg">打单管理</h3>
             <div id="mAlbumSingleManagerContent"></div>
         </div>`;
@@ -982,8 +982,8 @@ setTimeout(function installFinalUserRequestedFixes(){
         modal = document.createElement("div");
         modal.id = "mAwardHallEditor";
         modal.className = "modal";
-        modal.innerHTML = `<div class="modal-content" style="max-width:660px;">
-            <span class="close" onclick="closeM('mAwardHallEditor')">&times;</span>
+        modal.innerHTML = `<div class="modal-box" style="max-width:660px;background:#fff;color:#111;">
+            <button class="modal-x" onclick="closeM('mAwardHallEditor')">关闭</button>
             <h3 id="mAwardHallEditorTitle" class="tg">奖项编辑</h3>
             <div id="mAwardHallEditorContent"></div>
         </div>`;
@@ -1146,6 +1146,77 @@ setTimeout(function installFinalUserRequestedFixes(){
         if(!p || !val.trim()) return;
         p.comments.push({me:true,text:val.trim()}); p.likes += Math.floor(Math.random()*300+20); viewPostDetail(p.t,p.c,true);
     };
+
+    function ensureSongPromoLedger(){
+        if(!ad.songPromoLedger || typeof ad.songPromoLedger !== "object") ad.songPromoLedger = {};
+        if(!ad.songPromoLedgerMigrated){
+            A(albs).forEach(function(a){
+                var songs = albumTracks(a);
+                var capped = songs.filter(function(t){return Number(t.promoCount||0) >= 5;});
+                if(capped.length > 1){
+                    var history = A(a.singleHistory);
+                    var keeper = capped.find(function(t){return history[0] === t.id;}) || capped[0];
+                    capped.forEach(function(t){
+                        if(t.id !== keeper.id && !t._independentPromoConfirmed){ t.promoCount = 0; t.promoCountThisWeek = 0; }
+                    });
+                }
+            });
+            ad.songPromoLedgerMigrated = true;
+        }
+        A(trackPool).forEach(function(t){
+            if(!t || !t.id || t.type !== "track") return;
+            if(!ad.songPromoLedger[t.id]) ad.songPromoLedger[t.id] = {total:Math.max(0,Number(t.promoCount||0)),week:Math.max(0,Number(t.promoCountThisWeek||0)),weekKey:""};
+        });
+        return ad.songPromoLedger;
+    }
+    function promoRecord(t){
+        var ledger = ensureSongPromoLedger();
+        var rec = ledger[t.id] || (ledger[t.id]={total:0,week:0,weekKey:""});
+        var key = time.y+"_"+time.m+"_"+time.w;
+        if(rec.weekKey !== key){ rec.week=0; rec.weekKey=key; }
+        t.promoCount=rec.total; t.promoCountThisWeek=rec.week;
+        return rec;
+    }
+    window.performSongPromoById = function(id, showName){
+        var t = findTrack(id); if(!t) return alert("找不到这首歌。");
+        var rec = promoRecord(t);
+        if(rec.total >= 5) return alert("《"+t.n+"》的宣传次数已达上限（5次）。其他歌曲的次数不受影响。");
+        if(rec.week >= 7) return alert("《"+t.n+"》本周通告已排满，请下周再来。");
+        if(typeof costEnergy === "function" && !costEnergy(10)) return;
+        if(typeof advHour === "function") advHour(24);
+        var base = Math.max(50000, Number(t.stmGlobal_Week||0)*7 || Number(t.stmGlobal||0));
+        var normalBoost = Math.floor((base*0.15*(ad.Geffect||1)+100000)*Math.pow(0.72,rec.total));
+        var skill = ((ad.sk&&ad.sk.s)||0)*0.6 + ((ad.sk&&ad.sk.v)||0)*0.4;
+        var godChance = Math.min(0.02,0.008 + Math.max(0,skill-700)/150000);
+        var isGod = Math.random() < godChance;
+        var extra = isGod ? Math.floor(normalBoost*(3+Math.random()*3)) : Math.min(normalBoost,3000000+Math.floor(Math.random()*350000));
+        t.stmGlobal=Number(t.stmGlobal||0)+extra;
+        t.stmGlobal_Week=Number(t.stmGlobal_Week||0)+Math.floor(extra/7);
+        t.stmGlobal_Day=Number(t.stmGlobal_Day||0)+Math.floor(extra/7);
+        t.stmUS=Number(t.stmUS||0)+Math.floor(extra*0.35);
+        t.stmUS_Week=Number(t.stmUS_Week||0)+Math.floor(extra*0.35/7);
+        t.slTotal=Number(t.slTotal||0)+Math.floor(extra/150);
+        t.longViral=Number(t.longViral||0)+(isGod?8:4);
+        t.viralBoost=Number(t.viralBoost||1)+(isGod?0.35:0.12);
+        rec.total++; rec.week++; t.promoCount=rec.total; t.promoCountThisWeek=rec.week; t._independentPromoConfirmed=true;
+        if(typeof updatePeakRanks === "function") updatePeakRanks();
+        saveGame();
+        alert((isGod?"神级现场爆发！\n":"现场宣传成功！\n")+"《"+t.n+"》在"+(showName||"电视舞台")+"增加流媒 "+extra.toLocaleString()+"。\n该歌曲宣传次数："+rec.total+"/5"+(isGod?"\n神级现场不受300万上限限制。":""));
+        return true;
+    };
+    window.promoAlbSong = function(id){ return performSongPromoById(id,"现场通告"); };
+    var baseConfirmPickIndependentPromo = window.confirmPick;
+    window.confirmPick = async function(){
+        if(pickAction === "tvPromoFree"){
+            var radio = document.querySelector("input[name='tvR']:checked");
+            if(!radio) return alert("请先选择一首要打单的歌曲。");
+            var ok = performSongPromoById(radio.value,window.currentPromoShow||"电视台");
+            if(ok) closeM("mPick");
+            return;
+        }
+        if(typeof baseConfirmPickIndependentPromo === "function") return baseConfirmPickIndependentPromo.apply(this,arguments);
+    };
+    ensureSongPromoLedger();
 
     window.calculateRealisticScore = function(rawScore, aiAdj){
         var raw = Number(rawScore)||80, adj = Number(aiAdj)||0, luck = Math.random();
