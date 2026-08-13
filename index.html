@@ -906,6 +906,7 @@ setTimeout(function installFinalUserRequestedFixes(){
             <div class="card">乐评分：<b>${Number(t.Spub||0).toFixed(1)}</b><br>SPO全球：${rk(t.lastW)}　SPO美国/BB：${rk(t.lastB)}<br>全球流媒：${(t.stmGlobal||0).toLocaleString()}<br>销量：${(t.slTotal||0).toLocaleString()}</div>
             <button onclick="openSongChartDetail('${t.id}')">📊 打开详细榜单数据</button>
             <button class="sec" onclick="openVideoDetail('${t.id}','mv')">▶ 打开 YouTube 视频页</button>
+            <button class="sec" onclick="openSongAudioPanel('${t.id}')">歌曲音频 / 录音</button>
         </div>`;
         $("mGameInputField").style.display = "none";
         $("mGameInput").classList.add("open");
@@ -931,10 +932,12 @@ setTimeout(function installFinalUserRequestedFixes(){
         var html = `<p style="font-size:12px;color:#666;">每个奖项最多报名 1 首歌、1 张专辑、1 支 MV；艺人奖默认报名你本人。</p>`;
         html += awds.map(function(awd,i){
             var key = (time.y)+"_"+awd.id, sub = ad.awardData.submissions[key] || {};
+            var covers = albums.map(function(t){return {id:"album:"+t.id,n:t.n+"（专辑封面）"};}).concat(tracks.filter(function(t){return t.isTitleSingle||t.hasRealMV||(ad.covers&&ad.covers.tracks&&ad.covers.tracks[t.id]);}).map(function(t){return {id:"track:"+t.id,n:t.n+"（单曲封面）"};}));
             return `<div class="card"><b>${E(awd.name)}</b><br>
                 <label style="font-size:12px;">歌曲</label><select id="finalSubTrack_${i}"><option value="">不报名歌曲</option>${tracks.map(function(t){return `<option value="${t.id}" ${sub.track===t.id?"selected":""}>${E(t.n)}</option>`;}).join("")}</select>
                 <label style="font-size:12px;">专辑</label><select id="finalSubAlbum_${i}"><option value="">不报名专辑</option>${albums.map(function(t){return `<option value="${t.id}" ${sub.album===t.id?"selected":""}>${E(t.n)}</option>`;}).join("")}</select>
                 <label style="font-size:12px;">MV</label><select id="finalSubMV_${i}"><option value="">不报名MV</option>${tracks.filter(function(t){return t.mvN>0||t.hasRealMV||t.hasLyricMV;}).map(function(t){return `<option value="${t.id}" ${sub.mv===t.id?"selected":""}>${E(t.n)}</option>`;}).join("")}</select>
+                <label style="font-size:12px;">封面</label><select id="finalSubCover_${i}"><option value="">不报名封面</option>${covers.map(function(c){return `<option value="${c.id}" ${sub.cover===c.id?"selected":""}>${E(c.n)}</option>`;}).join("")}</select>
                 <button onclick="saveFinalAwardSubmission('${awd.id}',${i})">保存报名</button></div>`;
         }).join("");
         $("mInfoTitle").innerText = "📢 报名奖项";
@@ -947,6 +950,7 @@ setTimeout(function installFinalUserRequestedFixes(){
             track: ($("finalSubTrack_"+i)||{}).value || "",
             album: ($("finalSubAlbum_"+i)||{}).value || "",
             mv: ($("finalSubMV_"+i)||{}).value || "",
+            cover: ($("finalSubCover_"+i)||{}).value || "",
             artist: "player_self"
         };
         saveGame(); alert("报名已保存。");
@@ -997,7 +1001,7 @@ setTimeout(function installFinalUserRequestedFixes(){
             <div style="display:grid;grid-template-columns:minmax(120px,2fr) minmax(90px,1fr);gap:6px;">
                 <input class="awardCatName" value="${E(c.name||"")}" placeholder="奖项类目名称">
                 <select class="awardCatScope"><option value="general" ${scope==="general"?"selected":""}>通类</option><option value="branch" ${scope==="branch"?"selected":""}>支线</option></select>
-                <select class="awardCatTarget"><option value="track" ${c.targetType==="track"?"selected":""}>歌曲</option><option value="album" ${c.targetType==="album"?"selected":""}>专辑</option><option value="mv" ${c.targetType==="mv"?"selected":""}>MV</option><option value="artist" ${c.targetType==="artist"?"selected":""}>艺人</option></select>
+                <select class="awardCatTarget"><option value="track" ${c.targetType==="track"?"selected":""}>歌曲</option><option value="album" ${c.targetType==="album"?"selected":""}>专辑</option><option value="cover" ${c.targetType==="cover"?"selected":""}>封面</option><option value="mv" ${c.targetType==="mv"?"selected":""}>MV</option><option value="artist" ${c.targetType==="artist"?"selected":""}>艺人</option></select>
                 <input class="awardCatGenre" value="${E(c.targetGenre||"ALL")}" placeholder="曲风/支线，如 流行；通类填 ALL">
             </div>
             <button class="red inline" style="margin-top:6px;" onclick="this.closest('.awardHallCatRow').remove()">删除类目</button>
@@ -1010,7 +1014,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.openAwardHallEditor = function(idx){
         ensureAwardHallEditor();
         var isNew = idx === undefined || idx === null || Number(idx) < 0;
-        var awd = isNew ? {name:"",desc:"",month:12,scope:"general",rules:{weightSpub:0.5,weightSales:0.3,weightCatchy:0.2},categories:[]} : A(awardRegistry)[Number(idx)];
+        var awd = isNew ? {name:"",desc:"",month:12,rules:{weightSpub:0.5,weightSales:0.3,weightCatchy:0.2},categories:[]} : A(awardRegistry)[Number(idx)];
         if(!awd) return;
         window.currentAwardHallEditIndex = isNew ? -1 : Number(idx);
         var rules = awd.rules || {};
@@ -1018,10 +1022,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         $("mAwardHallEditorContent").innerHTML = `<div style="max-height:72vh;overflow-y:auto;">
             <label>奖项名称</label><input id="awardHallName" value="${E(awd.name||"")}">
             <label>奖项说明</label><textarea id="awardHallDesc" style="height:65px;">${E(awd.desc||"")}</textarea>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                <div><label>奖项结构</label><select id="awardHallScope"><option value="general" ${awd.scope!=="branch"?"selected":""}>通类奖项</option><option value="branch" ${awd.scope==="branch"?"selected":""}>支线奖项</option></select></div>
-                <div><label>举办月份</label><input id="awardHallMonth" type="number" min="1" max="12" value="${Number(awd.month||12)}"></div>
-            </div>
+            <label>举办月份</label><input id="awardHallMonth" type="number" min="1" max="12" value="${Number(awd.month||12)}">
             <div class="card" style="font-size:12px;"><b>评选权重</b><br><label>乐评口碑</label><input id="awardHallWSpub" type="number" min="0" step="0.01" value="${Number(rules.weightSpub||0)}"><label>商业成绩</label><input id="awardHallWSales" type="number" min="0" step="0.01" value="${Number(rules.weightSales||0)}"><label>流行度</label><input id="awardHallWCatchy" type="number" min="0" step="0.01" value="${Number(rules.weightCatchy||0)}"></div>
             <h4 class="tg">奖项类目</h4><div id="awardHallCategoryRows">${A(awd.categories).map(awardCategoryEditorRow).join("")}</div>
             <button class="sec" onclick="addAwardHallCategoryRow()">增加类目</button>
@@ -1034,7 +1035,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         $("mAwardHallEditorTitle").innerText = "奖项自定义";
         $("mAwardHallEditorContent").innerHTML = `<div style="max-height:72vh;overflow-y:auto;">
             <button onclick="openAwardHallEditor(-1)">创立新奖项</button>
-            ${A(awardRegistry).map(function(awd,i){return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid #eee;"><div><b>${E(awd.name)}</b><br><span style="font-size:11px;color:#777;">${awd.scope==="branch"?"支线奖项":"通类奖项"}　${A(awd.categories).length} 个类目</span></div><button class="sec inline" style="margin:0;" onclick="openAwardHallEditor(${i})">编辑</button></div>`;}).join("")}
+            ${A(awardRegistry).map(function(awd,i){return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid #eee;"><div><b>${E(awd.name)}</b><br><span style="font-size:11px;color:#777;">${A(awd.categories).length} 个类目，可分别设置通类或支线</span></div><button class="sec inline" style="margin:0;" onclick="openAwardHallEditor(${i})">编辑</button></div>`;}).join("")}
         </div>`;
         $("mAwardHallEditor").classList.add("open");
     };
@@ -1055,7 +1056,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         var idx = Number(window.currentAwardHallEditIndex);
         var old = idx >= 0 ? A(awardRegistry)[idx] : null;
         var awd = old || {id:"awd_custom_"+Date.now()};
-        awd.name=name.trim(); awd.desc=($("awardHallDesc")||{}).value||""; awd.scope=($("awardHallScope")||{}).value||"general"; awd.month=Math.max(1,Math.min(12,Number(($("awardHallMonth")||{}).value||12))); awd.rules={weightSpub:weights[0],weightSales:weights[1],weightCatchy:weights[2]}; awd.categories=cats;
+        awd.name=name.trim(); awd.desc=($("awardHallDesc")||{}).value||""; delete awd.scope; awd.month=Math.max(1,Math.min(12,Number(($("awardHallMonth")||{}).value||12))); awd.rules={weightSpub:weights[0],weightSales:weights[1],weightCatchy:weights[2]}; awd.categories=cats;
         if(!old) awardRegistry.push(awd);
         saveGame(); closeM("mAwardHallEditor"); renderAwardRegistry(); renderAwardsMap(); alert("奖项设置已保存。");
     };
@@ -1124,10 +1125,11 @@ setTimeout(function installFinalUserRequestedFixes(){
         if(!window._loosePostDetail) window._loosePostDetail = {};
         var key = String(title||"帖子")+"::"+String(content||"");
         var p = window._loosePostDetail[key] || (window._loosePostDetail[key] = {t:title||"帖子详情",c:content||"",likes:Math.floor(Math.random()*20000+500),shares:Math.floor(Math.random()*3000+50),comments:platformComments(key)});
+        if(!p.totalComments) p.totalComments = Math.max(A(p.comments).length, Math.floor((p.likes||500)*(0.04+Math.random()*0.12)));
         window._currentLoosePostKey = key;
         var comments = A(p.comments).map(function(c){return `<div style="border-top:1px solid #eee;padding:6px 0;"><b>${E(c.me?"我":"网友")}</b>：${E(c.text)}</div>`;}).join("");
         $("mInfoTitle").innerText = E(p.t);
-        $("mInfoContent").innerHTML = `<div style="font-size:12px;line-height:1.7;"><p>${E(p.c)}</p><div>👍 ${p.likes.toLocaleString()}　➕ 关注　🔁 ${p.shares.toLocaleString()}　💬 ${A(p.comments).length}</div><button class="sec" onclick="generateAICommentsForPost()">AI生成更多评论</button><div style="display:flex;gap:5px;margin:8px 0;"><input id="loosePostCommentInput" placeholder="${isMine?'在自己的帖子下面发评价':'发表评论...'}" style="margin:0;flex:1;"><button class="sec inline" onclick="addLoosePostComment()">发送</button></div>${comments}</div>`;
+        $("mInfoContent").innerHTML = `<div style="font-size:12px;line-height:1.7;"><p>${E(p.c)}</p><div>👍 ${p.likes.toLocaleString()}　➕ 关注　🔁 ${p.shares.toLocaleString()}　💬 ${p.totalComments.toLocaleString()}</div><button class="sec" onclick="generateAICommentsForPost()">AI生成更多评论</button><div style="display:flex;gap:5px;margin:8px 0;"><input id="loosePostCommentInput" placeholder="${isMine?'在自己的帖子下面发评价':'发表评论...'}" style="margin:0;flex:1;"><button class="sec inline" onclick="addLoosePostComment()">发送</button></div>${comments}<div style="padding:8px 0;color:#888;text-align:center;">……还有 ${(Math.max(0,p.totalComments-A(p.comments).length)).toLocaleString()} 条评论未显示</div></div>`;
         $("mInfo").classList.add("open");
     };
     window.generateAICommentsForPost = async function(){
@@ -1139,12 +1141,13 @@ setTimeout(function installFinalUserRequestedFixes(){
         } else {
             platformComments(key + Date.now()).forEach(function(c){p.comments.push(c);});
         }
+        p.totalComments = Math.max(p.totalComments||0,p.comments.length) + Math.floor(Math.random()*180+40);
         viewPostDetail(p.t,p.c,false);
     };
     window.addLoosePostComment = function(){
         var key = window._currentLoosePostKey, p = window._loosePostDetail && window._loosePostDetail[key], val = ($("loosePostCommentInput")||{}).value || "";
         if(!p || !val.trim()) return;
-        p.comments.push({me:true,text:val.trim()}); p.likes += Math.floor(Math.random()*300+20); viewPostDetail(p.t,p.c,true);
+        p.comments.push({me:true,text:val.trim()}); p.totalComments=Math.max(p.totalComments||0,p.comments.length-1)+1; p.likes += Math.floor(Math.random()*300+20); viewPostDetail(p.t,p.c,true);
     };
 
     function ensureSongPromoLedger(){
@@ -1217,6 +1220,212 @@ setTimeout(function installFinalUserRequestedFixes(){
         if(typeof baseConfirmPickIndependentPromo === "function") return baseConfirmPickIndependentPromo.apply(this,arguments);
     };
     ensureSongPromoLedger();
+
+    var immersiveMediaMemory = {};
+    function mediaDb(){
+        return new Promise(function(resolve,reject){
+            if(!window.indexedDB) return resolve(null);
+            var req=indexedDB.open("starProducerMedia",1);
+            req.onupgradeneeded=function(){if(!req.result.objectStoreNames.contains("files"))req.result.createObjectStore("files");};
+            req.onsuccess=function(){resolve(req.result);}; req.onerror=function(){resolve(null);};
+        });
+    }
+    async function saveImmersiveMedia(key,file){
+        immersiveMediaMemory[key]=file;
+        var db=await mediaDb(); if(!db)return;
+        await new Promise(function(resolve){var tx=db.transaction("files","readwrite");tx.objectStore("files").put(file,key);tx.oncomplete=resolve;tx.onerror=resolve;});
+    }
+    async function loadImmersiveMedia(key){
+        if(immersiveMediaMemory[key])return immersiveMediaMemory[key];
+        var db=await mediaDb(); if(!db)return null;
+        return await new Promise(function(resolve){var req=db.transaction("files","readonly").objectStore("files").get(key);req.onsuccess=function(){resolve(req.result||null);};req.onerror=function(){resolve(null);};});
+    }
+    function fallbackVideoArt(t,type){
+        var label=type==="fancam"?"打单直拍":(type==="show"?"综艺":"MV");
+        var cover=(ad.covers&&ad.covers.videos&&ad.covers.videos[t.id+"_"+type])||(ad.covers&&ad.covers.tracks&&ad.covers.tracks[t.id]);
+        return cover||("data:image/svg+xml;charset=UTF-8,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='800' height='450'><rect width='100%' height='100%' fill='#202124'/><text x='50%' y='46%' fill='white' font-size='42' text-anchor='middle' font-family='Arial'>"+E(t.n).slice(0,24)+"</text><text x='50%' y='60%' fill='#d1d5db' font-size='24' text-anchor='middle' font-family='Arial'>"+label+"</text></svg>"));
+    }
+    function ensureVideoPost(t,type){
+        if(!t.videoPosts)t.videoPosts=[];
+        var v=A(t.videoPosts).find(function(x){return x.type===type;});
+        if(!v){v={type:type,likes:Math.floor((t.stmGlobal||0)/300),shares:Math.floor((t.stmGlobal||0)/1500),comments:platformComments(t.id+type)};t.videoPosts.push(v);}
+        if(!A(v.comments).length)v.comments=platformComments(t.id+type);
+        if(!v.totalComments)v.totalComments=Math.max(v.comments.length,Math.floor(Math.max(200,v.likes||0)*(0.035+Math.random()*0.09)));
+        return v;
+    }
+    function youtubeNav(active){
+        return `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-bottom:10px;"><button class="${active==='mv'?'':'sec'}" style="font-size:10px;padding:8px 2px;" onclick="openYouTubeBranch('mv')">MV</button><button class="${active==='fancam'?'':'sec'}" style="font-size:10px;padding:8px 2px;" onclick="openYouTubeBranch('fancam')">打单直拍</button><button class="${active==='show'?'':'sec'}" style="font-size:10px;padding:8px 2px;" onclick="openYouTubeBranch('show')">综艺</button><button class="${active==='recommend'?'':'sec'}" style="font-size:10px;padding:8px 2px;" onclick="openYouTubeBranch('recommend')">主页推荐</button></div>`;
+    }
+    window.openYouTubeBranch=function(type){
+        var tracks=A(trackPool).filter(function(t){return t&&t.type==="track";}).sort(function(a,b){return (b._entityCreatedAt||b.stmGlobal||0)-(a._entityCreatedAt||a.stmGlobal||0);});
+        var list=type==="recommend"?tracks.slice(0,12):tracks.filter(function(t){return t.isMe;});
+        var branch=type==="recommend"?"mv":type;
+        var title=type==="recommend"?"主页推荐":(type==="fancam"?"打单直拍":(type==="show"?"综艺":"我的 MV"));
+        var rows=list.map(function(t){var art=fallbackVideoArt(t,branch),label=branch==="fancam"?"打单直拍":(branch==="show"?"综艺":"MV");return `<div onclick="openVideoDetail('${t.id}','${branch}')" style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:9px;padding:9px 0;border-bottom:1px solid #eee;cursor:pointer;"><img src="${art}" style="width:96px;height:54px;object-fit:cover;background:#202124;"><div><b style="font-size:12px;">${E(t.n)} ${label}</b><br><span style="font-size:10px;color:#777;">${E(t.artist||ad.s||"频道")}　播放 ${(Number(t.stmGlobal||0)+(t.mvN||0)*100000).toLocaleString()}</span></div></div>`;}).join("");
+        $("mInfoTitle").innerText="YouTube · "+title;
+        $("mInfoContent").innerHTML=youtubeNav(type)+`<div style="max-height:65vh;overflow-y:auto;">${rows||"暂无内容"}</div>`;
+        $("mInfo").classList.add("open");
+    };
+    window.openYouTube=function(){openYouTubeBranch("mv");};
+    window.openVideoDetail=async function(songId,type){
+        var t=findTrack(songId);if(!t)return;
+        type=type||"mv";var vid=ensureVideoPost(t,type),label=type==="fancam"?"打单直拍":(type==="show"?"综艺":"MV");
+        var key="videoContent_"+t.id+"_"+type,file=await loadImmersiveMedia(key),media="";
+        if(file){var url=URL.createObjectURL(file);media=file.type.indexOf("video/")===0?`<video src="${url}" controls playsinline style="width:100%;max-height:300px;background:#111;"></video>`:`<img src="${url}" style="width:100%;max-height:300px;object-fit:contain;background:#111;">`;}
+        else media=`<img src="${fallbackVideoArt(t,type)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;background:#202124;">`;
+        var comments=A(vid.comments).map(function(c){return `<div style="padding:7px 0;border-bottom:1px solid #eee;"><b>${E(c.me?"我":"粉丝")}</b>：${E(c.text)}</div>`;}).join("");
+        $("mInfoTitle").innerText=t.n+" · "+label;
+        $("mInfoContent").innerHTML=`<div style="max-height:72vh;overflow-y:auto;">${media}<div style="font-size:11px;color:#777;margin:7px 0;">封面和视频内容均为选填，不上传时显示歌名色块。</div><label>上传封面（选填）</label><input type="file" accept="image/*" onchange="setVideoCoverFromInput(this,'${t.id}','${type}')"><label>上传视频内容（图片或视频，选填）</label><input type="file" accept="image/*,video/*" onchange="setVideoContentFromInput(this,'${t.id}','${type}')"><h3 style="font-size:15px;">${E(t.n)} ${label}</h3><div style="font-size:12px;">点赞 ${vid.likes.toLocaleString()}　评论 ${vid.totalComments.toLocaleString()}　分享 ${vid.shares.toLocaleString()}</div><button class="sec" onclick="generateVideoFanReviews('${t.id}','${type}')">AI / 本地生成粉丝评价</button><div style="display:flex;gap:5px;margin:8px 0;"><input id="videoCommentInput" placeholder="发表评论" style="margin:0;"><button class="sec inline" onclick="addVideoComment('${t.id}','${type}')">发送</button></div><div>${comments}<div style="padding:8px;text-align:center;color:#888;">……还有 ${Math.max(0,vid.totalComments-A(vid.comments).length).toLocaleString()} 条评论未显示</div></div></div>`;
+        $("mInfo").classList.add("open");saveGame();
+    };
+    window.setVideoContentFromInput=async function(input,id,type){if(!input.files||!input.files[0])return;await saveImmersiveMedia("videoContent_"+id+"_"+type,input.files[0]);openVideoDetail(id,type);};
+    window.generateVideoFanReviews=async function(id,type){
+        var t=findTrack(id),v=t&&ensureVideoPost(t,type);if(!v)return;
+        var token=$("apiToken")?$("apiToken").value:"";
+        if(token&&typeof api==="function"){var res=await api("为歌曲《"+t.n+"》的"+(type==="show"?"综艺片段":type==="fancam"?"打单直拍":"MV")+"生成5条真实简短的粉丝评论，每条一行");if(res)res.split(/\n+/).slice(0,5).forEach(function(x){if(x.trim())v.comments.push({me:false,text:x.replace(/^[-\d.\s]+/,"").trim()});});}
+        else platformComments(t.id+type+Date.now()).forEach(function(c){v.comments.push(c);});
+        v.totalComments=Math.max(v.totalComments||0,v.comments.length)+Math.floor(Math.random()*220+50);
+        saveGame();openVideoDetail(id,type);
+    };
+    window.addVideoComment=function(id,type){var t=findTrack(id),val=($("videoCommentInput")||{}).value||"",v=t&&ensureVideoPost(t,type);if(!v||!val.trim())return;v.comments.push({me:true,text:val.trim()});v.totalComments=Math.max(v.totalComments||0,v.comments.length-1)+1;v.likes+=Math.floor(Math.random()*200+20);saveGame();openVideoDetail(id,type);};
+
+    var songRecorder=null,songRecorderChunks=[];
+    window.setSongAudioFromInput=async function(input,id){if(!input.files||!input.files[0])return;await saveImmersiveMedia("songAudio_"+id,input.files[0]);openSongAudioPanel(id);};
+    window.openSongAudioPanel=async function(id){var t=findTrack(id);if(!t)return;var file=await loadImmersiveMedia("songAudio_"+id),player=file?`<audio controls src="${URL.createObjectURL(file)}" style="width:100%;"></audio>`:`<button class="sec" onclick="playDefaultSongPreview('${id}')">播放默认歌曲片段</button>`;$("mInfoTitle").innerText=t.n+" · 音频";$("mInfoContent").innerHTML=`${player}<p style="font-size:11px;color:#777;">上传和录音均为选填；没有上传时歌曲仍默认拥有音频并可正常游玩。</p><input type="file" accept="audio/*" onchange="setSongAudioFromInput(this,'${id}')"><button class="sec" onclick="startSongRecording('${id}')">开始录音</button><button class="sec" onclick="stopSongRecording()">停止并保存录音</button>`;$("mInfo").classList.add("open");};
+    window.playDefaultSongPreview=function(id){var t=findTrack(id),ctx=new (window.AudioContext||window.webkitAudioContext)(),now=ctx.currentTime;[0,4,7,11].forEach(function(n,i){var o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=220*Math.pow(2,n/12);g.gain.setValueAtTime(0.001,now+i*.28);g.gain.exponentialRampToValueAtTime(.08,now+i*.28+.03);g.gain.exponentialRampToValueAtTime(.001,now+i*.28+.25);o.connect(g).connect(ctx.destination);o.start(now+i*.28);o.stop(now+i*.28+.28);});};
+    window.startSongRecording=async function(id){try{var stream=await navigator.mediaDevices.getUserMedia({audio:true});songRecorderChunks=[];songRecorder=new MediaRecorder(stream);songRecorder._songId=id;songRecorder.ondataavailable=function(e){if(e.data.size)songRecorderChunks.push(e.data);};songRecorder.onstop=async function(){var blob=new Blob(songRecorderChunks,{type:songRecorder.mimeType||"audio/webm"});stream.getTracks().forEach(function(x){x.stop();});await saveImmersiveMedia("songAudio_"+id,blob);openSongAudioPanel(id);};songRecorder.start();alert("录音已开始。");}catch(e){alert("浏览器未授权麦克风，仍可上传音频或使用默认音频。");}};
+    window.stopSongRecording=function(){if(songRecorder&&songRecorder.state!=="inactive")songRecorder.stop();};
+
+    var baseAwardCandidatesWithCover=window.getAwardTop5;
+    window.getAwardTop5=function(awd,cat,year){
+        if(!cat||cat.targetType!=="cover") return typeof baseAwardCandidatesWithCover==="function"?baseAwardCandidatesWithCover(awd,cat,year):[];
+        ensureAwardDataFinal();
+        var candidates=[];
+        A(trackPool).filter(function(t){return t&&(t.type==="album"||t.type==="track");}).forEach(function(t){
+            var kind=t.type==="album"?"album":"track";
+            var custom=!!(ad.covers&&ad.covers[kind==="album"?"albums":"tracks"]&&ad.covers[kind==="album"?"albums":"tracks"][t.id]);
+            if(kind==="track"&&!custom&&!t.isTitleSingle&&!t.hasRealMV)return;
+            var visual=custom?95:(70+Math.abs(String(t.n||"").split("").reduce(function(s,c){return s+c.charCodeAt(0);},0))%21);
+            candidates.push({id:kind+":"+t.id,n:t.n+"（"+(kind==="album"?"专辑":"单曲")+"封面）",artist:t.isMe?ad.s:(t.artist||"未知"),isMe:!!t.isMe,score:visual*10000+Number(t.Spub||50)*3000+Math.random()*150000});
+        });
+        var sub=ad.awardData.submissions[year+"_"+awd.id]||{};
+        if(sub.cover&&!candidates.some(function(x){return x.id===sub.cover;})){
+            var parts=String(sub.cover).split(":"),entity=findTrack(parts.slice(1).join(":"));
+            if(entity)candidates.push({id:sub.cover,n:entity.n+"（封面）",artist:ad.s,isMe:true,score:Number(entity.Spub||50)*3000+900000});
+        }
+        return candidates.sort(function(a,b){return b.score-a.score;}).slice(0,5);
+    };
+
+    window.uploadMyAvatar=function(input){
+        var file=input&&input.files&&input.files[0];if(!file)return;
+        if(!/^image\//.test(file.type||"")){input.value="";return alert("请选择图片文件。");}
+        var reader=new FileReader();
+        reader.onload=function(ev){
+            var img=new Image();
+            img.onload=function(){
+                try{
+                    var size=240,canvas=document.createElement("canvas"),ctx=canvas.getContext("2d");canvas.width=size;canvas.height=size;
+                    var scale=Math.max(size/img.width,size/img.height),w=img.width*scale,h=img.height*scale;
+                    ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+                    ad.avatar=canvas.toDataURL("image/jpeg",0.86);
+                }catch(e){ad.avatar=String(ev.target.result||"");}
+                input.value="";
+                if(typeof updAttr==="function")updAttr();
+                A(document.querySelectorAll("#boxBasic img")).forEach(function(el){el.src=ad.avatar;});
+                saveGame();alert("头像上传/更换成功。");
+            };
+            img.onerror=function(){input.value="";alert("图片无法读取，请换一张图片。");};
+            img.src=ev.target.result;
+        };
+        reader.onerror=function(){input.value="";alert("图片读取失败。");};
+        reader.readAsDataURL(file);
+    };
+
+    var baseHardStatsFiveSongs=window.getHardCoreStatsTop5;
+    window.getHardCoreStatsTop5=function(artistName,isMe){
+        var stats=typeof baseHardStatsFiveSongs==="function"?baseHardStatsFiveSongs(artistName,isMe):{};
+        var tracks=A(trackPool).filter(function(t){return t&&t.type==="track"&&(t.artist===artistName||(isMe&&t.isMe));});
+        stats.top5Art=tracks.slice().sort(function(a,b){return Number(b.Spub||0)-Number(a.Spub||0);}).slice(0,5);
+        stats.artListText=stats.top5Art.map(function(t,i){return (i+1)+".《"+t.n+"》 "+Number(t.Spub||0).toFixed(1)+"分";}).join("；")||"暂无作品";
+        stats.artSumTop5=stats.top5Art.reduce(function(sum,t){return sum+Number(t.Spub||0);},0);
+        return stats;
+    };
+    var baseGeneratePostFiveSongs=window.generateVarietyPost;
+    window.generateVarietyPost=function(){
+        var post=typeof baseGeneratePostFiveSongs==="function"?baseGeneratePostFiveSongs():null;
+        if(!post||!post.desc||String(post.desc).indexOf("均分")<0)return post;
+        var m=String(post.title||"").match(/】(.+?) VS (.+?)(?:，|\s+巅峰|\s+数据|$)/);
+        if(!m)return post;
+        var aName=m[1].trim(),bName=m[2].trim(),aStats=getHardCoreStatsTop5(aName,aName===ad.s),bStats=getHardCoreStatsTop5(bName,bName===ad.s);
+        post.desc=String(post.desc).split("\n").map(function(line){
+            if(line.indexOf("均分")>=0&&line.indexOf("【")>=0)return "【音乐乐评：双方最高五首歌曲逐项对比】";
+            if(line.indexOf("乐评均分")>=0||line.indexOf("最高5首乐评均分")>=0)return aName+"："+aStats.artListText+"\n"+bName+"："+bStats.artListText;
+            return line;
+        }).join("\n");
+        return post;
+    };
+
+    function ensureArtistCollabMail(){
+        if(!ad.artistCollabMail||typeof ad.artistCollabMail!=="object")ad.artistCollabMail={};
+        if(!ad.acceptedArtistCollabs)ad.acceptedArtistCollabs=[];
+        var key=time.y+"_"+time.m+"_"+time.w;
+        if(!Object.prototype.hasOwnProperty.call(ad.artistCollabMail,key)&&A(worldArtists).length){
+            var seed=Math.abs((time.y*100+time.m*10+time.w)+(ad.s||"").split("").reduce(function(s,c){return s+c.charCodeAt(0);},0));
+            var npc=A(worldArtists)[seed%A(worldArtists).length];
+            var relText=npc&&npc.relations&&npc.relations.player_self?npc.relations.player_self.p:"陌生";
+            var relPoints={"坏血":-0.04,"讨厌":-0.025,"陌生":0,"朋友":0.08,"好朋友":0.16,"恋人":0.22,"伴侣":0.25}[relText]||0;
+            var contact=A(conts).find(function(c){return c&&c.n===npc.n;}),affinity=contact?Number(contact.affinity||0):0;
+            var affinityBonus=Math.max(0,Math.min(0.14,affinity/700));
+            var fanRank=A(worldArtists).filter(function(x){return Number(x.fans||0)>Number(ad.st&&ad.st.f||0);}).length+1;
+            var fameBonus=Math.max(0,Math.min(0.18,Math.log10(Math.max(1000,Number(ad.st&&ad.st.f||0)))-5)*0.055)+Math.max(0,20-fanRank)*0.003;
+            var recent=A(trackPool).filter(function(t){return t&&t.isMe&&t.type==="track"&&Number(t.weeks||99)<=12;});
+            var recentBonus=Math.min(0.12,recent.reduce(function(best,t){var chart=(Number(t.peakS||999)<=20||Number(t.peakB||999)<=20)?0.07:0;var stream=Math.min(0.05,Number(t.stmGlobal||0)/1000000000);return Math.max(best,chart+stream);},0));
+            var chance=Math.max(0.01,Math.min(0.62,0.035+relPoints+affinityBonus+fameBonus+recentBonus));
+            var cooldown=Number(ad.lastArtistCollabInviteSerial||-99),serial=time.y*48+(time.m-1)*4+time.w;
+            if(serial-cooldown<3)chance=0;
+            var roll=(Math.abs(Math.sin(seed*12.9898)*43758.5453)%1);
+            if(roll<chance){
+                var type=seed%2===0?"Feat.":"Wish";
+                ad.artistCollabMail[key]={id:"artist_collab_"+key,npcId:npc.id,npcName:npc.n,type:type,status:"pending",chance:chance};
+                ad.lastArtistCollabInviteSerial=serial;
+            }else ad.artistCollabMail[key]=null;
+        }
+        return ad.artistCollabMail[key]||null;
+    }
+    window.acceptArtistCollabMail=function(mailId){
+        var invite=null;
+        Object.keys(ad.artistCollabMail||{}).some(function(k){var x=ad.artistCollabMail[k];if(x&&x.id===mailId){invite=x;return true;}return false;});
+        if(!invite||invite.status!=="pending")return alert("该合作邀约已经处理过了。");
+        invite.status="accepted";invite.acceptedAt={y:time.y,m:time.m,w:time.w};
+        ad.acceptedArtistCollabs.push({id:invite.id,npcId:invite.npcId,npcName:invite.npcName,type:invite.type,status:"planning"});
+        var typeInput=$("inFeatType"),featInput=$("inFeat");
+        if(typeInput){
+            if(invite.type==="Wish"&&!A(typeInput.options).some(function(o){return o.value==="Wish";}))typeInput.insertAdjacentHTML("beforeend",'<option value="Wish">Wish</option>');
+            typeInput.value=invite.type;
+        }
+        if(featInput)featInput.value=invite.npcName;
+        saveGame();closeM("mInfo");
+        var nav=A(document.querySelectorAll(".nav-btn")).find(function(b){return String(b.getAttribute("onclick")||"").indexOf("pProj")>=0;});
+        if(nav&&typeof switchMainTab==="function")switchMainTab(nav,"pProj");
+        if(typeof showProj==="function")showProj("pjSingle");
+        alert("已接受 "+invite.npcName+" 的 "+invite.type+" 合作邀约，合作类型和艺人已填入单曲企划。");
+    };
+    window.rejectArtistCollabMail=function(mailId){
+        Object.keys(ad.artistCollabMail||{}).some(function(k){var x=ad.artistCollabMail[k];if(x&&x.id===mailId){x.status="rejected";return true;}return false;});
+        saveGame();openMailbox();
+    };
+    var baseOpenMailboxArtistInvites=window.openMailbox;
+    window.openMailbox=function(){
+        if(typeof baseOpenMailboxArtistInvites==="function")baseOpenMailboxArtistInvites();
+        var invite=ensureArtistCollabMail();
+        if(invite&&invite.status==="pending"){
+            currentMails=A(currentMails).filter(function(m){return m.id!=="empty"&&m.id!==invite.id;});
+            var isFeat=invite.type==="Feat.";
+            currentMails.unshift({id:invite.id,title:(isFeat?"合作邀约：邀请你参与 Feat.":"合作邀约：邀请你参与 Wish 合作曲"),sender:invite.npcName+" 的经纪团队",content:isFeat?(invite.npcName+" 正在筹备新单曲，希望邀请你担任特邀艺人参与演唱。接受后会把合作信息加入你的单曲企划。"):(invite.npcName+" 发来 Wish 合作邀请，希望与你共同完成并署名一首歌曲。接受后会把合作信息加入你的单曲企划。"),btnHtml:`<button onclick="acceptArtistCollabMail('${invite.id}')">接受 ${invite.type} 邀约</button><button class="red" onclick="rejectArtistCollabMail('${invite.id}')">婉拒</button>`});
+            if(typeof renderMailboxUI==="function")renderMailboxUI();
+        }
+        saveGame();
+    };
 
     window.calculateRealisticScore = function(rawScore, aiAdj){
         var raw = Number(rawScore)||80, adj = Number(aiAdj)||0, luck = Math.random();
