@@ -22916,7 +22916,7 @@ document.addEventListener("DOMContentLoaded", function(){
         function finalHideUnsupportedChartTabs(){
             var decadeLabel=finalDecadeLabel(finalDecadeKey(time&&time.y||2026));
             Array.from(document.querySelectorAll("#mChart .sub-tab,#mChart button")).forEach(function(el){var s=String(el.textContent||"");if(s.indexOf("月榜")>=0||(/全球/.test(s)&&curChartPlatform==="BB"))el.style.display="none";if(el.dataset.chartDecadeTab==="1"||s.indexOf("固定十年榜")>=0||s==="总榜")el.textContent=decadeLabel;});
-            var global=document.getElementById("btnChartGlobal");if(global)global.remove();
+            var global=document.getElementById("btnChartGlobal");if(global)global.style.display=curChartPlatform==="BB"?"none":"";
         }
         finalHideUnsupportedChartTabs();setTimeout(finalInstallMarketFields,2200);setTimeout(finalHideUnsupportedChartTabs,2200);
         // Apple Music: a separate global music service. Regions are weighted inputs,
@@ -23006,7 +23006,8 @@ document.addEventListener("DOMContentLoaded", function(){
         }
         window.calculateITunesChart=calculateITunesChart;
         window.openITunes=function(){
-            var rows=calculateITunesChart().slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||"--";return `<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${i+1}. ${E(t.n)}</b><b style="color:#be123c;">${Number(t.itunesFinalScore||0).toLocaleString()} 分</b></div><span style="font-size:10px;color:#777;">下载 ${Number(t.itunesDailyDownloads||0).toLocaleString()} · 美区 ${Number(t.itunesUSDownloads||0).toLocaleString()} · 主要地区 ${main} · 风控 ${(Number(t.itunesCheatFactor||1)*100).toFixed(0)}%</span></div>`;}).join("")||"<p style='color:#888;text-align:center;'>暂无 iTunes 数据</p>";
+            var esc=typeof E==="function"?E:function(v){return String(v==null?"":v).replace(/[&<>\"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];});};
+            var rows=calculateITunesChart().slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||"--";return `<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${i+1}. ${esc(t.n)}</b><b style="color:#be123c;">${Number(t.itunesFinalScore||0).toLocaleString()} 分</b></div><span style="font-size:10px;color:#777;">下载 ${Number(t.itunesDailyDownloads||0).toLocaleString()} · 美区 ${Number(t.itunesUSDownloads||0).toLocaleString()} · 主要地区 ${main} · 风控 ${(Number(t.itunesCheatFactor||1)*100).toFixed(0)}%</span></div>`;}).join("")||"<p style='color:#888;text-align:center;'>暂无 iTunes 数据</p>";
             $("mInfoTitle").innerText="iTunes";$("mInfoContent").innerHTML="<div style='font-size:12px;line-height:1.7;'><div class='card' style='background:#fff1f2;border-color:#fecdd3;'><b>iTunes 全球下载榜</b><br><span style='font-size:11px;color:#666;'>各地区下载量按权重合并，Top100 按当日下载大盘缩放，之后应用灌水风控修正。</span></div>"+rowsHtml+"</div>";$("mInfo").classList.add("open");
         };
         function installITunesApp(){var grid=$("phoneGrid");if(grid&&!$("appITunes"))grid.insertAdjacentHTML("beforeend",`<div class="app-icon" id="appITunes" style="background:#ec4899;color:#fff;" onclick="openApp('ITunes')"><div class="picon">♪</div>iTunes</div>`);}
@@ -23111,6 +23112,135 @@ document.addEventListener("DOMContentLoaded", function(){
         syncLoadedRuntimeSystems();
     },0);
 });
+</script>
+<script>
+// Final compatibility fixes for the interactive UI.
+(function(){
+    if(typeof window.E!=="function")window.E=function(value){return String(value==null?"":value).replace(/[&<>\"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];});};
+    window.uploadMyAvatar=function(input){
+        if(!input||!input.files||!input.files[0])return;
+        var file=input.files[0],reader=new FileReader();
+        reader.onload=function(ev){
+            var img=new Image();
+            img.onload=function(){
+                var size=180,canvas=document.createElement("canvas"),ctx=canvas.getContext("2d"),scale=Math.min(1,size/Math.max(img.width,img.height));
+                canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));ctx.drawImage(img,0,0,canvas.width,canvas.height);
+                ad.avatar=canvas.toDataURL("image/jpeg",.86);input.value="";
+                document.querySelectorAll("img").forEach(function(el){var p=el.parentElement&&el.parentElement.getAttribute("onclick")||"";if(p.indexOf("myAvatarInput")>=0||el.classList.contains("player-avatar"))el.src=ad.avatar;});
+                if(typeof updAttr==="function")updAttr();if(typeof saveGameImmediate==="function")saveGameImmediate();else if(typeof saveGame==="function")saveGame();
+            };img.onerror=function(){input.value="";};img.src=ev.target.result;
+        };reader.readAsDataURL(file);
+    };
+    function prepareAvatarInputs(){document.querySelectorAll("#myAvatarInput").forEach(function(input){input.style.display="block";input.style.position="absolute";input.style.opacity="0";input.style.width="1px";input.style.height="1px";input.style.pointerEvents="auto";input.onchange=function(){window.uploadMyAvatar(input);};});}
+    document.addEventListener("DOMContentLoaded",function(){prepareAvatarInputs();setTimeout(prepareAvatarInputs,500);});
+    var oldRenderFashion=window.renderFashionHouse;
+    window.renderFashionHouse=function(){
+        if(typeof oldRenderFashion==="function")oldRenderFashion.apply(this,arguments);
+        var tabs=document.querySelector("#fashionTabs"),bar=document.querySelector("#mapFashion .sub-tab-bar");
+        if(!tabs||!bar||document.getElementById("fashionCoutureTab"))return;
+        var tab=document.createElement("div");tab.id="fashionCoutureTab";tab.className="sub-tab";tab.textContent="高定品牌";tab.onclick=function(){Array.from(bar.querySelectorAll(".sub-tab")).forEach(function(x){x.classList.remove("active")});tab.classList.add("active");Array.from(tabs.querySelectorAll(".sub-page")).forEach(function(x){x.classList.remove("active")});document.getElementById("fashionCouture").classList.add("active");};bar.appendChild(tab);
+        var page=document.createElement("div");page.id="fashionCouture";page.className="sub-page";var brands=typeof ensureFashionEraData==="function"?ensureFashionEraData():((ad&&ad.coutureBrands)||[]);page.innerHTML=(brands||[]).map(function(b,i){return '<div class="card" style="padding:10px;"><b>'+E(b.n||"未命名高定品牌")+'</b><br><span style="font-size:11px;color:#666;">'+E(b.tier||"T3")+' · '+E(b.model||"artistic")+' · 创意总监：'+E(b.creativeDirector||"未设置")+'</span><br><button class="sec inline" onclick="editCoutureBrand('+i+')">编辑品牌</button><button class="sec inline" onclick="strollCoutureBrand('+i+')">随便逛逛</button><button class="sec inline" onclick="viewCoutureArchive('+i+')">查看历届高定</button></div>';}).join("")||'<p style="font-size:12px;color:#888;">暂无高定品牌。</p>';
+        tabs.appendChild(page);
+    };
+})();
+</script>
+<script>
+(function(){
+    // Keep all fashion guidance in one tab; special custom looks are an event/archive.
+    var fashionRenderBeforeUnified=window.renderFashionHouse;
+    window.renderFashionHouse=function(){
+        if(typeof fashionRenderBeforeUnified==='function')fashionRenderBeforeUnified.apply(this,arguments);
+        var map=document.getElementById('mapFashion'),tabs=map&&map.querySelector('.sub-tab-bar'),action=tabs&&tabs.nextElementSibling;
+        if(action){action.innerHTML='<div style="display:flex;gap:6px;flex-wrap:wrap;"><button id="openCoutureHouseBtn" class="sec" onclick="openCoutureHouse()">进入高定品牌</button><button id="openSpecialCustomBtn" class="sec" onclick="openSpecialCustomization()">查看特殊定制档案</button></div>';}
+        var guide=document.getElementById('fashionGuidePage');
+        if(guide){guide.innerHTML=(typeof fashionGuideHtml==='function'?fashionGuideHtml():'')+'<div class="card" style="margin-top:8px;"><b>特殊定制事件</b><br>登上时装周、参加品牌或杂志晚宴时，可能随机获得特别定制机会。获得的服装会记录在“特殊定制档案”，它不是独立攻略分类。</div>';}
+    };
+    function maybeSpecialCustomEvent(source){
+        if(!ad||!ad.specialCustomLooks||Math.random()>.22)return;
+        if(typeof ensureSpecialLook!=='function')return;
+        var levels=[1,2,3,6,7,8,9],level=levels[Math.floor(Math.random()*levels.length)],look=ensureSpecialLook({n:time.y+' '+(['春季','夏季','秋季','冬季'][Math.floor(Math.random()*4)])+'特别定制',level:level,brand:source||'时尚屋',releaseYear:time.y,releaseSeason:['春季','夏季','秋季','冬季'][Math.floor(Math.random()*4)],wearers:[]});
+        ad.specialCustomLooks.unshift(look);if(typeof saveGame==='function')saveGame();
+        alert('✨ 时尚事件触发：你在'+(source||'活动现场')+'获得了一次特别定制机会，已存入特殊定制档案。');
+    }
+    var fashionJoinBefore=window.joinFashion;
+    window.joinFashion=function(){var result=typeof fashionJoinBefore==='function'?fashionJoinBefore.apply(this,arguments):undefined;maybeSpecialCustomEvent('时装周');return result;};
+    var galaBefore=window.joinFashionGala;
+    window.joinFashionGala=function(name){var result=typeof galaBefore==='function'?galaBefore.apply(this,arguments):undefined;maybeSpecialCustomEvent(name||'晚宴');return result;};
+
+    // Playful, non-violent "basement" gag for the map. No real harm, songs or coercion are performed.
+    function ensureBasement(){if(!ad.basement||typeof ad.basement!=='object')ad.basement={level:1,guards:0,occupants:[],jokes:[]};return ad.basement;}
+    function basementCandidates(){return (worldArtists||[]).filter(function(n){return n&&n.id&&!n.isMe;});}
+    window.openBasement=function(){var b=ensureBasement(),list=basementCandidates(),esc=typeof E==='function'?E:function(x){return String(x||'');};
+        var occupants=b.occupants.map(function(id){var n=list.find(function(x){return x.id===id;});return n?n.n:id;});
+        document.getElementById('mInfoTitle').innerText='地下室（纯玩梗）';
+        document.getElementById('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#f8f5ff;border-color:#c4b5fd;"><b>这里只是夸张的喜剧设定</b><br>不会伤害艺人，不会强迫写歌，也不会生成或获得任何歌曲。</div><p>规模：'+b.level+'　保安：'+b.guards+'　当前“关押”：'+occupants.length+'</p><select id="basementTarget"><option value="">选择一位对家艺人</option>'+list.map(function(n){return '<option value="'+esc(n.id)+'">'+esc(n.n)+'</option>';}).join('')+'</select><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"><button onclick="basementCapture()">抓来地下室（玩梗）</button><button class="sec" onclick="basementRelease()">放人离开</button><button class="sec" onclick="basementJokeSong()">让对家‘写歌’（只生成笑话）</button><button class="sec" onclick="expandBasement()">扩增地下室</button><button class="sec" onclick="hireBasementGuard()">增加保安</button></div><p style="color:#777;">' + (b.jokes||[]).slice(0,5).map(esc).join('<br>') + '</p></div>';
+        document.getElementById('mInfo').classList.add('open');
+    };
+    window.basementCapture=function(){var b=ensureBasement(),id=(document.getElementById('basementTarget')||{}).value;if(!id)return alert('请选择一位艺人。');if(b.occupants.indexOf(id)<0)b.occupants.push(id);b.jokes.unshift('地下室广播：今日只是综艺整蛊，所有人平安。');saveGame();openBasement();};
+    window.basementRelease=function(){var b=ensureBasement();b.occupants.pop();saveGame();openBasement();};
+    window.basementJokeSong=function(){var b=ensureBasement();b.jokes.unshift('写歌环节取消：NPC 正常发专辑，你不会获得曲子。');saveGame();openBasement();};
+    window.expandBasement=function(){var b=ensureBasement(),cost=500000*b.level;if(Number(ad.m||0)<cost)return alert('资金不足，需要 $'+cost.toLocaleString());ad.m-=cost;b.level++;saveGame();openBasement();};
+    window.hireBasementGuard=function(){var b=ensureBasement(),cost=100000;if(Number(ad.m||0)<cost)return alert('资金不足，需要 $'+cost.toLocaleString());ad.m-=cost;b.guards++;saveGame();openBasement();};
+    function installBasementMap(){
+        var home=document.getElementById('mapHome');if(!home||document.getElementById('homeBasementEntry'))return;
+        var entry=document.createElement('div');entry.id='homeBasementEntry';entry.className='card';entry.style.cssText='margin-top:10px;background:#f8f5ff;border:1px solid #c4b5fd;';
+        entry.innerHTML='<h4 style="margin:0 0 5px;">🪄 地下室（纯玩梗）</h4><p style="font-size:12px;color:#888;margin-bottom:7px;">只存在于我家里的夸张综艺设定，不产生真实伤害或强迫行为。</p><button class="sec" onclick="openBasement()">进入地下室管理</button>';
+        home.appendChild(entry);
+    }
+    document.addEventListener('DOMContentLoaded',function(){setTimeout(installBasementMap,300);});
+
+    // Turn existing NPC恋人关系 into a light "小三争议" social post, once per pair.
+    var initRelationsBefore=window.initNpcRelations;
+    window.initNpcRelations=function(){var result=typeof initRelationsBefore==='function'?initRelationsBefore.apply(this,arguments):undefined;(worldArtists||[]).forEach(function(a){Object.keys(a.relations||{}).forEach(function(id){var c=(worldArtists||[]).find(function(x){return x.id===id;}),rel=a.relations[id];if(c&&rel&&rel.p==='恋人'&&a.id<c.id&&!a._affairDramaPairs){a._affairDramaPairs={};}if(c&&rel&&rel.p==='恋人'&&a.id<c.id&&!a._affairDramaPairs[c.id]){a._affairDramaPairs[c.id]=1;if(typeof posts!=='undefined'&&posts.mom)posts.mom.unshift({t:'💔 [小三争议] '+c.n+' 与 '+a.n+' 的恋情被扒',c:'狗仔投稿称两位艺人的关系出现第三者传闻，粉圈开始疯狂吃瓜。'});}});});return result;};
+    var initRelationsBeforeRumor=window.initNpcRelations;
+    window.initNpcRelations=function(){
+        var result=typeof initRelationsBeforeRumor==='function'?initRelationsBeforeRumor.apply(this,arguments):undefined;
+        if(!ad||!Array.isArray(worldArtists))return result;
+        if(!Array.isArray(ad.rumorLeverage))ad.rumorLeverage=[];
+        var entities=worldArtists.slice();
+        worldArtists.forEach(function(a){
+            Object.keys(a.relations||{}).forEach(function(id){
+                var c=entities.find(function(x){return x.id===id;}),rel=a.relations[id];
+                if(!c||!rel||rel.p!=='恋人'||String(a.id)>=String(c.id))return;
+                if(a._affairDramaPairs&&a._affairDramaPairs[c.id])return;
+                if(!a._affairDramaPairs)a._affairDramaPairs={};a._affairDramaPairs[c.id]=1;
+                var candidates=entities.filter(function(x){return x.id!==a.id&&x.id!==c.id;});
+                var rumor=candidates.length?candidates[Math.floor(Math.random()*candidates.length)]:null;
+                var rumorName=rumor?rumor.n:'某位圈内人士';
+                var fa=Number(a.fans||0),fc=Number(c.fans||0),gap=Math.max(fa,fc)/Math.max(1,Math.min(fa||1,fc||1)),mode=gap>=1.8?'虐粉':'互撕';
+                var leverage={a:a.id,c:c.id,third:rumor&&rumor.id||'rumor',kind:rumor?'绯闻小三':'小三传闻',year:time.y,month:time.m,used:false,mode:mode,weakId:fa<fc?a.id:c.id};
+                ad.rumorLeverage.unshift(leverage);
+                a._affairDramaPairs[c.id]=1;
+                if(typeof posts!=='undefined'&&posts.mom)posts.mom.unshift({t:'💔 [小三争议] '+c.n+' × '+a.n+' × '+rumorName,c:'爆料只是一条未经证实的绯闻。两家粉丝都认定是假料，'+(mode==='虐粉'?'但粉丝差距明显，强势方开始虐粉。':'双方体量接近，随后在广场互撕。')+'对家可将这条争议当成随时翻出的“核武器”。'});
+            });
+        });
+        return result;
+    };
+    window.useRumorLeverage=function(index){
+        var item=Array.isArray(ad&&ad.rumorLeverage)?ad.rumorLeverage[index]:null;if(!item)return;
+        item.used=true;if(typeof saveGame==='function')saveGame();
+        var a=(worldArtists||[]).find(function(x){return x.id===item.a;}),c=(worldArtists||[]).find(function(x){return x.id===item.c;}),fa=Number(a&&a.fans||0),fc=Number(c&&c.fans||0),gap=Math.max(fa,fc)/Math.max(1,Math.min(fa||1,fc||1));
+        item.mode=gap>=1.8?'虐粉':'互撕';
+        if(typeof posts!=='undefined'&&posts.mom)posts.mom.unshift({t:'📣 [把柄公开] '+(a&&a.n||'艺人')+' × '+(c&&c.n||'艺人'),c:item.mode==='虐粉'?'粉丝体量差距明显，强势方开始用争议压制弱势方，评论区进入“虐粉”阶段。':'双方粉丝体量接近，争议迅速演变成对线互撕。'});
+        alert(item.mode==='虐粉'?'📣 把柄已公开：强势方粉圈开始虐粉（仅限舆论玩梗）。':'📣 把柄已公开：两家粉圈开始互撕（仅限舆论玩梗）。');
+    };
+    window.checkRumorSettlements=function(){
+        if(!ad||!Array.isArray(ad.rumorLeverage))return;
+        (ad.rumorLeverage||[]).forEach(function(item){
+            if(item.settled||item.mode!=='虐粉')return;
+            var a=(worldArtists||[]).find(function(x){return x.id===item.a;}),c=(worldArtists||[]).find(function(x){return x.id===item.c;});
+            if(!a||!c)return;
+            var previousWeak=item.weakId||((Number(a.fans||0)<Number(c.fans||0))?a.id:c.id),weak=(previousWeak===a.id?a:c),strong=(previousWeak===a.id?c:a);
+            if(Math.abs(Number(weak.fans||0)-Number(strong.fans||0))<=1000000){
+                item.settled=true;item.settledAt=String(time.y)+'_'+String(time.m);item.settlement='清算';item.mode='互撕';
+                if(typeof posts!=='undefined'&&posts.mom)posts.mom.unshift({t:'⚡ [虐粉清算] '+weak.n+' 与 '+strong.n+' 进入互撕阶段',c:'双方粉丝差距已经缩小到100万以内，旧争议被重新翻出。单方面虐粉结束，两家粉圈从压制转为势均力敌的长期互撕。'});
+                if(typeof saveGame==='function')saveGame();
+            }
+        });
+    };
+    var oldAdvForRumorSettlement=window.advTime;
+    window.advTime=function(){var result=typeof oldAdvForRumorSettlement==='function'?oldAdvForRumorSettlement.apply(this,arguments):undefined;checkRumorSettlements();return result;};
+})();
 </script>
 </body>
 </html>
