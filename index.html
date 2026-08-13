@@ -2455,17 +2455,15 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
 
     <!-- 地区选择 -->
     <div style="display:flex;justify-content:center;gap:10px;margin-bottom:10px;">
-        <button id="btnChartGlobal" class="sec inline" style="background:#c8a440;color:#000;" onclick="switchChartRegion('Global')">🌍 全球</button>
-        <button id="btnChartUS" class="sec inline" onclick="switchChartRegion('US')">🇺🇸 美国</button>
+        <button id="btnChartUS" class="sec inline" style="background:#c8a440;color:#000;" onclick="switchChartRegion('US')">🇺🇸 美国</button>
     </div>
     
     <!-- 时间跨度选择 -->
     <div class="sub-tab-bar" style="justify-content:center;" id="timeSpanBar">
         <div class="sub-tab active" onclick="switchChartTime('Day')">日榜</div>
         <div class="sub-tab" onclick="switchChartTime('Week')">周榜</div>
-        <div class="sub-tab" onclick="switchChartTime('Month')">月榜</div>
+        <div class="sub-tab" onclick="switchChartTime('Decade')">固定十年榜</div>
         <div class="sub-tab" onclick="switchChartTime('Year')">年榜</div>
-        <div class="sub-tab" onclick="switchChartTime('Decade')">总榜</div>
     </div>
     
     <div id="mChartContent" style="max-height:55vh;overflow-y:auto;background:#fcfcfc;padding:5px;border-radius:8px;border:1px solid #eee;">
@@ -3491,7 +3489,7 @@ function updAttr(){
     
     $("boxBasic").innerHTML = `
     <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-        <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+        <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
             ${avatarHtml}
             <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
         </div>
@@ -5459,10 +5457,9 @@ window.switchChartType = function(type) {
 
 window.switchChartRegion = function(reg) {
     curChReg = reg;
-    document.getElementById('btnChartGlobal').style.background = reg === 'Global' ? '#c8a440' : '#f0e9d0';
-    document.getElementById('btnChartGlobal').style.color = reg === 'Global' ? '#000' : '#333';
-    document.getElementById('btnChartUS').style.background = reg === 'US' ? '#c8a440' : '#f0e9d0';
-    document.getElementById('btnChartUS').style.color = reg === 'US' ? '#000' : '#333';
+    var globalButton=document.getElementById('btnChartGlobal'),usButton=document.getElementById('btnChartUS');
+    if(globalButton){globalButton.style.background = reg === 'Global' ? '#c8a440' : '#f0e9d0';globalButton.style.color = reg === 'Global' ? '#000' : '#333';}
+    if(usButton){usButton.style.background = reg === 'US' ? '#c8a440' : '#f0e9d0';usButton.style.color = reg === 'US' ? '#000' : '#333';}
     renderChart();
 };
 
@@ -9351,7 +9348,7 @@ window.updAttr = function() {
     
     document.getElementById("boxBasic").innerHTML = `
     <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-        <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+        <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
             ${avatarHtml}
             <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
         </div>
@@ -18302,7 +18299,7 @@ window.updAttr = function() {
     if(boxBasic) {
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
                 ${avatarHtml}
                 <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
             </div>
@@ -18429,7 +18426,7 @@ window.updAttr = function() {
         let avatarHtml = ad.avatar ? `<img src="${ad.avatar}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #c8a440;">` : `<div style="width:60px;height:60px;border-radius:50%;background:#eee;display:flex;align-items:center;justify-content:center;font-size:12px;color:#888;border:2px solid #d1c290;">点击传图</div>`;
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
                 ${avatarHtml}
                 <div style="position:absolute;bottom:-5px;right:-10px;background:#c8a440;color:#000;font-size:10px;padding:2px 6px;border-radius:8px;font-weight:bold;">更换</div>
             </div>
@@ -18958,7 +18955,7 @@ window.updAttr = function() {
     if(boxBasic) {
         boxBasic.innerHTML = `
         <div style="display:flex;align-items:center;gap:15px;margin-bottom:10px;">
-            <div style="position:relative;cursor:pointer;" onclick="document.getElementById('myAvatarInput').click()">
+            <div style="position:relative;cursor:pointer;" onclick="(document.getElementById('myAvatarInput')||{}).click&&document.getElementById('myAvatarInput').click()">
                 ${avatarHtml}
             </div>
             <div style="line-height:1.6;">
@@ -22792,6 +22789,96 @@ document.addEventListener("DOMContentLoaded", function(){
         var finalLoadForRadioSingles=window.loadGame;
         if(typeof finalLoadForRadioSingles==="function")window.loadGame=function(){var result=finalLoadForRadioSingles.apply(this,arguments);setTimeout(function(){Array.from(albs||[]).forEach(function(a){syncAlbumSingleState(a);});refreshDailyRadioAudience(false);},0);return result;};
 
+        // Final chart/settings layer: keep market scale, Billboard cap, and fixed decades consistent.
+        var FINAL_MARKET_KEY="starPro_market_settings_v2";
+        function finalMarketSettings(){
+            var fallback={dailyBase:3000000,salesBase:150000,billboardCap:500};
+            try{
+                var saved=JSON.parse(localStorage.getItem(FINAL_MARKET_KEY)||"null")||{};
+                var source=(typeof ad!=="undefined"&&ad.marketSettings)||{};
+                return {dailyBase:Math.max(100000,Number(source.dailyBase||saved.dailyBase||fallback.dailyBase)),salesBase:Math.max(0,Number(source.salesBase||saved.salesBase||fallback.salesBase)),billboardCap:Math.max(50,Number(source.billboardCap||saved.billboardCap||fallback.billboardCap))};
+            }catch(e){return fallback;}
+        }
+        function finalReadMarketInputs(){
+            var cfg=finalMarketSettings(),daily=document.getElementById("customMarketBase"),sales=document.getElementById("customSalesBase"),cap=document.getElementById("customBillboardCap");
+            if(daily&&isFinite(Number(daily.value))&&Number(daily.value)>0)cfg.dailyBase=Number(daily.value)*10000;
+            if(sales&&isFinite(Number(sales.value))&&Number(sales.value)>=0)cfg.salesBase=Number(sales.value)*10000;
+            if(cap&&isFinite(Number(cap.value))&&Number(cap.value)>0)cfg.billboardCap=Number(cap.value);
+            return cfg;
+        }
+        function finalSaveMarketSettings(){
+            var cfg=finalReadMarketInputs();
+            if(typeof ad!=="undefined")ad.marketSettings=cfg;
+            try{localStorage.setItem(FINAL_MARKET_KEY,JSON.stringify(cfg));}catch(e){}
+            if(typeof saveGame==="function")saveGame();
+            return cfg;
+        }
+        function finalMarketInputValue(id,value){var el=document.getElementById(id);if(el)el.value=value;}
+        function finalInstallMarketFields(){
+            var base=document.getElementById("customMarketBase");if(!base)return;
+            var cfg=finalMarketSettings();
+            finalMarketInputValue("customMarketBase",Math.round(cfg.dailyBase/10000));
+            finalMarketInputValue("customSalesBase",Math.round(cfg.salesBase/10000));
+            var holder=base.closest(".card");
+            if(holder&&!document.getElementById("customBillboardCap")){
+                var row=document.createElement("div");row.id="finalBillboardCapRow";row.style.cssText="display:flex;gap:10px;align-items:center;margin-top:7px;";
+                row.innerHTML="<label style='font-size:12px;width:110px;'>Billboard 冠军上限:</label><input type='number' id='customBillboardCap' min='50' step='10' style='margin:0;width:100px;'><span style='font-size:10px;color:#777;'>Pts</span>";
+                base.parentElement.parentElement.appendChild(row);finalMarketInputValue("customBillboardCap",Math.round(cfg.billboardCap));
+            }
+            var save=Array.from(holder.querySelectorAll("button")).find(function(b){return /保存大盘|保存设定/.test(b.textContent||"");});
+            if(save&&!save.dataset.finalMarketSave){save.dataset.finalMarketSave="1";save.onclick=function(){finalSaveMarketSettings();alert("大盘与 Billboard 设置已保存，下次进入游戏仍会生效。");};}
+        }
+        function finalDecadeKey(year){return Math.floor(Number(year||time.y||2026)/10)*10;}
+        function finalDecadeLabel(key){return String(key).slice(-2)+"s";}
+        function finalEnsureDecadeStats(t){
+            if(!t||!t.type)return;
+            if(!t.decadeStats||typeof t.decadeStats!=="object")t.decadeStats={};
+            var key=finalDecadeKey(time.y),week=Math.max(0,Number(t.stmGlobal_Week||0)),us=Math.max(0,Number(t.stmUS_Week||0));
+            if(!t._finalDecadeStamp||t._finalDecadeStamp!==finalDateKey()){
+                if(t._finalDecadeStamp!==finalDateKey()){t.decadeStats[key]=(t.decadeStats[key]||0)+week;t.decadeUSStats=t.decadeUSStats||{};t.decadeUSStats[key]=(t.decadeUSStats[key]||0)+us;t._finalDecadeStamp=finalDateKey();}
+            }
+            t._decadeLabel=finalDecadeLabel(key);t.stmGlobal_Decade=Number(t.decadeStats[key]||0);t.stmUS_Decade=Number((t.decadeUSStats||{})[key]||0);
+        }
+        function finalRawBillboard(t){
+            var stmUS=Number(t.stmUS_Week||0),sales=Math.floor(Number(t.stmGlobal_Week||0)/150)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
+            return Math.max(0,(sales/150)+(stmUS*.7/15000)+(stmUS*.3/45000)+(radio*3));
+        }
+        function finalNormalizeBillboardPoints(){
+            var cfg=finalMarketSettings(),tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";});
+            tracks.forEach(finalEnsureDecadeStats);var max=tracks.reduce(function(m,t){return Math.max(m,finalRawBillboard(t));},0),scale=max>0?cfg.billboardCap/max:1;
+            tracks.forEach(function(t){t._bbPtsExact=Math.max(0,Math.round(finalRawBillboard(t)*scale));t._chartPts=t._bbPtsExact;t._chartStr=t._bbPtsExact.toLocaleString()+" Pts";});
+        }
+        var finalOriginalRenderChart=window.renderChart;
+        window.renderChart=function(){
+            finalInstallMarketFields();
+            var decade=String(curChTime||"")==="Decade",saved=[];
+            Array.from(trackPool||[]).forEach(function(t){finalEnsureDecadeStats(t);if(decade){saved.push([t,t.stmGlobal,t.stmUS]);t.stmGlobal=t.stmGlobal_Decade||0;t.stmUS=t.stmUS_Decade||0;}});
+            if(curChartPlatform==="BB"&&curChReg==="Global")curChReg="US";
+            var result=typeof finalOriginalRenderChart==="function"?finalOriginalRenderChart.apply(this,arguments):undefined;
+            saved.forEach(function(x){x[0].stmGlobal=x[1];x[0].stmUS=x[2];});
+            finalNormalizeBillboardPoints();
+            if(curChartPlatform==="BB"){
+                var rows=Array.from(document.querySelectorAll("#mChartContent > div")),ordered=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}).sort(function(a,b){return (b._chartPts||0)-(a._chartPts||0);});
+                rows.forEach(function(row,i){var t=ordered[i],node=row.lastElementChild;if(t&&node&&/Pts/.test(node.textContent||""))node.firstChild&&(node.firstChild.nodeValue=t._chartPts.toLocaleString()+" Pts");});
+            }
+            return result;
+        };
+        var finalOriginalAdvTimeForMarket=window.advTime;
+        window.advTime=function(weeks,showMsg){
+            var result=typeof finalOriginalAdvTimeForMarket==="function"?finalOriginalAdvTimeForMarket.apply(this,arguments):undefined,cfg=finalSaveMarketSettings();
+            var tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=tracks.reduce(function(m,t){return Math.max(m,Number(t.stmGlobal_Day||0));},0);
+            if(top>0){var scale=cfg.dailyBase/top;tracks.forEach(function(t){t.stmGlobal_Day=Math.max(0,Math.floor(Number(t.stmGlobal_Day||0)*scale));t.stmGlobal_Week=t.stmGlobal_Day*7;t.stmUS_Day=Math.floor(t.stmGlobal_Day*.35);t.stmUS_Week=t.stmUS_Day*7;});}
+            tracks.forEach(finalEnsureDecadeStats);finalNormalizeBillboardPoints();return result;
+        };
+        var finalOriginalSwitchChartRegion=window.switchChartRegion;
+        window.switchChartRegion=function(region){if(curChartPlatform==="BB")region="US";return typeof finalOriginalSwitchChartRegion==="function"?finalOriginalSwitchChartRegion.apply(this,[region]):undefined;};
+        var finalOriginalSwitchChartTime=window.switchChartTime;
+        window.switchChartTime=function(timeStr){if(timeStr==="Month")timeStr="Decade";return typeof finalOriginalSwitchChartTime==="function"?finalOriginalSwitchChartTime.apply(this,[timeStr]):undefined;};
+        function finalHideUnsupportedChartTabs(){
+            Array.from(document.querySelectorAll("#mChart .sub-tab,#mChart button")).forEach(function(el){var s=String(el.textContent||"");if(s.indexOf("月榜")>=0||(/全球/.test(s)&&curChartPlatform==="BB"))el.style.display="none";if(s.indexOf("总榜")>=0)el.textContent="固定十年榜";});
+            var global=document.getElementById("btnChartGlobal");if(global)global.remove();
+        }
+        finalHideUnsupportedChartTabs();setTimeout(finalInstallMarketFields,2200);setTimeout(finalHideUnsupportedChartTabs,2200);
         syncLoadedRuntimeSystems();
     },0);
 });
