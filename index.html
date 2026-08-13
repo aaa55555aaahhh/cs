@@ -11107,15 +11107,9 @@ if (oldFinishWriteFixReview) {
 // 1. 深度追踪：拓展每首歌的榜单周数追踪体系
 var rawAdvTimeForDetailedStats = window.advTime;
 window.advTime = function(weeks, showMsg) {
-    // 执行推演前先更新周榜追踪
+    // 榜单历史由统一榜单状态机结算，这里只累计年榜/十年榜积分。
     trackPool.forEach(t => {
-        if (!t.chartHistory || typeof t.chartHistory !== 'object') t.chartHistory = {};
-        if (!Array.isArray(t.chartHistory.global)) t.chartHistory.global = [];
-        if (!Array.isArray(t.chartHistory.bb)) t.chartHistory.bb = [];
         if (t.type === 'track' && t.weeks > 0) {
-            t.chartHistory.global.push(t.lastW || t.peakS || 100);
-            t.chartHistory.bb.push(t.peakB || 100);
-            
             // 追踪 Decade(10年) 与年榜积分
             if (!t.ptsYear) t.ptsYear = 0;
             if (!t.ptsDecade) t.ptsDecade = 0;
@@ -11130,11 +11124,14 @@ window.advTime = function(weeks, showMsg) {
     let alertPosts = [];
     trackPool.forEach(t => {
         if (t.isMe && t.type === 'track' && t.weeks > 2 && t.chartHistory) {
-            let hist = t.chartHistory.global;
+            let hist = Array.isArray(t.chartHistory)
+                ? t.chartHistory.map(row => row && row.global).filter(value => value !== undefined && value !== null)
+                : (Array.isArray(t.chartHistory.global) ? t.chartHistory.global : []);
             let len = hist.length;
             if (len >= 2) {
-                let thisW = hist[len - 1];
-                let lastW = hist[len - 2];
+                let thisRaw = hist[len - 1], lastRaw = hist[len - 2];
+                let thisW = Number(thisRaw) >= 1 && Number(thisRaw) <= 100 ? Number(thisRaw) : 999;
+                let lastW = Number(lastRaw) >= 1 && Number(lastRaw) <= 100 ? Number(lastRaw) : 999;
                 // 惊人上升趋势
                 if (lastW > 50 && thisW <= 10) {
                     alertPosts.push({
@@ -23291,7 +23288,7 @@ function installRuntimeAuthority(){
         });
     }
     var chartBeforeDaily=window.renderChart;window.renderChart=function(){
-        normalizeDailyMarket();var saved=[];
+        normalizeDailyMarket();if(curChartPlatform==='Spot'&&curChReg==='US')syncWeeklyChartStates();var saved=[];
         if(curChartPlatform==='BB')(trackPool||[]).forEach(function(t){if(!t||t.type!=='track')return;saved.push([t,t.stmGlobal_Week,t.stmUS_Week]);t.stmGlobal_Week=Number(t._billboardGlobalWeek||t.stmGlobal_Day*7);t.stmUS_Week=Number(t._billboardUSWeek||t.stmUS_Day*7);});
         var r=chartBeforeDaily.apply(this,arguments);saved.forEach(function(x){x[0].stmGlobal_Week=x[1];x[0].stmUS_Week=x[2];});return r;
     };
@@ -23345,8 +23342,12 @@ function installRuntimeAuthority(){
     function chartStatus(state,value){var rank=validChartRank(value);if(rank)return '#'+rank;return state&&state.everCharted&&state.isOut?'OUT':'Not In';}
     function peakLabel(state){return state&&state.peak<=100?'Peak #'+state.peak+' × '+state.peakWeeks:'Peak Not In';}
     function trendLabel(state){return state&&state.records.length?state.records.map(function(x){return x.rank==='OUT'?'OUT':'#'+x.rank;}).join(' → '):'Not In';}
+    function calculateSpotifyUSRanks(){
+        var songs=(trackPool||[]).filter(function(t){return t&&t.type==='track';}),ranked=songs.filter(function(t){return Math.max(0,Number(t.stmUS_Week||0),Number(t.stmUS_Day||0))>0;}).sort(function(a,b){var scoreB=Math.max(0,Number(b.stmUS_Week||0),Number(b.stmUS_Day||0)),scoreA=Math.max(0,Number(a.stmUS_Week||0),Number(a.stmUS_Day||0));if(scoreB!==scoreA)return scoreB-scoreA;return String(a.id||a.n||'').localeCompare(String(b.id||b.n||''));}).slice(0,100);
+        songs.forEach(function(t){t.lastSpotifyUS=999;});ranked.forEach(function(t,i){t.lastSpotifyUS=i+1;});return ranked;
+    }
     function syncWeeklyChartStates(){
-        var key=chartPeriodKey('week');
+        var key=chartPeriodKey('week');calculateSpotifyUSRanks();
         (trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){
             var globalRank=Number(t.stmGlobal_Day||t.stmGlobal_Week||0)>0?t.lastW:999;
             var usRank=Number(t.stmUS_Day||t.stmUS_Week||0)>0?t.lastSpotifyUS:999;
@@ -23358,29 +23359,66 @@ function installRuntimeAuthority(){
     var basePeakAuthority=window.updatePeakRanks;
     if(typeof basePeakAuthority==='function')window.updatePeakRanks=function(){var r=basePeakAuthority.apply(this,arguments);syncWeeklyChartStates();return r;};
     syncWeeklyChartStates();
+    window.calculateSpotifyUSRanks=calculateSpotifyUSRanks;
 
     function rankDelta(t,rank,field){
         var prev=Number(t[field]||0),delta=prev?prev-rank:null;t[field]=rank;return delta===null?'NEW':delta>0?'↑'+delta:delta<0?'↓'+Math.abs(delta):'→';
     }
     function rankBadge(delta){var color=delta==='NEW'?'#2563eb':String(delta).charAt(0)==='↑'?'#16a34a':String(delta).charAt(0)==='↓'?'#dc2626':'#777';return '<span style="font-size:11px;font-weight:bold;color:'+color+';margin-left:5px;">'+delta+'</span>';}
     function stateDelta(state){if(!state||!state.everCharted)return '';if(state.previous==='NOT_IN')return 'NEW';if(state.previous==='OUT')return 'RE';var previous=validChartRank(state.previous),current=validChartRank(state.current);if(!current)return 'OUT';if(!previous)return 'NEW';var delta=previous-current;return delta>0?'↑'+delta:delta<0?'↓'+Math.abs(delta):'→';}
+    function regionTotal(regions){if(!regions||typeof regions!=='object')return 0;return Object.keys(regions).reduce(function(sum,key){return sum+Math.max(0,Number(regions[key]||0));},0);}
+    function ensureDigitalCatalogData(t){
+        if(!t||t.type!=='track')return;
+        var globalDay=Math.max(0,Number(t.stmGlobal_Day||0),Number(t.stmGlobal_Week||0)/7),usDay=Math.min(globalDay,Math.max(0,Number(t.stmUS_Day||0),Number(t.stmUS_Week||0)/7));
+        if(!t._amCatalogMigrated&&regionTotal(t.amRegions)<=0&&globalDay>0){t.amRegions={US:Math.floor(Math.max(usDay*.34,globalDay*.10)),UK:Math.floor(globalDay*.08),CA:Math.floor(globalDay*.06),AU:Math.floor(globalDay*.045),JP:Math.floor(globalDay*.07),DE:Math.floor(globalDay*.05),FR:Math.floor(globalDay*.04),KR:Math.floor(globalDay*.035),BR:Math.floor(globalDay*.06)};t._amCatalogMigrated=true;}
+        var explicitWeekly=Math.max(0,Number(t.salesWeek||0),Number(t.weeklySales||0),Number(t.pureSalesWeek||0)),age=Math.max(1,Number(t.weeks||1)),careerDaily=Math.floor(Math.max(0,Number(t.slTotal||0))/(age*35)),streamDaily=Math.floor(globalDay/2600),itunesDaily=Math.max(Math.floor(explicitWeekly/7),Math.min(5000,careerDaily),Math.min(3500,streamDaily));
+        if(!t._itunesCatalogMigrated&&regionTotal(t.itunesRegions)<=0&&itunesDaily>0){t.itunesRegions={US:Math.floor(itunesDaily*.44),UK:Math.floor(itunesDaily*.12),CA:Math.floor(itunesDaily*.08),AU:Math.floor(itunesDaily*.06),JP:Math.floor(itunesDaily*.09),DE:Math.floor(itunesDaily*.06),FR:Math.floor(itunesDaily*.05),BR:Math.floor(itunesDaily*.06),MX:Math.floor(itunesDaily*.04)};t._itunesCatalogMigrated=true;}
+    }
+    function ensureAllDigitalCatalogData(){(trackPool||[]).forEach(ensureDigitalCatalogData);}
     var baseAppleChartAuthority=window.calculateAppleMusicChart;
-    if(typeof baseAppleChartAuthority==='function')window.calculateAppleMusicChart=function(){var rows=baseAppleChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._amCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.amFinalScore||0)>0)t._amCurrentRank=i+1;});return rows;};
+    if(typeof baseAppleChartAuthority==='function')window.calculateAppleMusicChart=function(){ensureAllDigitalCatalogData();var rows=baseAppleChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._amCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.amFinalScore||0)>0)t._amCurrentRank=i+1;});return rows;};
     var baseITunesChartAuthority=window.calculateITunesChart;
-    if(typeof baseITunesChartAuthority==='function')window.calculateITunesChart=function(){var rows=baseITunesChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._itunesCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.itunesFinalScore||0)>0)t._itunesCurrentRank=i+1;});return rows;};
-    window.openAppleMusic=function(){var rows=window.calculateAppleMusicChart().filter(function(t){return Number(t.amFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateAppleMusicTrack(t),p=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+'</b><b style="color:#b45309;">'+Number(t.amFinalScore||0).toLocaleString()+' AM分</b></div><span style="font-size:10px;color:#777;">'+esc(t.artist||'')+' · AM '+Number(t.amDailyTotal||0).toLocaleString()+' 次 · 主要地区 '+p+' · 惩罚修正 '+(Number(t.amPenalty||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 Apple Music 数据</p>';$('mInfoTitle').innerText=' Apple Music';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff7ed;border-color:#fed7aa;"><b>Apple Music 全球实时榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
-    window.openITunes=function(){var rows=window.calculateITunesChart().filter(function(t){return Number(t.itunesFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.slice(0,50).map(function(t,i){var x=window.calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--';return '<div class="card" style="padding:9px;margin-bottom:5px;"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+'</b><b style="color:#be123c;">'+Number(t.itunesFinalScore||0).toLocaleString()+' 分</b></div><span style="font-size:10px;color:#777;">下载 '+Number(t.itunesDailyDownloads||0).toLocaleString()+' · 美区 '+Number(t.itunesUSDownloads||0).toLocaleString()+' · 主要地区 '+main+' · 风控 '+(Number(t.itunesCheatFactor||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 iTunes 数据</p>';$('mInfoTitle').innerText='iTunes';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff1f2;border-color:#fecdd3;"><b>iTunes 全球实时下载榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
-    window.openSongChartDetail=function(songId){var t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);});if(!t)return alert('找不到歌曲。');var charts=[['Spotify 全球榜','spotifyGlobal'],['Spotify 美国榜','spotifyUS'],['Billboard Hot 100','billboard']],html=charts.map(function(item){var st=ensureChartState(t,item[1]);return '<div class="card"><b>'+item[0]+'</b><br>上期 '+chartStatus(st,st.previous)+' / 本期 '+chartStatus(st,st.current)+' / '+peakLabel(st)+' / 在榜 '+st.weeks+' 期<br><span style="font-size:11px;color:#666;">走势：'+trendLabel(st)+'</span></div>';}).join('');html+='<div class="card"><b>Apple Music 实时榜</b><br>当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'</div><div class="card"><b>iTunes 实时下载榜</b><br>当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In')+'</div>';$('mGameInputTitle').innerText='详细榜单数据';$('mGameInputDesc').innerHTML='<div style="font-size:12px;line-height:1.8;"><button class="sec" onclick="viewSongStats(\''+esc(t.id)+'\')">← 返回歌曲详情</button>'+html+'</div>';$('mGameInputField').style.display='none';$('mGameInput').classList.add('open');};
+    if(typeof baseITunesChartAuthority==='function')window.calculateITunesChart=function(){ensureAllDigitalCatalogData();var rows=baseITunesChartAuthority.apply(this,arguments);(trackPool||[]).filter(function(t){return t&&t.type==='track';}).forEach(function(t){t._itunesCurrentRank=999;});rows.slice(0,100).forEach(function(t,i){if(Number(t.itunesFinalScore||0)>0)t._itunesCurrentRank=i+1;});return rows;};
+    window.openAppleMusic=function(){var rows=window.calculateAppleMusicChart().filter(function(t){return Number(t.amFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.map(function(t,i){var x=window.calculateAppleMusicTrack(t),p=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--',mine=t.isMe?'background:#fff8e8;border-left:3px solid #c8a440;':'';return '<div class="card" style="padding:9px;margin-bottom:5px;'+mine+'"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+(t.isMe?' · 我的歌曲':'')+'</b><b style="color:#b45309;">'+Number(t.amFinalScore||0).toLocaleString()+' AM分</b></div><span style="font-size:10px;color:#777;">'+esc(t.artist||'')+' · AM '+Number(t.amDailyTotal||0).toLocaleString()+' 次 · 主要地区 '+p+' · 惩罚修正 '+(Number(t.amPenalty||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 Apple Music 数据</p>';$('mInfoTitle').innerText=' Apple Music';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff7ed;border-color:#fed7aa;"><b>Apple Music 全球实时榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
+    window.openITunes=function(){var rows=window.calculateITunesChart().filter(function(t){return Number(t.itunesFinalScore||0)>0;}).slice(0,100),rowsHtml=rows.map(function(t,i){var x=window.calculateITunesTrack(t),main=Object.keys(x.parts).sort(function(a,b){return x.parts[b].weighted-x.parts[a].weighted;})[0]||'--',mine=t.isMe?'background:#fff8e8;border-left:3px solid #c8a440;':'';return '<div class="card" style="padding:9px;margin-bottom:5px;'+mine+'"><div style="display:flex;justify-content:space-between;gap:8px;"><b>#'+esc(i+1)+' '+esc(t.n)+(t.isMe?' · 我的歌曲':'')+'</b><b style="color:#be123c;">'+Number(t.itunesFinalScore||0).toLocaleString()+' 分</b></div><span style="font-size:10px;color:#777;">下载 '+Number(t.itunesDailyDownloads||0).toLocaleString()+' · 美区 '+Number(t.itunesUSDownloads||0).toLocaleString()+' · 主要地区 '+main+' · 风控 '+(Number(t.itunesCheatFactor||1)*100).toFixed(0)+'%</span></div>';}).join('')||'<p style="color:#888;text-align:center;">暂无 iTunes 数据</p>';$('mInfoTitle').innerText='iTunes';$('mInfoContent').innerHTML='<div style="font-size:12px;line-height:1.7;"><div class="card" style="background:#fff1f2;border-color:#fecdd3;"><b>iTunes 全球实时下载榜</b></div>'+rowsHtml+'</div>';$('mInfo').classList.add('open');};
+    window.openSongChartDetail=function(songId){syncWeeklyChartStates();var t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);});if(!t)return alert('找不到歌曲。');var charts=[['Spotify 全球榜','spotifyGlobal'],['Spotify 美国榜','spotifyUS'],['Billboard Hot 100','billboard']],html=charts.map(function(item){var st=ensureChartState(t,item[1]);return '<div class="card"><b>'+item[0]+'</b><br>上期 '+chartStatus(st,st.previous)+' / 本期 '+chartStatus(st,st.current)+' / '+peakLabel(st)+' / 在榜 '+st.weeks+' 期<br><span style="font-size:11px;color:#666;">走势：'+trendLabel(st)+'</span></div>';}).join('');html+='<div class="card"><b>Apple Music 实时榜</b><br>当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'</div><div class="card"><b>iTunes 实时下载榜</b><br>当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In')+'</div>';$('mGameInputTitle').innerText='详细榜单数据';$('mGameInputDesc').innerHTML='<div style="font-size:12px;line-height:1.8;"><button class="sec" onclick="viewSongStats(\''+esc(t.id)+'\')">← 返回歌曲详情</button>'+html+'</div>';$('mGameInputField').style.display='none';$('mGameInput').classList.add('open');};
     var baseViewSongAuthority=window.viewSongStats;
-    if(typeof baseViewSongAuthority==='function')window.viewSongStats=function(songId){var r=baseViewSongAuthority.apply(this,arguments),t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);}),box=$('mGameInputDesc');if(!t||!box)return r;var old=box.querySelector('[data-authority-chart-summary]');if(old)old.remove();var charts=[['SPO全球','spotifyGlobal'],['SPO美国','spotifyUS'],['Billboard','billboard']],summary=document.createElement('div');summary.dataset.authorityChartSummary='1';summary.className='card';summary.style.cssText='margin:8px 0;background:#f8fafc;border-color:#cbd5e1;font-size:11px;line-height:1.8;';summary.innerHTML='<b>榜单状态</b><br>'+charts.map(function(item){var st=ensureChartState(t,item[1]);return item[0]+'：本期 '+chartStatus(st,st.current)+' · '+peakLabel(st)+' · 在榜 '+st.weeks+' 期';}).join('<br>')+'<br>Apple Music：当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'<br>iTunes：当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In');box.insertBefore(summary,box.firstChild);return r;};
+    if(typeof baseViewSongAuthority==='function')window.viewSongStats=function(songId){syncWeeklyChartStates();var r=baseViewSongAuthority.apply(this,arguments),t=(trackPool||[]).find(function(x){return x&&String(x.id)===String(songId);}),box=$('mGameInputDesc');if(!t||!box)return r;var old=box.querySelector('[data-authority-chart-summary]');if(old)old.remove();var charts=[['SPO全球','spotifyGlobal'],['SPO美国','spotifyUS'],['Billboard','billboard']],summary=document.createElement('div');summary.dataset.authorityChartSummary='1';summary.className='card';summary.style.cssText='margin:8px 0;background:#f8fafc;border-color:#cbd5e1;font-size:11px;line-height:1.8;';summary.innerHTML='<b>榜单状态</b><br>'+charts.map(function(item){var st=ensureChartState(t,item[1]);return item[0]+'：本期 '+chartStatus(st,st.current)+' · '+peakLabel(st)+' · 在榜 '+st.weeks+' 期';}).join('<br>')+'<br>Apple Music：当前 '+(validChartRank(t._amCurrentRank)?'#'+t._amCurrentRank:'Not In')+'<br>iTunes：当前 '+(validChartRank(t._itunesCurrentRank)?'#'+t._itunesCurrentRank:'Not In');box.insertBefore(summary,box.firstChild);return r;};
     window.__chartSemantics={ensure:ensureChartState,set:setChartRank,status:chartStatus,trend:trendLabel,peak:peakLabel};
 
-    function fashionData(){if(!Array.isArray(ad.coutureBrands))ad.coutureBrands=[];if(!Array.isArray(ad.specialCustomLooks))ad.specialCustomLooks=[];return {mags:Array.isArray(window.fashionMags)?window.fashionMags:[],brands:Array.isArray(window.luxuryBrands)?window.luxuryBrands:[],couture:ad.coutureBrands};}
-    function tab(id,label,active){return '<div class="sub-tab '+(active?'active':'')+'" onclick="switchSubTab(this,\''+id+'\',\'fashionTabs\')">'+label+'</div>';}
+    var DEFAULT_FASHION_MAGS=[
+        {n:'VOGUE',tier:'T0',type:'女刊',history:[],foundedYear:1892,anniversaryMonth:9,galaMonths:[5,9]},{n:'GQ',tier:'T0',type:'男刊',history:[],foundedYear:1931,anniversaryMonth:9,galaMonths:[3,9]},
+        {n:'ELLE',tier:'T1',type:'女刊',history:[],foundedYear:1945,anniversaryMonth:9,galaMonths:[3,9]},{n:'Esquire',tier:'T1',type:'男刊',history:[],foundedYear:1933,anniversaryMonth:10,galaMonths:[4,10]},{n:"Harper's BAZAAR",tier:'T1',type:'女刊',history:[],foundedYear:1867,anniversaryMonth:9,galaMonths:[5,11]}
+    ];
+    var DEFAULT_LUXURY_BRANDS=[
+        {n:'CHANEL',tier:'顶奢',lines:['成衣','包袋','香水美妆'],mainLines:['成衣','包袋'],titles:['全球品牌大使','品牌大使'],coutureRole:'secondary',galaMonths:[5,10]},
+        {n:'DIOR',tier:'顶奢',lines:['成衣','高定','包袋','香水美妆'],mainLines:['成衣','高定'],titles:['全球品牌大使','品牌大使'],coutureRole:'secondary',galaMonths:[5,11]},
+        {n:'LOUIS VUITTON',tier:'顶奢',lines:['成衣','皮具','珠宝'],mainLines:['皮具','成衣'],titles:['全球品牌大使','品牌大使'],coutureRole:'none',galaMonths:[6,12]},
+        {n:'GUCCI',tier:'高奢',lines:['成衣','皮具'],mainLines:['成衣'],titles:['全球品牌大使','品牌大使'],coutureRole:'none',galaMonths:[5,9]},
+        {n:'PRADA',tier:'高奢',lines:['成衣','皮具'],mainLines:['成衣'],titles:['全球品牌大使','品牌大使'],coutureRole:'none',galaMonths:[4,9]}
+    ];
+    var DEFAULT_COUTURE_BRANDS=[
+        {id:'couture_schiaparelli',n:'Schiaparelli',tier:'T1',model:'artistic',creativeDirector:'Daniel Roseberry',foundedYear:1927,antiqueCouture:true,lines:['高级定制'],archive:[],wearHistory:[]},
+        {id:'couture_valentino',n:'Valentino Haute Couture',tier:'T1',model:'commercial',creativeDirector:'未设置',foundedYear:1960,antiqueCouture:true,lines:['高级定制','成衣','配饰'],archive:[],wearHistory:[]},
+        {id:'couture_iris',n:'Iris van Herpen',tier:'T2',model:'independent',creativeDirector:'Iris van Herpen',foundedYear:2007,antiqueCouture:false,lines:['实验高定'],archive:[],wearHistory:[]}
+    ];
+    function cloneFashionDefaults(items){return items.map(function(x){var copy={};Object.keys(x).forEach(function(k){copy[k]=Array.isArray(x[k])?x[k].slice():x[k];});copy.ambassadors=Array.isArray(copy.ambassadors)?copy.ambassadors:[];copy.blacklist=Array.isArray(copy.blacklist)?copy.blacklist:[];copy.history=Array.isArray(copy.history)?copy.history:[];return copy;});}
+    function fashionData(){
+        if(!ad||typeof ad!=='object')return {mags:[],brands:[],couture:[],looks:[],wardrobe:{}};
+        var mags=Array.isArray(ad.fashionMags)&&ad.fashionMags.length?ad.fashionMags:(Array.isArray(window.fashionMags)&&window.fashionMags.length?window.fashionMags:cloneFashionDefaults(DEFAULT_FASHION_MAGS));
+        var brands=Array.isArray(ad.luxuryBrands)&&ad.luxuryBrands.length?ad.luxuryBrands:(Array.isArray(window.luxuryBrands)&&window.luxuryBrands.length?window.luxuryBrands:cloneFashionDefaults(DEFAULT_LUXURY_BRANDS));
+        var couture=Array.isArray(ad.coutureBrands)&&ad.coutureBrands.length?ad.coutureBrands:cloneFashionDefaults(DEFAULT_COUTURE_BRANDS);
+        if(!Array.isArray(ad.specialCustomLooks))ad.specialCustomLooks=[];if(!ad.wardrobe||typeof ad.wardrobe!=='object')ad.wardrobe={};['hc','fakeHc','rtw','fakeRtw','gifts'].forEach(function(k){if(!Number.isFinite(Number(ad.wardrobe[k])))ad.wardrobe[k]=0;});
+        mags.forEach(function(m){if(!Array.isArray(m.history))m.history=[];if(!Array.isArray(m.galaMonths))m.galaMonths=[3,9];});brands.forEach(function(b){if(!Array.isArray(b.lines))b.lines=[];if(!Array.isArray(b.mainLines))b.mainLines=b.lines.slice(0,1);if(!Array.isArray(b.titles))b.titles=['品牌大使'];if(!Array.isArray(b.ambassadors))b.ambassadors=[];if(!Array.isArray(b.blacklist))b.blacklist=[];});couture.forEach(function(b){if(!Array.isArray(b.archive))b.archive=[];if(!Array.isArray(b.wearHistory))b.wearHistory=[];});
+        ad.fashionMags=mags;ad.luxuryBrands=brands;ad.coutureBrands=couture;window.fashionMags=mags;window.luxuryBrands=brands;return {mags:mags,brands:brands,couture:couture,looks:ad.specialCustomLooks,wardrobe:ad.wardrobe};
+    }
+    window.switchFashionTab=function(btn,targetId){var map=document.getElementById('mapFashion'),tabs=document.getElementById('fashionTabs'),target=document.getElementById(targetId);if(!map||!tabs||!target)return;Array.from(map.querySelectorAll('.sub-tab-bar .sub-tab')).forEach(function(x){x.classList.remove('active');});Array.from(tabs.children).forEach(function(x){x.classList.remove('active');x.style.display='none';});btn.classList.add('active');target.classList.add('active');target.style.display='block';};
+    function tab(id,label,active){return '<button type="button" class="sub-tab '+(active?'active':'')+'" onclick="switchFashionTab(this,\''+id+'\')">'+label+'</button>';}
     window.renderFashionHouse=function(){var d=fashionData(),map=document.getElementById('mapFashion');if(!map)return;
-        function cards(items,type){return items.map(function(x,i){return '<div class="card" style="padding:10px;"><b>'+esc(x.n||'未命名')+'</b><br><span style="font-size:11px;color:#666;">'+esc(x.tier||'')+(type==='couture'?' · '+esc(x.model||'艺术高定')+' · 创意总监：'+esc(x.creativeDirector||'未设置'):'')+'</span><br>'+(type==='mag'?'<button class="sec inline" onclick="editFashionMag('+i+')">编辑</button><button class="sec inline" onclick="viewMagHistory('+i+')">杂志人物</button><button class="sec inline" onclick="joinFashionGalaByType(\'mag\','+i+')">杂志晚宴</button>':type==='brand'?'<button class="sec inline" onclick="editLuxuryBrand('+i+')">编辑</button><button class="sec inline" onclick="joinFashionGalaByType(\'brand\','+i+')">品牌晚宴</button>':'<button class="sec inline" onclick="editCoutureBrand('+i+')">编辑品牌</button><button class="sec inline" onclick="strollCoutureBrand('+i+')">随便逛逛</button><button class="sec inline" onclick="viewCoutureArchive('+i+')">历届高定</button>')+'</div>';}).join('');}
-        var guide='<div class="card"><b>杂志刊期攻略</b><br>T0：金九与重要周年叠加；T1：独立金九或重要周年；T2：三月开季；T3：银十；T4：开年或普通周年；T5：季度与常规刊。</div><div class="card"><b>品牌与高定攻略</b><br>艺术高定以高定为核心；商业高定兼有香水、鞋包和配饰；独立高定工作室提供轻量定制。普通奢牌的高定支线不等于高定屋。</div><div class="card"><b>时装周与特殊定制</b><br>时装周集中在2-3月和9-10月。登上时装周或参加品牌、杂志晚宴时，有概率随机获得特别定制；它会进入档案，不是单独攻略。</div>';
-        map.innerHTML='<h3 class="tg">✨ 时装屋</h3><div class="sub-tab-bar">'+tab('fashionMag','时尚杂志',true)+tab('fashionBrand','奢侈品品牌')+tab('fashionCouture','高定品牌')+tab('fashionWeek','时装周')+tab('fashionGuidePage','攻略')+'</div><div style="display:flex;gap:6px;margin:9px 0;"><button id="openSpecialCustomBtn" class="sec" onclick="openSpecialCustomization()">特殊定制档案</button></div><div id="fashionTabs"><div id="fashionMag" class="sub-page active">'+cards(d.mags,'mag')+'</div><div id="fashionBrand" class="sub-page">'+cards(d.brands,'brand')+'</div><div id="fashionCouture" class="sub-page">'+cards(d.couture,'couture')+'</div><div id="fashionWeek" class="sub-page"><button onclick="joinFashionWeek(\'巴黎时装周\')">巴黎时装周</button><button onclick="joinFashionWeek(\'米兰时装周\')">米兰时装周</button><button onclick="joinFashionWeek(\'纽约时装周\')">纽约时装周</button><button onclick="joinFashionWeek(\'伦敦时装周\')">伦敦时装周</button></div><div id="fashionGuidePage" class="sub-page">'+guide+'</div></div>';
+        function empty(label,action){return '<div class="card" style="padding:12px;color:#666;">'+label+'<br><button class="sec" onclick="'+action+'">新增</button></div>';}
+        function cards(items,type){var html=items.map(function(x,i){var detail=type==='mag'?(esc(x.type||'杂志')+' · 晚宴月份 '+esc((x.galaMonths||[]).join('、'))):type==='brand'?('支线：'+esc((x.lines||[]).join(' / '))+'<br>主支线：'+esc((x.mainLines||[]).join(' / '))):(esc(x.model||'artistic')+' · 创意总监：'+esc(x.creativeDirector||'未设置')+'<br>历届高定：'+(x.archive||[]).length+' 套');return '<div class="card" style="padding:10px;"><b>'+esc(x.n||'未命名')+'</b> <span style="font-size:10px;color:#8a6500;">'+esc(x.tier||'')+'</span><br><span style="font-size:11px;color:#666;">'+detail+'</span><br>'+(type==='mag'?'<button class="sec inline" onclick="editFashionMag('+i+')">编辑</button><button class="sec inline" onclick="strollFashion(\'mag\','+i+')">随便逛逛</button><button class="sec inline" onclick="viewMagHistory('+i+')">杂志人物</button><button class="sec inline" onclick="joinFashionGalaByType(\'mag\','+i+')">杂志晚宴</button>':type==='brand'?'<button class="sec inline" onclick="editLuxuryBrand('+i+')">编辑</button><button class="sec inline" onclick="strollFashion(\'brand\','+i+')">随便逛逛</button><button class="sec inline" onclick="joinFashionGalaByType(\'brand\','+i+')">品牌晚宴</button>':'<button class="sec inline" onclick="editCoutureBrand('+i+')">编辑品牌</button><button class="sec inline" onclick="strollCoutureBrand('+i+')">随便逛逛</button><button class="sec inline" onclick="viewCoutureArchive('+i+')">历届高定</button>')+'</div>';}).join('');return html||(type==='mag'?empty('暂无杂志数据。','addFashionMag()'):type==='brand'?empty('暂无奢侈品品牌。','addLuxuryBrand()'):empty('暂无高定品牌。','addCoutureBrand()'));}
+        var w=d.wardrobe,guide='<div class="card"><b>杂志刊期攻略</b><br>T0：金九与重要周年叠加；T1：独立金九或重要周年；T2：三月开季；T3：银十；T4：开年或普通周年；T5：季度与常规刊。</div><div class="card"><b>品牌与高定攻略</b><br>艺术高定以高定为核心；商业高定兼有成衣和商业支线；独立工作室提供轻量定制。</div><div class="card"><b>时装周与特殊定制</b><br>时装周集中在 2-3 月和 9-10 月。登上时装周或参加品牌、杂志晚宴时，可能随机触发特别定制。</div><div class="card" style="border-color:#d1c290;background:#fffaf0;"><b>特殊定制与服装资源</b><br><span style="font-size:11px;color:#666;">已存特殊定制 '+d.looks.length+' 件 · 高定礼服 '+w.hc+' · 品牌成衣 '+w.rtw+' · 山寨高定 '+w.fakeHc+'</span><br><button onclick="openSpecialCustomization()">打开特殊定制与服装资源</button></div>';
+        map.innerHTML='<h3 class="tg">✨ 时装屋</h3><div class="sub-tab-bar">'+tab('fashionMag','时尚杂志',true)+tab('fashionBrand','奢侈品品牌')+tab('fashionCouture','高定品牌')+tab('fashionWeek','时装周')+tab('fashionGuidePage','攻略')+'</div><div id="fashionTabs"><div id="fashionMag" class="sub-page active" style="display:block;">'+cards(d.mags,'mag')+'</div><div id="fashionBrand" class="sub-page">'+cards(d.brands,'brand')+'</div><div id="fashionCouture" class="sub-page">'+cards(d.couture,'couture')+'</div><div id="fashionWeek" class="sub-page"><div class="card" style="font-size:11px;color:#666;">每年 2-3 月与 9-10 月为主要时装周档期。</div><button onclick="joinFashionWeek(\'巴黎时装周\')">巴黎时装周</button><button onclick="joinFashionWeek(\'米兰时装周\')">米兰时装周</button><button onclick="joinFashionWeek(\'纽约时装周\')">纽约时装周</button><button onclick="joinFashionWeek(\'伦敦时装周\')">伦敦时装周</button></div><div id="fashionGuidePage" class="sub-page">'+guide+'</div></div>';
     };
     function grantSpecial(source){var d=fashionData();if(Math.random()>.22)return false;var levels=[1,2,3,6,7,8,9],level=levels[Math.floor(Math.random()*levels.length)],season=['春季','夏季','秋季','冬季'][Math.floor(Math.random()*4)];d.couture=d.couture||[];ad.specialCustomLooks.unshift({id:'special_'+Date.now(),n:time.y+' '+season+'特别定制',level:level,officialCouture:level<=5,brand:source,releaseYear:time.y,releaseSeason:season,wearers:[]});saveNow();alert('✨ 时尚事件：你获得了一次特别定制，已存入档案。');return true;}
     var baseWeek=window.joinFashionWeek;if(typeof baseWeek==='function')window.joinFashionWeek=function(name){var valid=[2,3,9,10].indexOf(Number(time.m))>=0,r=baseWeek.apply(this,arguments);if(valid)grantSpecial(name);return r;};
@@ -23395,9 +23433,155 @@ function installRuntimeAuthority(){
     function scanRumors(force){if(!Array.isArray(worldArtists)||!ad)return;if(!Array.isArray(ad.rumorLeverage))ad.rumorLeverage=[];if(!ad.rumorDramaKeys)ad.rumorDramaKeys={};var all=worldArtists.slice();all.forEach(function(a){Object.keys(a.relations||{}).forEach(function(id){var c=all.find(function(x){return String(x.id)===String(id);}),rel=a.relations[id],key=c&&rumorKey(a,c);if(!c||!rel||rel.p!=='恋人'||ad.rumorDramaKeys[key]||(!force&&Math.random()>.18))return;ad.rumorDramaKeys[key]=1;var pool=all.filter(function(x){return x.id!==a.id&&x.id!==c.id;}),third=pool[Math.floor(Math.random()*pool.length)],fa=Number(a.fans||0),fc=Number(c.fans||0),mode=Math.abs(fa-fc)>1000000?'虐粉':'互撕';ad.rumorLeverage.unshift({a:a.id,c:c.id,third:third&&third.id||'',kind:third?'绯闻小三':'小三传闻',mode:mode,weakId:fa<fc?a.id:c.id,year:time.y,month:time.m,used:false});if(posts&&posts.mom)posts.mom.unshift({t:'💔 [小三争议] '+a.n+' × '+c.n+' × '+(third?third.n:'神秘对象'),c:'粉丝普遍认为是假料。'+(mode==='虐粉'?'双方体量差距较大，强势方开始单方面虐粉。':'双方体量接近，粉圈直接进入互撕。')});saveNow();});});}
     function settleRumors(){(ad.rumorLeverage||[]).forEach(function(x){if(x.mode!=='虐粉')return;var a=worldArtists.find(function(n){return n.id===x.a;}),c=worldArtists.find(function(n){return n.id===x.c;});if(a&&c&&Math.abs(Number(a.fans||0)-Number(c.fans||0))<=1000000){x.mode='互撕';x.settled=true;x.settledAt=time.y+'_'+time.m;if(posts&&posts.mom)posts.mom.unshift({t:'⚡ [虐粉清算] '+a.n+' 与 '+c.n+' 转入互撕',c:'粉丝差距缩小至100万以内，单方面虐粉结束，双方开始势均力敌地互撕。'});saveNow();}});}
     window.triggerRumorDrama=function(){scanRumors(true);};window.checkRumorSettlements=settleRumors;
-    var baseAdvAuthority=window.advTime;window.advTime=function(){var r=baseAdvAuthority.apply(this,arguments);normalizeDailyMarket();scanRumors(false);settleRumors();return r;};
+    function titleGenderScope(){var g=String(ad&&ad.g||'').trim();return g==='女'?'女':g==='男'?'男':'all';}
+    function titleFiveLabel(scope){return scope==='女'?'女五大':scope==='男'?'男五大':'五大';}
+    function titleArtistKey(artist){return artist&&artist.isMe?'player':String(artist&&artist.id||artist&&artist.n||'');}
+    function titleArtistName(key){if(key==='player')return ad.s;var npc=(worldArtists||[]).find(function(x){return titleArtistKey(x)===key;});return npc?npc.n:key;}
+    function titleWorksFor(artist){var key=titleArtistKey(artist),name=artist&&artist.isMe?ad.s:artist&&artist.n;return (trackPool||[]).filter(function(t){if(!t)return false;if(key==='player')return !!t.isMe;return String(t.ownerId||'')===key||String(t.artist||'')===String(name||'');});}
+    function titleAwardCount(artist){var name=artist&&artist.isMe?ad.s:artist&&artist.n,total=0;if(artist&&artist.isMe)total+=Array.isArray(ad.awd)?ad.awd.length:0;(historyAwards||[]).forEach(function(raw){if(name&&String(raw||'').indexOf(name)>=0)total++;});return total;}
+    function titleStrength(artist){
+        var works=titleWorksFor(artist),tracks=works.filter(function(t){return t.type==='track';}),albums=works.filter(function(t){return t.type==='album';}),fans=Math.max(0,Number(artist&&artist.isMe?ad.st&&ad.st.f:artist&&artist.fans)||0);
+        var topTracks=tracks.slice().sort(function(a,b){return Number(b.stmGlobal||0)-Number(a.stmGlobal||0);}).slice(0,5),topAlbums=albums.slice().sort(function(a,b){return Number(b.slTotal||0)-Number(a.slTotal||0);}).slice(0,3);
+        var streams=topTracks.reduce(function(s,t){return s+Math.max(0,Number(t.stmGlobal||0));},0),sales=works.reduce(function(s,t){return s+Math.max(0,Number(t.slTotal||0));},0),quality=topTracks.length?topTracks.reduce(function(s,t){return s+Math.max(0,Number(t.Spub||0));},0)/topTracks.length:0;
+        var chart=tracks.reduce(function(s,t){var peak=Math.min(Number(t.peakS||999),Number(t.peakB||999),Number(t.peakSpotifyUS||999));return s+(peak===1?8:peak<=5?5:peak<=10?3:peak<=100?1:0);},0),awards=titleAwardCount(artist);
+        var score=Math.log10(fans+1)*13+Math.log10(streams+1)*15+Math.log10(sales+1)*9+quality*.75+Math.min(55,chart)+Math.min(60,awards*4)+Math.min(12,topAlbums.length*3);
+        return {score:score,fans:fans,streams:streams,sales:sales,quality:quality,chart:chart,awards:awards};
+    }
+    function normalizedTitleGender(value){var g=String(value==null?'':value).trim();if(g.charAt(0)==='女'||g.indexOf('女')>=0)return '女';if(g.charAt(0)==='男'||g.indexOf('男')>=0)return '男';return 'all';}
+    function currentTitleArtistPool(){var list=[],seen={};(Array.isArray(worldArtists)?worldArtists:[]).forEach(function(x){if(!x)return;var key=titleArtistKey(x);if(!key||seen[key])return;seen[key]=1;list.push(x);});list.push({id:'player',n:ad.s,gender:ad.g,g:ad.g,isMe:true});return list;}
+    function eligibleTitleArtists(scope){return currentTitleArtistPool().filter(function(x){return scope==='all'||normalizedTitleGender(x.gender!==undefined?x.gender:x.g)===scope;});}
+    function titleLaneWorldLabel(scope){return scope==='女'?'女世一':scope==='男'?'男世一':'综合世一';}
+    function titleCompetitionScopes(){var scopes=['女','男'];if(titleGenderScope()==='all')scopes.push('all');return scopes;}
+    function newTitleEra(scope,number,startYear){return {number:number,startYear:startYear,scope:scope,members:[],candidateHistory:{},worldOneHolder:'',worldOneHistory:[]};}
+    function titleCycleState(){
+        if(!ad.titleCompetition||typeof ad.titleCompetition!=='object')ad.titleCompetition={};var tc=ad.titleCompetition;
+        if(!Number.isFinite(Number(tc.eraStartYear)))tc.eraStartYear=Number(time.y||2026);if(!tc.lanes||typeof tc.lanes!=='object')tc.lanes={};
+        if(tc.current&&tc.current.scope&&!tc.lanes[tc.current.scope])tc.lanes[tc.current.scope]={scope:tc.current.scope,eras:Array.isArray(tc.eras)?tc.eras:[],current:tc.current};
+        titleCompetitionScopes().forEach(function(scope){var lane=tc.lanes[scope];if(!lane||typeof lane!=='object')lane=tc.lanes[scope]={scope:scope,eras:[],current:newTitleEra(scope,1,Number(tc.eraStartYear))};if(!Array.isArray(lane.eras))lane.eras=[];if(!lane.current||typeof lane.current!=='object')lane.current=newTitleEra(scope,lane.eras.length+1,Number(tc.eraStartYear)+lane.eras.length*13);if(!Array.isArray(lane.current.members))lane.current.members=[];if(!lane.current.candidateHistory)lane.current.candidateHistory={};if(!Array.isArray(lane.current.worldOneHistory))lane.current.worldOneHistory=[];});
+        delete tc.current;delete tc.eras;return tc;
+    }
+    function titlePhase(yearIndex){return yearIndex<5?'雏形期':yearIndex<10?'稳定竞争期':'完整期';}
+    function majorCommercialFailure(stats,previous){if(!previous)return false;var current=Math.max(0,stats.streams)+Math.max(0,stats.sales)*120,old=Math.max(0,Number(previous.commercial||0));return old>0&&current<old*.34;}
+    function updateTitleLane(tc,scope,notices,summaries){
+        var lane=tc.lanes[scope];while(Number(time.y)>=Number(lane.current.startYear)+13){var ended=lane.current;ended.endYear=Number(ended.startYear)+12;ended.phase='已定型';ended.frozen=true;lane.eras.push(JSON.parse(JSON.stringify(ended)));lane.current=newTitleEra(scope,ended.number+1,Number(ended.startYear)+13);notices.push('第'+ended.number+'届'+titleFiveLabel(scope)+'已永久定型，该赛道新一届竞争开始。');}
+        var era=lane.current,index=Math.max(0,Number(time.y)-Number(era.startYear)),phase=titlePhase(index),label=titleFiveLabel(scope),artists=eligibleTitleArtists(scope),ranked=artists.map(function(a){var stats=titleStrength(a),key=titleArtistKey(a),previous=era.candidateHistory[key];return {artist:a,key:key,stats:stats,failure:majorCommercialFailure(stats,previous)};});lane.eligibleCount=artists.length;
+        var incumbents={};era.members.forEach(function(key){incumbents[key]=true;});ranked.forEach(function(x){x.adjusted=x.stats.score+(phase==='稳定竞争期'&&incumbents[x.key]&&!x.failure?38:0);});ranked.sort(function(a,b){return b.adjusted-a.adjusted;});
+        var oldMembers=era.members.slice(),nextMembers=phase==='完整期'&&oldMembers.length?oldMembers:ranked.slice(0,5).map(function(x){return x.key;});era.members=nextMembers;era.phase=phase;era.yearIndex=index;era.lastUpdated=[time.y,time.m,time.w].join('_');era.label=label;
+        ranked.forEach(function(x){era.candidateHistory[x.key]={score:x.stats.score,commercial:x.stats.streams+x.stats.sales*120,year:Number(time.y),failure:x.failure};});
+        if(oldMembers.join('|')!==nextMembers.join('|')){var entered=nextMembers.filter(function(x){return oldMembers.indexOf(x)<0;}).map(titleArtistName),left=oldMembers.filter(function(x){return nextMembers.indexOf(x)<0;}).map(titleArtistName);if(entered.length)notices.push(label+'新进：'+entered.join('、'));if(left.length)notices.push('暂时离开'+label+'：'+left.join('、'));}
+        var five=ranked.filter(function(x){return nextMembers.indexOf(x.key)>=0;}).sort(function(a,b){return b.stats.score-a.stats.score;}),canWorldOne=index>=5,holder=canWorldOne&&five.length?five[0].key:'';
+        if(canWorldOne&&holder!==era.worldOneHolder){era.worldOneHolder=holder;era.worldOneHistory.push({year:Number(time.y),month:Number(time.m),holder:holder});notices.push('当期【'+titleLaneWorldLabel(scope)+'】变更为 '+titleArtistName(holder)+'。');}if(!canWorldOne)era.worldOneHolder='';
+        lane.fiveMembers=nextMembers.map(function(key){return {id:key,name:titleArtistName(key),era:era.number,phase:phase};});lane.worldOneHolder=holder?titleArtistName(holder):'';lane.lastChecked=era.lastUpdated;summaries.push('第'+era.number+'届'+label+' · '+phase+'：'+(nextMembers.map(titleArtistName).join('、')||'暂无')+(canWorldOne?' · '+titleLaneWorldLabel(scope)+' '+(lane.worldOneHolder||'暂无'):' · 世一竞争未开放'));
+    }
+    function updateTitleCompetition(showNotice){
+        if(!ad||!time)return [];if(!ad.titles)ad.titles={active:[],achieved:[]};if(!Array.isArray(ad.titles.active))ad.titles.active=[];if(!Array.isArray(ad.titles.achieved))ad.titles.achieved=[];
+        var tc=titleCycleState(),notices=[],summaries=[];titleCompetitionScopes().forEach(function(scope){updateTitleLane(tc,scope,notices,summaries);});
+        var playerScope=titleGenderScope(),playerLane=tc.lanes[playerScope],era=playerLane&&playerLane.current,playerInFive=era&&era.members.indexOf('player')>=0,playerWorldOne=era&&era.worldOneHolder==='player',fiveTitle=era?'第'+era.number+'届'+titleFiveLabel(playerScope):'',worldTitle=era?'第'+era.number+'届'+titleLaneWorldLabel(playerScope):'';
+        ad.titles.active=ad.titles.active.filter(function(x){return !/(五大|世一)/.test(x);});if(era&&!playerInFive)ad.titles.active.push(fiveTitle+'（'+era.phase+'竞争中）');else if(era&&era.yearIndex<5)ad.titles.active.push(worldTitle+'（第6年开放竞争）');else if(era&&!playerWorldOne)ad.titles.active.push(worldTitle+'（仅当届'+titleFiveLabel(playerScope)+'可竞争）');
+        ad.titles.achieved=ad.titles.achieved.filter(function(x){return !/^(同期五大|第\d+批五大|世一)$/.test(x);});if(playerInFive&&ad.titles.achieved.indexOf(fiveTitle)<0)ad.titles.achieved.push(fiveTitle);if(playerWorldOne&&ad.titles.achieved.indexOf(worldTitle)<0)ad.titles.achieved.push(worldTitle);
+        Object.keys(tc.lanes).forEach(function(scope){tc.lanes[scope].eras.forEach(function(old){if(old.members&&old.members.indexOf('player')>=0){var f='第'+old.number+'届'+titleFiveLabel(scope);if(ad.titles.achieved.indexOf(f)<0)ad.titles.achieved.push(f);}if(old.worldOneHolder==='player'){var w='第'+old.number+'届'+titleLaneWorldLabel(scope);if(ad.titles.achieved.indexOf(w)<0)ad.titles.achieved.push(w);}});});
+        tc.fiveMembers=era?era.members.map(function(key){return {id:key,name:titleArtistName(key),era:era.number,phase:era.phase};}):[];tc.worldOneHolder=era&&era.worldOneHolder?titleArtistName(era.worldOneHolder):'';tc.worldOneLastChecked=[time.y,time.m,time.w].join('_');
+        if(typeof updAttr==='function')updAttr();if(showNotice)alert(notices.length?notices.join('\n')+'\n\n'+summaries.join('\n'):summaries.join('\n'));return notices;
+    }
+    window.checkTitles=function(){var result=updateTitleCompetition(true);saveNow();return result;};window.updateTitleCompetition=updateTitleCompetition;window.__titleCompetitionDebug={normalizeGender:normalizedTitleGender,eligible:eligibleTitleArtists,strength:titleStrength};
+    var baseAdvAuthority=window.advTime;window.advTime=function(){var r=baseAdvAuthority.apply(this,arguments);normalizeDailyMarket();scanRumors(false);settleRumors();updateTitleCompetition(false);return r;};
     var baseShowMapAuthority=window.showMap;window.showMap=function(id){var r=baseShowMapAuthority.apply(this,arguments);if(id==='mapHome')mountBasement();if(id==='mapFashion')window.renderFashionHouse();return r;};
-    var baseLoadAuthority=window.mainMenuLoad;if(typeof baseLoadAuthority==='function')window.mainMenuLoad=function(){var r=baseLoadAuthority.apply(this,arguments);setTimeout(function(){mountAvatarInput();mountBasement();ensureGlobalChartButton();},50);return r;};
+
+    // One authoritative repair/migration kernel. It repairs invalid state only and never rerolls valid progress.
+    var RUNTIME_SCHEMA_VERSION=3;
+    function repairReport(scope){return {scope:scope||'all',checked:0,changed:0,changes:{data:0,charts:0,social:0,ui:0},messages:[]};}
+    function markRepair(report,area,message){report.changed++;report.changes[area]=(report.changes[area]||0)+1;if(message&&report.messages.indexOf(message)<0)report.messages.push(message);}
+    function finiteOr(value,fallback,report,area,message){report.checked++;var n=Number(value);if(Number.isFinite(n))return n;markRepair(report,area,message);return fallback;}
+    function ensureArrayField(owner,key,report,area){report.checked++;if(Array.isArray(owner[key]))return owner[key];owner[key]=[];markRepair(report,area,key+' 已恢复为列表');return owner[key];}
+    function ensureObjectField(owner,key,report,area){report.checked++;if(owner[key]&&typeof owner[key]==='object'&&!Array.isArray(owner[key]))return owner[key];owner[key]={};markRepair(report,area,key+' 已恢复为对象');return owner[key];}
+    function repairTrack(t,report){
+        if(!t||typeof t!=='object')return;
+        var weeks=Math.max(0,finiteOr(t.weeks,0,report,'data','作品周数异常已修复'));if(t.weeks!==weeks){t.weeks=weeks;markRepair(report,'data');}
+        var total=Math.max(0,finiteOr(t.stmGlobal,0,report,'data','累计播放异常已修复'));if(t.stmGlobal!==total){t.stmGlobal=total;markRepair(report,'data');}
+        var dayDefault=weeks>0?Math.floor(total/Math.max(1,weeks*7)):0;
+        var day=Math.max(0,finiteOr(t.stmGlobal_Day,dayDefault,report,'data','日播放异常已修复'));if(t.stmGlobal_Day!==day){t.stmGlobal_Day=day;markRepair(report,'data');}
+        var week=Math.max(0,finiteOr(t.stmGlobal_Week,day,report,'data','当期播放异常已修复'));if(t.stmGlobal_Week!==week){t.stmGlobal_Week=week;markRepair(report,'data');}
+        var usDay=Math.max(0,finiteOr(t.stmUS_Day,Math.min(day,Math.floor(day*.38)),report,'data','美国日播放异常已修复'));if(t.stmUS_Day!==usDay){t.stmUS_Day=usDay;markRepair(report,'data');}
+        var usWeek=Math.max(0,finiteOr(t.stmUS_Week,usDay,report,'data','美国当期播放异常已修复'));if(t.stmUS_Week!==usWeek){t.stmUS_Week=usWeek;markRepair(report,'data');}
+        ['stmUS','slTotal','salesWeek','pureSalesWeek','radioAud','Spub','price'].forEach(function(key){var fallback=key==='price'?1:0,value=Math.max(0,finiteOr(t[key],fallback,report,'data',key+' 异常已修复'));if(t[key]!==value){t[key]=value;markRepair(report,'data');}});
+        if(!t.id){t.id='recovered_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7);markRepair(report,'data','缺失的作品 ID 已恢复');}
+    }
+    function repairChartState(t,report){
+        ['spotifyGlobal','spotifyUS','billboard'].forEach(function(chart){
+            var state=ensureChartState(t,chart),before=JSON.stringify(state.records),clean=compactLegacyRanks(state.records.map(function(x){return x&&x.rank;}));
+            clean.forEach(function(row,i){row.key=state.records[i]&&state.records[i].key||row.key;});state.records=clean;recalcChartState(state);report.checked++;
+            if(JSON.stringify(state.records)!==before)markRepair(report,'charts',chart+' 走势已清理');
+        });
+        var g=ensureChartState(t,'spotifyGlobal'),u=ensureChartState(t,'spotifyUS'),b=ensureChartState(t,'billboard');
+        var derived={peakS:g.peak,peakSpotifyUS:u.peak,peakB:b.peak,chartWeeks:g.weeks,usChartWeeks:u.weeks,billboardChartWeeks:b.weeks,peakWeeksGlobal:g.peakWeeks,peakWeeksSpotifyUS:u.peakWeeks,peakWeeksBB:b.peakWeeks};
+        Object.keys(derived).forEach(function(key){report.checked++;if(Number(t[key]||999)!==Number(derived[key]||999)){t[key]=derived[key];markRepair(report,'charts');}});
+    }
+    function repairSocial(report){
+        if(!posts||typeof posts!=='object'||Array.isArray(posts)){posts={};markRepair(report,'social','社交数据容器已恢复');}
+        ['mom','wb','x','ins','tiktok'].forEach(function(key){ensureArrayField(posts,key,report,'social');});
+        if(typeof currentMails!=='undefined'&&!Array.isArray(currentMails)){currentMails=[];markRepair(report,'social','邮件列表结构已恢复');}
+    }
+    function repairPlayer(report){
+        if(!ad||typeof ad!=='object')return;
+        ad.m=Math.max(0,finiteOr(ad.m,0,report,'data','资金数据已恢复'));
+        var stats=ensureObjectField(ad,'st',report,'data');stats.f=Math.max(0,finiteOr(stats.f,0,report,'data','粉丝数据已恢复'));
+        var skills=ensureObjectField(ad,'sk',report,'data');['v','w','s'].forEach(function(key){skills[key]=Math.max(0,finiteOr(skills[key],0,report,'data','属性数据已恢复'));});
+        ensureArrayField(ad,'awd',report,'data');ensureObjectField(ad,'awardData',report,'data');ensureArrayField(ad,'coutureBrands',report,'data');ensureArrayField(ad,'specialCustomLooks',report,'data');
+    }
+    function refreshRuntimeUI(report){
+        [['updAttr'],['renderChart'],['renderAlb'],['renderMapCompany']].forEach(function(item){var fn=window[item[0]];if(typeof fn==='function'){try{fn();}catch(error){report.messages.push(item[0]+' 刷新失败: '+error.message);}}});
+        mountAvatarInput();mountBasement();ensureGlobalChartButton();report.checked++;markRepair(report,'ui');
+    }
+    function performRuntimeRepair(options){
+        options=options||{};var scope=options.scope||'all',report=repairReport(scope),repairData=scope==='all'||scope==='data'||scope==='charts';
+        if(repairData){repairPlayer(report);(Array.isArray(trackPool)?trackPool:[]).forEach(function(t){repairTrack(t,report);if(scope==='all'||scope==='charts')repairChartState(t,report);});}
+        if(scope==='all'||scope==='social')repairSocial(report);
+        if(scope==='all'||scope==='ui')refreshRuntimeUI(report);
+        if(ad&&typeof ad==='object'){ad.runtimeSchemaVersion=RUNTIME_SCHEMA_VERSION;ad.lastRepairReport={at:new Date().toISOString(),scope:scope,checked:report.checked,changed:report.changed,changes:report.changes};}
+        if(report.changed&&options.save!==false)saveNow();return report;
+    }
+    function repairSummary(report){return '检查 '+report.checked+' 项，修复 '+report.changed+' 项。\n数据 '+report.changes.data+' · 榜单 '+report.changes.charts+' · 社交 '+report.changes.social+' · 界面 '+report.changes.ui+(report.messages.length?'\n\n'+report.messages.slice(0,6).join('\n'):'\n\n未改动任何合法游戏成绩。');}
+    window.GameRuntime={version:RUNTIME_SCHEMA_VERSION,repair:performRuntimeRepair,audit:function(scope){return performRuntimeRepair({scope:scope||'all',save:false});}};
+    window.fixChartData=window.fixChartDataSuper=function(){var report=performRuntimeRepair({scope:'charts'});alert('榜单底层校验完成。\n'+repairSummary(report));return report;};
+    window.fixAllNaNErrors=function(){var report=performRuntimeRepair({scope:'data'});alert('存档数值校验完成。\n'+repairSummary(report));return report;};
+    window.fixReviewAndSocial=function(){var report=performRuntimeRepair({scope:'social'});alert('邮件与社交结构校验完成。\n'+repairSummary(report));return report;};
+    window.fixMapAndShows=function(){var report=performRuntimeRepair({scope:'ui'});alert('界面运行层已重新挂载。\n'+repairSummary(report));return report;};
+    window.repairGameRuntime=function(){var report=performRuntimeRepair({scope:'all'});alert('底层运行校验完成。\n'+repairSummary(report));return report;};
+    function buildSaveSnapshot(){return {version:typeof GAME_VERSION!=='undefined'?GAME_VERSION:'1.3.0',ad:ad,lib:lib,std:std,albs:albs,trackPool:trackPool,marketSongs:marketSongs,time:time,Mt:Mt,posts:posts,curPj:curPj,prog:prog,curAlbPj:curAlbPj,historyAwards:historyAwards,conts:conts,worldArtists:worldArtists,writers:writers,myWorks:myWorks,awardRegistry:awardRegistry,currentAwardSeason:currentAwardSeason};}
+    var SAVE_DERIVED_FIELDS={trendChart:1,trueTrend:1,_unlimitedTrend:1,itunesParts:1,amParts:1,_chartPts:1,_chartStr:1,_pctStm:1,_pctSales:1,_pctRadio:1,_displayRank:1,_billboardGlobalWeek:1,_billboardUSWeek:1};
+    function saveSnapshotJSON(){
+        return JSON.stringify(buildSaveSnapshot(),function(key,value){
+            if(SAVE_DERIVED_FIELDS[key])return undefined;
+            if(key==='chartHistory'&&this&&this.chartStats)return undefined;
+            if(key==='spotifyUSHistory'&&this&&this.chartStats&&this.chartStats.spotifyUS)return undefined;
+            return value;
+        });
+    }
+    function storageUsage(){var chars=0;try{for(var i=0;i<localStorage.length;i++){var key=localStorage.key(i),value=localStorage.getItem(key)||'';chars+=String(key||'').length+value.length;}}catch(e){}return chars*2;}
+    function formatStorageBytes(bytes){return bytes>=1048576?(bytes/1048576).toFixed(2)+' MB':Math.max(1,Math.round(bytes/1024))+' KB';}
+    function isStorageQuotaError(error){return !!error&&(error.name==='QuotaExceededError'||error.name==='NS_ERROR_DOM_QUOTA_REACHED'||error.code===22||error.code===1014);}
+    function persistSnapshot(showSuccess){
+        var json,key=getSaveKey(),bytes=0;
+        try{json=saveSnapshotJSON();bytes=json.length*2;localStorage.setItem(key,json);ad._lastSaveBytes=bytes;ad._lastSaveAt=new Date().toISOString();window.__lastSaveStatus={ok:true,key:key,bytes:bytes,totalBytes:storageUsage()};if(showSuccess)alert('保存成功，存档大小 '+formatStorageBytes(bytes)+'。');return true;}
+        catch(error){
+            window.__lastSaveStatus={ok:false,key:key,bytes:bytes,totalBytes:storageUsage(),error:error&&error.name||String(error)};
+            if(isStorageQuotaError(error)){alert('存档未能写入：浏览器为本地存档分配的空间已满。\n本次存档约 '+formatStorageBytes(bytes)+'，当前本地数据约 '+formatStorageBytes(storageUsage())+'。\n这与是否上传图片没有必然关系；歌曲、NPC、帖子和长期历史也会占用空间。原有存档仍保留。');}
+            else{console.error('存档失败',error);alert('存档失败：'+(error&&error.message||String(error))+'。这不是内存不足。');}
+            return false;
+        }
+    }
+    window.saveGameImmediate=function(){return persistSnapshot(false);};
+    window.saveGame=function(){if(window.__runtimeSaveTimer)clearTimeout(window.__runtimeSaveTimer);window.__runtimeSaveTimer=setTimeout(function(){window.saveGameImmediate();},300);};
+    window.showSaveStorageInfo=function(){var json;try{json=saveSnapshotJSON();}catch(e){return alert('无法统计存档：'+e.message);}var images=0,imageChars=0;JSON.stringify(buildSaveSnapshot(),function(k,v){if(typeof v==='string'&&v.indexOf('data:')===0){images++;imageChars+=v.length;}return v;});alert('当前存档预估：'+formatStorageBytes(json.length*2)+'\n本地存储总占用：'+formatStorageBytes(storageUsage())+'\n存档内 Base64 媒体：'+images+' 项（约 '+formatStorageBytes(imageChars*2)+'）');};
+    function mountRepairTerminal(){
+        var page=document.getElementById('pApi');if(!page)return;Array.from(page.querySelectorAll('.card')).forEach(function(card){if(card.innerText.indexOf('深度异常修复终端')>=0)card.style.display='none';});
+        var panel=document.getElementById('runtimeRepairTerminal');if(!panel){panel=document.createElement('div');panel.id='runtimeRepairTerminal';panel.className='card';var saveCard=Array.from(page.querySelectorAll('.card')).find(function(card){return card.innerText.indexOf('存档管理与修复')>=0;});(saveCard||page.firstElementChild||page).insertAdjacentElement('afterend',panel);}
+        panel.innerHTML='<h2 class="tg" style="margin-bottom:8px;">运行数据校验</h2><p style="font-size:11px;color:#777;">只修复损坏数据，不重置合法成绩。</p><button onclick="repairGameRuntime()">校验全部运行数据</button><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;"><button class="sec" onclick="fixChartData()">榜单校验</button><button class="sec" onclick="fixAllNaNErrors()">数值校验</button><button class="sec" onclick="fixReviewAndSocial()">邮件/社交</button><button class="sec" onclick="fixMapAndShows()">界面重挂载</button></div><button class="sec" style="margin-top:6px;" onclick="showSaveStorageInfo()">查看存档与存储占用</button>';
+        var legacy=Array.from(page.querySelectorAll('button')).find(function(button){return button.innerText.indexOf('强制修正/刷新榜单数据')>=0;});if(legacy)legacy.style.display='none';
+    }
+    var baseLoadAuthority=window.mainMenuLoad;if(typeof baseLoadAuthority==='function')window.mainMenuLoad=function(){var r=baseLoadAuthority.apply(this,arguments);setTimeout(function(){performRuntimeRepair({scope:'all'});mountRepairTerminal();},50);return r;};
+    var baseLoadSlotAuthority=window.loadGame;if(typeof baseLoadSlotAuthority==='function')window.loadGame=function(){var r=baseLoadSlotAuthority.apply(this,arguments),finish=function(){setTimeout(function(){performRuntimeRepair({scope:'all'});mountRepairTerminal();},0);};if(r&&typeof r.then==='function')return r.then(function(value){finish();return value;});finish();return r;};
+    mountRepairTerminal();performRuntimeRepair({scope:'all',save:false});
     mountBasement();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(installRuntimeAuthority,100);});else setTimeout(installRuntimeAuthority,100);
