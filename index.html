@@ -584,6 +584,7 @@ setTimeout(function installFinalUXAndChartFixes(){
     var baseOpenAlbDetailUX = window.openAlbDetail;
     window.openAlbDetail = function(idx){
         var a = A(albs)[idx]; if(!a) return;
+        window.__albumStatsActiveIdx=idx;
         var tracks = A(a.s).map(function(s){ return s && s.id ? findById(s.id) : getTracks().filter(function(t){return t.isMe && t.n === s.n;}).slice(-1)[0]; }).filter(Boolean);
         var counts = {n1:0,n2:0,n3:0,t5:0,t10:0,t20:0,t50:0,t100:0};
         tracks.forEach(function(t){
@@ -956,6 +957,9 @@ setTimeout(function installFinalUserRequestedFixes(){
         var streams = `20亿流媒 x${c.s2b} | 10亿流媒 x${c.s1b} | 5亿流媒 x${c.s500m} | 1亿流媒 x${c.s100m}`;
         var certs = `💎 钻石单曲 x${c.dia} | 💿 白金单曲 x${c.plat} | 📀 黄金单曲 x${c.gold}`;
         var albumEntity=a.trackRef||A(trackPool).find(function(t){return t&&t.type==="album"&&(t.albumId===a.id||t.id===a.id||t.n===a.n);})||{};
+        function compactTrendValues(values){var out=[];A(values).forEach(function(x){var isOut=x==="OUT"||Number(x)>100;if(isOut){if(out[out.length-1]!=="OUT")out.push("OUT");}else if(x!==undefined&&x!==null)out.push("#"+Number(x));});return out.length?out.join(" -> "):"暂无历史走势";}
+        function albumTrendValues(field){return compactTrendValues(A(albumEntity.chartHistory).map(function(x){return x&&x[field];}));}
+        var albumChartHtml=`<details open style="background:#fff;border:1px solid #bae6fd;border-left:3px solid #0369a1;padding:8px;margin-top:8px;"><summary style="cursor:pointer;font-weight:bold;color:#0369a1;">母专辑榜单走势</summary><div style="padding-top:7px;line-height:1.8;">Spotify 全球榜：当前 ${rk(albumEntity.lastW)} · 最高 Peak ${rk(albumEntity.peakS)}<br>Spotify 美国榜：当前 ${rk(albumEntity.lastSpotifyUS||albumEntity.lastB)} · 最高 Peak ${rk(albumEntity.peakSpotifyUS||albumEntity.peakB)}<br>Billboard：当前 ${rk(albumEntity.lastB)} · 最高 Peak ${rk(albumEntity.peakB)}<br><span style="font-size:11px;color:#666;">全球走势：${albumTrendValues("global")}<br>美国 / Billboard 走势：${albumTrendValues("us")}</span></div></details>`;
         var albumSales=Number(albumEntity.slTotal||a.slTotal||a.sales||0);
         var albumCert=albumSales>=10000000?`💎 钻石专辑（${Math.floor(albumSales/10000000)}x）`:albumSales>=1000000?`💿 白金专辑（${Math.floor(albumSales/1000000)}x）`:albumSales>=500000?"📀 黄金专辑":"尚未达到黄金专辑";
         var albumTags=albumTagHTML(a)||`<span style="font-size:11px;color:#888;">暂无特殊专辑标签</span>`;
@@ -969,6 +973,7 @@ setTimeout(function installFinalUserRequestedFixes(){
                 <b>🛒 销量认证：</b><br><span style="color:#555;">${certs}</span>
             </div>
             ${pkSummary()}
+            ${albumChartHtml}
             ${chartBlock("Spotify 全球榜","global","lastW","peakS",charts.global,"#1db954")}
             ${chartBlock("Spotify 美国榜","spotifyUS","lastSpotifyUS","peakSpotifyUS",charts.spotifyUS,"#1688d4")}
             ${chartBlock("Billboard Hot 100","bb","lastB","peakB",charts.bb,"#ef4444")}
@@ -22474,6 +22479,56 @@ document.addEventListener("DOMContentLoaded", function(){
     setTimeout(function(){
         window.fashionMags=Array.isArray(ad&&ad.fashionMags)?ad.fashionMags:[];
         window.luxuryBrands=Array.isArray(ad&&ad.luxuryBrands)?ad.luxuryBrands:[];
+
+        function compactOutHistory(t){
+            if(!t)return;
+            if(Array.isArray(t.chartHistory)){
+                var compact=[];
+                t.chartHistory.forEach(function(row){
+                    var globalOut=row&&((row.global==="OUT")||Number(row.global)>100),usOut=row&&((row.us==="OUT")||Number(row.us)>100);
+                    var prev=compact[compact.length-1];
+                    if(globalOut&&prev&&((prev.global==="OUT")||Number(prev.global)>100))row.global=prev.global;
+                    if(usOut&&prev&&((prev.us==="OUT")||Number(prev.us)>100))row.us=prev.us;
+                    var sameGlobal=prev&&((prev.global==="OUT")||Number(prev.global)>100)&&((row.global==="OUT")||Number(row.global)>100);
+                    var sameUS=prev&&((prev.us==="OUT")||Number(prev.us)>100)&&((row.us==="OUT")||Number(row.us)>100);
+                    if(sameGlobal&&sameUS)return;
+                    compact.push(row);
+                });
+                t.chartHistory=compact;
+                t.trendChart=compact.map(function(x){return x.global;});
+            }
+            if(Array.isArray(t.spotifyUSHistory)){
+                var sh=[];t.spotifyUSHistory.forEach(function(v){var out=v==="OUT"||Number(v)>100;if(out&&sh.length&&((sh[sh.length-1]==="OUT")||Number(sh[sh.length-1])>100))return;sh.push(out?"OUT":v);});t.spotifyUSHistory=sh;
+            }
+        }
+        function ensureSongDetailRecords(){
+            Array.from(trackPool||[]).forEach(function(t){
+                if(!t||t.type!=="track")return;
+                if(!Array.isArray(t.chartHistory))t.chartHistory=[];
+                if(!t.chartHistory.length&&(t.lastW||t.peakS||t.weeks>0))t.chartHistory.push({key:"legacy_detail",global:Number(t.lastW||t.peakS||999)<=100?Number(t.lastW||t.peakS):"OUT",us:Number(t.lastB||t.peakB||999)<=100?Number(t.lastB||t.peakB):"OUT",inGlobal:Number(t.lastW||t.peakS||999)<=100,inUS:Number(t.lastB||t.peakB||999)<=100});
+                compactOutHistory(t);
+            });
+        }
+        var updatePeakRanksForOutCleanup=window.updatePeakRanks;
+        window.updatePeakRanks=function(){var result=typeof updatePeakRanksForOutCleanup==="function"?updatePeakRanksForOutCleanup.apply(this,arguments):undefined;ensureSongDetailRecords();return result;};
+        ensureSongDetailRecords();
+
+        function awardTextListForAlbum(album){
+            var names=[String(album&&album.n||"")],songs=Array.from(album&&album.s||[]);
+            songs.forEach(function(song){if(song&&song.n)names.push(String(song.n));});
+            var records=[];Array.from((typeof ad!=="undefined"&&ad.awd)||[]).concat(Array.from(typeof historyAwards!=="undefined"?historyAwards:[])).forEach(function(raw){var text=String(raw||"");if(names.some(function(name){return name&&text.indexOf(name)>=0;}))records.push(text);});
+            return {album:records.filter(function(text){return text.indexOf(String(album.n||""))>=0;}),songs:records.filter(function(text){return text.indexOf(String(album.n||""))<0;})};
+        }
+        function appendAlbumAwardSummary(){
+            var content=document.getElementById("mAlbumStatsContent"),albumModal=document.getElementById("mAlbumStats");if(!content||!albumModal)return;
+            var title=document.getElementById("mAlbumStatsTitle"),name=title?String(title.innerText||"").replace(/^《|》专辑成绩$/g,""):"";
+            var album=Array.from(albs||[]).find(function(x){return x&&x.n===name;});if(!album)return;
+            var awards=awardTextListForAlbum(album),box=document.getElementById("albumAwardSummary");if(box)box.remove();
+            function list(items,empty){return items.length?items.map(function(x){return `<div style="padding:5px 0;border-top:1px solid #eee;">${x}</div>`;}).join(""):empty;}
+            content.insertAdjacentHTML("beforeend",`<div id="albumAwardSummary" class="card" style="margin-top:8px;background:#fff;border:1px solid #ead7a1;line-height:1.7;"><b style="color:#8a6500;">🏆 专辑奖项总结</b><div style="margin-top:7px;"><b>母专获得的奖项</b>${list(awards.album,"<span style='color:#888;'>暂未获得专辑奖项</span>")}</div><div style="margin-top:9px;"><b>专辑内歌曲获得的奖项</b>${list(awards.songs,"<span style='color:#888;'>专辑内歌曲暂未获得奖项</span>")}</div></div>`);
+        }
+        var openAlbumStatsForAwardSummary=window.openAlbumStats;
+        window.openAlbumStats=function(){var result=typeof openAlbumStatsForAwardSummary==="function"?openAlbumStatsForAwardSummary.apply(this,arguments):undefined;setTimeout(appendAlbumAwardSummary,0);return result;};
         if(window.__finalAwardSubmitUI)window.openAwardSubmitUI=window.__finalAwardSubmitUI;
         if(window.__finalAwardBranchSave)window.saveAwardBranchSubmission=window.__finalAwardBranchSave;
         if(window.__finalAwardCandidates)window.getAwardTop5=window.__finalAwardCandidates;
@@ -22481,6 +22536,26 @@ document.addEventListener("DOMContentLoaded", function(){
         if(window.__finalEditFashionMag)window.editFashionMag=window.__finalEditFashionMag;
         if(window.__finalEditLuxuryBrand)window.editLuxuryBrand=window.__finalEditLuxuryBrand;
         if(window.__finalAlbumSongList)window.openAlbDetail=window.__finalAlbumSongList;
+        var openAlbumDetailForWatering=window.openAlbDetail;
+        window.openAlbDetail=function(idx){
+            var result=typeof openAlbumDetailForWatering==="function"?openAlbumDetailForWatering.apply(this,arguments):undefined;
+            setTimeout(function(){
+                var album=Array.from(albs||[])[idx],box=document.getElementById("mAlbDetailContent");if(!album||!box)return;
+                Array.from(box.querySelectorAll("button[onclick*='viewSongStats']")).forEach(function(btn){
+                    var match=String(btn.getAttribute("onclick")||"").match(/viewSongStats\('([^']+)'\)/),song=match&&Array.from(trackPool||[]).find(function(t){return t.id===match[1];});
+                    if(song&&!btn.parentElement.querySelector("button[data-song-water='1']")){var water=document.createElement("button");water.className="sec inline";water.dataset.songWater="1";water.style="margin:0 0 0 4px;font-size:11px;white-space:nowrap;background:#2563eb;color:#fff;border-color:#1d4ed8;";water.textContent="注水";water.onclick=function(){openWateringUI(song.id);};btn.parentElement.appendChild(water);}
+                });
+            },0);return result;
+        };
+        var viewSongStatsForPeakClarify=window.viewSongStats;
+        window.viewSongStats=function(songId){
+            var result=typeof viewSongStatsForPeakClarify==="function"?viewSongStatsForPeakClarify.apply(this,arguments):undefined;
+            setTimeout(function(){
+                var song=Array.from(trackPool||[]).find(function(t){return t&&t.id===songId;}),box=document.getElementById("mGameInputDesc");if(!song||!box)return;var showRank=function(v){return typeof v==="number"&&v>=1&&v<=100?"#"+v:"OUT";};
+                var old=box.querySelector("[data-peak-clarify='1']");if(old)old.remove();
+                var card=document.createElement("div");card.dataset.peakClarify="1";card.className="card";card.style="margin:7px 0;background:#eff6ff;border:1px solid #93c5fd;line-height:1.7;";card.innerHTML="<b>榜单数据说明</b><br>最高 Peak："+showRank(song.peakS||999)+"（历史最佳名次）<br>当前名次："+showRank(song.lastW||999)+"<br>完整周走势：每周独立记录，某一周出现 #88 不会覆盖最高 Peak。连续 OUT 只显示一次，回榜后从新的名次继续记录。";box.insertBefore(card,box.firstChild);
+            },0);return result;
+        };
 
         window.addFashionMag=function(){
             fashionMags=Array.isArray(ad.fashionMags)?ad.fashionMags:(Array.isArray(fashionMags)?fashionMags:[]);
@@ -22497,17 +22572,45 @@ document.addEventListener("DOMContentLoaded", function(){
             worldArtists=[];
             function amount(){return 10+Math.floor(Math.random()*11);}
             function uniqueName(){var base=npcNames[Math.floor(Math.random()*npcNames.length)]+" "+ts[Math.floor(Math.random()*ts.length)],name=base,n=2;while(worldArtists.some(function(x){return x.n===name;}))name=base+" "+n++;return name;}
+            function marketDailyBase(){var input=document.getElementById("customMarketBase"),saved=Number(ad&&ad.customMarketBase||0),shown=input?Number(input.value)*10000:0;return Math.max(500000,shown||saved||3000000);}
+            function naturalTitle(used){
+                var joins=[""," "," & "," After "," Before "," Without "," Under "];
+                for(var tries=0;tries<50;tries++){
+                    var first=String(ts[Math.floor(Math.random()*ts.length)]||"Untitled"),name=first;
+                    if(Math.random()<.42)name=first+joins[1+Math.floor(Math.random()*(joins.length-1))]+String(ts[Math.floor(Math.random()*ts.length)]||"Night");
+                    if(!used[name]){used[name]=true;return name;}
+                }
+                var fallback="Untitled "+String.fromCharCode(65+Object.keys(used).length%26);used[fallback]=true;return fallback;
+            }
+            function seedHistory(entity,releaseYear,releaseMonth,isTrack,careerWeight){
+                var ageWeeks=Math.max(1,Math.floor(((time.y-releaseYear)*12+(time.m-releaseMonth))*4.345)+1+Math.floor(Math.random()*4));
+                entity.t_y=releaseYear;entity.t_m=releaseMonth;entity.t_w=1+Math.floor(Math.random()*4);entity.weeks=ageWeeks;entity.days=ageWeeks*7;entity._entityCreatedAt=Date.now()-ageWeeks*7*86400000-Math.floor(Math.random()*86400000);
+                if(!isTrack)return;
+                var base=marketDailyBase(),quality=Math.max(.55,Math.min(1.45,Number(entity.Spub||70)/75)),roll=Math.random(),tier=roll<.035?"phenomenon":roll<.14?"hit":roll<.45?"mid":"catalog";
+                var mult=tier==="phenomenon"?(30+Math.random()*32):tier==="hit"?(3+Math.random()*8):tier==="mid"?(.35+Math.random()*1.35):(.015+Math.random()*.22);
+                var ageDecay=ageWeeks<=8?1:ageWeeks<=52?Math.max(.2,1-ageWeeks/75):Math.max(.015,.18*Math.exp(-(ageWeeks-52)/180));
+                if(tier==="phenomenon")ageDecay=Math.max(.28,ageDecay);else if(tier==="hit")ageDecay=Math.max(.08,ageDecay);
+                var active=ageWeeks<=16||tier==="phenomenon"||(tier==="hit"&&Math.random()<.55)||(ageWeeks<80&&Math.random()<.14);
+                var daily=active?Math.floor(base*mult*quality*ageDecay*(.88+Math.random()*.24)):Math.floor(base*(.002+Math.random()*.025));
+                entity._marketTier=tier;entity._marketStrength=mult*quality;entity._historicalSeed=true;entity.stmGlobal_Day=daily;entity.stmGlobal_Week=daily*7;entity.stmUS_Day=Math.floor(daily*(.25+Math.random()*.2));entity.stmUS_Week=entity.stmUS_Day*7;
+                entity.stmGlobal=Math.floor(daily*7*Math.max(2,ageWeeks)*(.65+Math.random()*.7));entity.stmUS=Math.floor(entity.stmGlobal*(.25+Math.random()*.2));entity.slTotal=Math.max(Number(entity.slTotal||0),Math.floor(entity.stmGlobal/1200));
+                var peak=tier==="phenomenon"?1+Math.floor(Math.random()*3):tier==="hit"?2+Math.floor(Math.random()*18):tier==="mid"?12+Math.floor(Math.random()*65):45+Math.floor(Math.random()*56);
+                entity.peakS=Math.min(100,peak);entity.peakSpotifyUS=Math.min(100,peak+Math.floor(Math.random()*18));entity.peakB=Math.min(100,peak+Math.floor(Math.random()*24));
+                entity.chartWeeks=Math.min(ageWeeks,tier==="phenomenon"?35+Math.floor(Math.random()*100):tier==="hit"?12+Math.floor(Math.random()*45):tier==="mid"?2+Math.floor(Math.random()*18):Math.floor(Math.random()*5));
+                entity.usChartWeeks=Math.max(0,entity.chartWeeks-Math.floor(Math.random()*8));entity.lastW=active?Math.min(100,Math.max(entity.peakS,entity.peakS+Math.floor(ageWeeks/5)+Math.floor(Math.random()*18))):999;entity.lastSpotifyUS=active?Math.min(100,Math.max(entity.peakSpotifyUS,entity.lastW+Math.floor(Math.random()*12))):999;entity.lastB=active?Math.min(100,Math.max(entity.peakB,entity.lastW+Math.floor(Math.random()*18))):999;
+                var historyLen=Math.min(52,Math.max(1,entity.chartWeeks));entity.chartHistory=[];entity.spotifyUSHistory=[];for(var h=0;h<historyLen;h++){var progress=h/Math.max(1,historyLen-1),rank=Math.min(999,Math.round(entity.peakS+(100-entity.peakS)*Math.abs(progress-.35)*1.35+Math.random()*12));entity.chartHistory.push({global:rank<=100?rank:999,us:rank+Math.floor(Math.random()*15)<=100?rank+Math.floor(Math.random()*15):999});entity.spotifyUSHistory.push(rank+Math.floor(Math.random()*12)<=100?rank+Math.floor(Math.random()*12):999);}
+            }
             function addGroup(group,count,minYears,maxYears,minAlbums,maxAlbums){
                 for(var i=0;i<count;i++){
                     var years=minYears+Math.floor(Math.random()*(maxYears-minYears+1)),albumCount=minAlbums+Math.floor(Math.random()*(maxAlbums-minAlbums+1));
                     var art=uniqueName(),fans=Math.floor((years+1)*(700000+Math.random()*900000)),genre=gs[Math.floor(Math.random()*gs.length)];
-                    var npc={id:"npc_"+Date.now()+"_"+worldArtists.length,n:art,fans:fans,age:18+years+Math.floor(Math.random()*10),gender:Math.random()>.5?"女":"男",careerYears:years,debutYear:time.y-years,debutCohort:group,albumCount:albumCount,albums:[],bnaSubmissions:0};
+                    var npc={id:"npc_"+Date.now()+"_"+worldArtists.length,n:art,fans:fans,age:18+years+Math.floor(Math.random()*10),gender:Math.random()>.5?"女":"男",careerYears:years,debutYear:time.y-years,debutCohort:group,albumCount:albumCount,albums:[],discography:[],bnaSubmissions:0},usedTitles={};
                     worldArtists.push(npc);
                     for(var j=0;j<albumCount;j++){
-                        var releaseYear=Math.max(npc.debutYear,time.y-Math.max(0,albumCount-j-1)*2),albumName=ts[Math.floor(Math.random()*ts.length)]+" "+ts[Math.floor(Math.random()*ts.length)];
-                        var album=createEntity(albumName,art,false,"album",genre,fans,Math.random()*45+45,Math.random()*45+45,releaseYear,1+Math.floor(Math.random()*12),1);
-                        var track=createEntity(ts[Math.floor(Math.random()*ts.length)]+" "+(j+1),art,false,"track",genre,fans,Math.random()*45+45,Math.random()*45+45,releaseYear,1+Math.floor(Math.random()*12),1);
-                        album.ownerId=npc.id;track.ownerId=npc.id;npc.albums.push(album.id);trackPool.push(album,track);
+                        var releaseYear=albumCount===1?time.y:Math.min(time.y,Math.round(npc.debutYear+j*(Math.max(1,years)/(albumCount-1)))),releaseMonth=releaseYear===time.y?1+Math.floor(Math.random()*Math.max(1,time.m)):1+Math.floor(Math.random()*12),albumName=naturalTitle(usedTitles),album=createEntity(albumName,art,false,"album",genre,fans,Math.random()*45+45,Math.random()*45+45,releaseYear,releaseMonth,1),trackIds=[],representativeCount=2+Math.floor(Math.random()*3);
+                        album.ownerId=npc.id;album.releaseYear=releaseYear;album.releaseMonth=releaseMonth;album.s=[];seedHistory(album,releaseYear,releaseMonth,false,years);trackPool.push(album);npc.albums.push(album.id);
+                        for(var k=0;k<representativeCount;k++){var trackName=naturalTitle(usedTitles),track=createEntity(trackName,art,false,"track",genre,fans,Math.random()*45+45,Math.random()*45+45,releaseYear,releaseMonth,1);track.ownerId=npc.id;track.albumId=album.id;seedHistory(track,releaseYear,releaseMonth,true,years);trackIds.push(track.id);album.s.push({id:track.id,n:track.n});trackPool.push(track);}
+                        album.trackIds=trackIds;album.stmGlobal=trackIds.reduce(function(sum,id){var t=trackPool.find(function(x){return x.id===id;});return sum+Number(t&&t.stmGlobal||0);},0);album.slTotal=Math.max(Number(album.slTotal||0),Math.floor(album.stmGlobal/1500));npc.discography.push({id:album.id,name:album.n,year:releaseYear,tracks:trackIds});
                     }
                     npc.alb=npc.albums[npc.albums.length-1]||"";
                 }
@@ -22540,7 +22643,17 @@ document.addEventListener("DOMContentLoaded", function(){
         if(!window.__worldOneWeeklyHook){
             window.__worldOneWeeklyHook=true;
             var advTimeBeforeWorldOne=window.advTime;
-            window.advTime=function(weeks,showMsg){var result=typeof advTimeBeforeWorldOne==="function"?advTimeBeforeWorldOne(weeks,showMsg):undefined;updateWorldOneTitle(false);return result;};
+            window.advTime=function(weeks,showMsg){
+                var result=typeof advTimeBeforeWorldOne==="function"?advTimeBeforeWorldOne(weeks,showMsg):undefined;
+                var marketInput=document.getElementById("customMarketBase"),marketBase=Math.max(500000,marketInput?Number(marketInput.value)*10000:Number(ad&&ad.customMarketBase||3000000));
+                Array.from(trackPool||[]).forEach(function(t){
+                    if(!t||t.type!=="track"||t._marketTier!=="phenomenon")return;
+                    var age=Math.max(1,Number(t.weeks||1)),strength=Math.max(12,Number(t._marketStrength||18)),decay=Math.max(.22,Math.exp(-Math.max(0,age-6)/115)),breakoutDaily=Math.floor(marketBase*strength*decay*(.9+Math.random()*.2));
+                    if(breakoutDaily>Number(t.stmGlobal_Day||0)){t.stmGlobal_Day=breakoutDaily;t.stmGlobal_Week=breakoutDaily*7;t.stmUS_Day=Math.floor(breakoutDaily*(.28+Math.random()*.16));t.stmUS_Week=t.stmUS_Day*7;t.stmGlobal=Number(t.stmGlobal||0)+breakoutDaily*7;t.stmUS=Number(t.stmUS||0)+t.stmUS_Week;}
+                });
+                if(typeof updatePeakRanks==="function")updatePeakRanks();
+                updateWorldOneTitle(false);return result;
+            };
         }
         function syncLoadedRuntimeSystems(){
             window.fashionMags=Array.isArray(ad&&ad.fashionMags)?ad.fashionMags:window.fashionMags;
@@ -22551,6 +22664,134 @@ document.addEventListener("DOMContentLoaded", function(){
         }
         var mainMenuLoadBeforeRuntimeSync=window.mainMenuLoad;
         if(typeof mainMenuLoadBeforeRuntimeSync==="function")window.mainMenuLoad=function(){var result=mainMenuLoadBeforeRuntimeSync.apply(this,arguments);setTimeout(syncLoadedRuntimeSystems,0);return result;};
+        // Final authority for daily radio movement and album-single ordering.
+        function finalDateKey(){
+            return [Number(time&&time.y||0),Number(time&&time.m||0),Number(time&&time.w||0),Number(time&&time.d||0)].join("_");
+        }
+        function finalIsRadioBlocked(t){
+            var genres=[];
+            if(Array.isArray(t&&t.g))genres=genres.concat(t.g);
+            if(t&&t.gnr!==undefined)genres=genres.concat(Array.isArray(t.gnr)?t.gnr:[t.gnr]);
+            return genres.some(function(x){var s=String(x||"");return s.indexOf("宗教")>=0||s.toLowerCase().indexOf("gospel")>=0;});
+        }
+        function refreshDailyRadioAudience(force){
+            var key=finalDateKey();
+            Array.from(trackPool||[]).forEach(function(t){
+                if(!t||t.type!=="track")return;
+                if(!Array.isArray(t.radioHistory))t.radioHistory=[];
+                if(!force&&t._radioRefreshDayKey===key)return;
+                var before=Math.max(0,Number(t.radioAud||0));
+                if(finalIsRadioBlocked(t)){
+                    t.radioAud=0;t.radioBought=0;t.radioDailyChange=-before;t._radioRefreshDayKey=key;
+                    t.radioHistory.push({key:key,audience:0,change:-before});
+                    if(t.radioHistory.length>90)t.radioHistory.shift();
+                    return;
+                }
+                var usDaily=Math.max(0,Number(t.stmUS_Day||0),Number(t.stmUS_Week||0)/7);
+                var quality=Math.max(.55,Math.min(1.45,Number(t.Spub||70)/80));
+                var age=Math.max(0,Number(t.weeks||0));
+                var ageFactor=age<=8?1:Math.max(.28,Math.exp(-(age-8)/150));
+                var singleBoost=(t.albumSingleNo||t.isTitleSingle||Number(t.promoCount||0)>0)?1.18:.78;
+                var demand=Math.min(160,Math.sqrt(usDaily/100000)*5.2*quality*ageFactor*singleBoost);
+                var bought=Math.max(0,Number(t.radioBought||0));
+                if(bought>0){demand+=Math.min(45,bought);t.radioBought=Math.max(0,bought*.965);}
+                var momentum=Math.max(-8,Math.min(8,Number(t.radioMomentum||0)));
+                var noise=(Math.random()-.5)*Math.max(.18,before*.055+ demand*.018);
+                var target=Math.max(0,demand+momentum);
+                var next=Math.max(0,before+(target-before)*(.11+Math.random()*.08)+noise);
+                if(before===0&&target>0)next=Math.max(next,target*(.12+Math.random()*.08));
+                next=Math.round(next*100)/100;
+                t.radioAud=next;t.radioDailyChange=Math.round((next-before)*100)/100;t._radioRefreshDayKey=key;
+                t.radioMomentum=Math.max(-8,Math.min(8,momentum*.72+(next-before)*.18));
+                t.radioHistory.push({key:key,audience:next,change:t.radioDailyChange});
+                if(t.radioHistory.length>90)t.radioHistory.shift();
+            });
+        }
+        window.refreshDailyRadioAudience=refreshDailyRadioAudience;
+        var finalAdvHourForDailyRadio=window.advHour;
+        window.advHour=function(h){
+            var before=finalDateKey(),result=typeof finalAdvHourForDailyRadio==="function"?finalAdvHourForDailyRadio.apply(this,arguments):undefined;
+            if(finalDateKey()!==before)refreshDailyRadioAudience(false);
+            return result;
+        };
+        var finalAdvTimeForDailyRadio=window.advTime;
+        window.advTime=function(weeks,showMsg){
+            var before=finalDateKey(),result=typeof finalAdvTimeForDailyRadio==="function"?finalAdvTimeForDailyRadio.apply(this,arguments):undefined;
+            if(finalDateKey()!==before)refreshDailyRadioAudience(false);
+            return result;
+        };
+        var finalRenderRadioApp=window.renderRadioApp;
+        if(typeof finalRenderRadioApp==="function")window.renderRadioApp=function(){
+            var result=finalRenderRadioApp.apply(this,arguments),box=document.getElementById("mInfoContent");
+            if(box)Array.from(box.querySelectorAll(".card")).forEach(function(row){
+                var text=String(row.textContent||""),song=Array.from(trackPool||[]).find(function(t){return t&&t.type==="track"&&text.indexOf(String(t.n||""))>=0;});
+                if(song&&row.querySelector&&!row.querySelector("[data-radio-daily='1']")){var tip=document.createElement("div");tip.dataset.radioDaily="1";tip.style.cssText="font-size:10px;color:"+(Number(song.radioDailyChange||0)>=0?"#15803d":"#b91c1c")+";margin-top:3px;";tip.textContent="今日 "+(Number(song.radioDailyChange||0)>=0?"+":"")+Number(song.radioDailyChange||0).toFixed(2)+"M";row.appendChild(tip);}
+            });return result;
+        };
+
+        function finalSingleLabel(no){
+            no=Math.max(1,Math.floor(Number(no)||1));if(no===1)return "首单";
+            var d=["零","一","二","三","四","五","六","七","八","九"];
+            function cn(n){if(n<10)return d[n];if(n<20)return "十"+(n%10?d[n%10]:"");if(n<100)return d[Math.floor(n/10)]+"十"+(n%10?d[n%10]:"");return String(n);}
+            return cn(no)+"单";
+        }
+        function finalAlbumTracks(album){
+            return Array.from(album&&album.s||[]).map(function(s){
+                if(s&&s.id){var exact=Array.from(trackPool||[]).find(function(t){return t&&t.id===s.id;});if(exact)return exact;}
+                var matches=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track"&&t.isMe&&s&&t.n===s.n;});return matches[matches.length-1];
+            }).filter(Boolean);
+        }
+        function owningAlbumForTrack(t){
+            if(!t)return null;
+            return Array.from(albs||[]).find(function(a){
+                if(t.albumId&&(a.id===t.albumId||(a.trackRef&&a.trackRef.id===t.albumId)))return true;
+                return Array.from(a&&a.s||[]).some(function(s){return s&&((s.id&&s.id===t.id)||(!s.id&&s.n===t.n));});
+            })||null;
+        }
+        function syncAlbumSingleState(album,appendTrack){
+            if(!album)return [];
+            var tracks=finalAlbumTracks(album),byId={};tracks.forEach(function(t){byId[t.id]=t;});
+            var history=[];
+            function add(id){if(id&&byId[id]&&history.indexOf(id)<0)history.push(id);}
+            Array.from(album.singleHistory||[]).forEach(add);
+            tracks.slice().sort(function(a,b){return Number(a.albumSingleNo||9999)-Number(b.albumSingleNo||9999);}).forEach(function(t){
+                var explicit=t.albumSingleConfirmed||t.albumSinglePerformed||t.albumSingleNo||/^(首|一|二|三|四|五|六|七|八|九|十|\d+)单$/.test(String(t.singleLabel||""));
+                if(explicit)add(t.id);
+            });
+            if(appendTrack)add(appendTrack.id);
+            history.forEach(function(id,i){
+                var t=byId[id],no=i+1,label=finalSingleLabel(no);t.albumSingleNo=no;t.singleLabel=label;t.isTitleSingle=true;
+                var meta=Array.from(album.s||[]).find(function(s){return s&&((s.id&&s.id===id)||(!s.id&&s.n===t.n));});
+                if(meta){meta.id=t.id;meta.albumSingleNo=no;meta.singleLabel=label;meta.isTitleSingle=true;meta.albumSingleConfirmed=!!t.albumSingleConfirmed;meta.albumSinglePerformed=!!t.albumSinglePerformed;}
+            });
+            album.singleHistory=history;album.singleCount=history.length;return history;
+        }
+        window.syncAlbumSingleState=syncAlbumSingleState;
+        Array.from(albs||[]).forEach(function(a){syncAlbumSingleState(a);});
+        var finalConfirmAlbumSinglePick=window.confirmAlbumSinglePick;
+        window.confirmAlbumSinglePick=function(){
+            var radio=document.querySelector("input[name='albSinglePick']:checked"),t=radio&&Array.from(trackPool||[]).find(function(x){return x&&x.id===radio.value;}),album=t&&owningAlbumForTrack(t);
+            if(t){t.albumSingleConfirmed=true;t.albumSingleConfirmedAt=finalDateKey();if(album){album.selectedSingleId=t.id;syncAlbumSingleState(album,t);}}
+            var result=typeof finalConfirmAlbumSinglePick==="function"?finalConfirmAlbumSinglePick.apply(this,arguments):undefined;
+            if(album)syncAlbumSingleState(album,t);return result;
+        };
+        var finalPerformSongPromoById=window.performSongPromoById;
+        window.performSongPromoById=function(id,showName){
+            var t=Array.from(trackPool||[]).find(function(x){return x&&x.id===id;}),album=t&&owningAlbumForTrack(t);
+            var result=typeof finalPerformSongPromoById==="function"?finalPerformSongPromoById.apply(this,arguments):undefined;
+            if(result&&t&&album){t.albumSinglePerformed=true;t.albumSinglePerformedAt=finalDateKey();t.albumSingleConfirmed=true;album.selectedSingleId=t.id;syncAlbumSingleState(album,t);if(typeof saveGame==="function")saveGame();}
+            return result;
+        };
+        function wrapSingleStateRender(name,albumArg){
+            var base=window[name];if(typeof base!=="function")return;
+            window[name]=function(){var album=albumArg.apply(this,arguments);if(album)syncAlbumSingleState(album);return base.apply(this,arguments);};
+        }
+        wrapSingleStateRender("openAlbumSingleManager",function(idx){return Array.from(albs||[])[Number(idx)];});
+        wrapSingleStateRender("openAlbDetail",function(idx){return Array.from(albs||[])[Number(idx)];});
+        wrapSingleStateRender("viewSongStats",function(id){var t=Array.from(trackPool||[]).find(function(x){return x&&x.id===id;});return owningAlbumForTrack(t);});
+        var finalLoadForRadioSingles=window.loadGame;
+        if(typeof finalLoadForRadioSingles==="function")window.loadGame=function(){var result=finalLoadForRadioSingles.apply(this,arguments);setTimeout(function(){Array.from(albs||[]).forEach(function(a){syncAlbumSingleState(a);});refreshDailyRadioAudience(false);},0);return result;};
+
         syncLoadedRuntimeSystems();
     },0);
 });
