@@ -784,23 +784,22 @@ setTimeout(function installFinalUserRequestedFixes(){
         var tracks = albumTracks(a);
         var counts = {n1:0,n2:0,n3:0,t5:0,t10:0,t20:0,t50:0,t100:0};
         tracks.forEach(function(t){ var p=Number(t.peakS||999); if(p===1)counts.n1++; if(p===2)counts.n2++; if(p===3)counts.n3++; if(p<=5)counts.t5++; if(p<=10)counts.t10++; if(p<=20)counts.t20++; if(p<=50)counts.t50++; if(p<=100)counts.t100++; });
-        var stat = `<div class="card" style="font-size:12px;line-height:1.7;background:#f8fafc;">
-            <b>📊 专辑成绩统计</b><br>
-            #1：${counts.n1}　#2：${counts.n2}　#3：${counts.n3}<br>
-            Top5：${counts.t5}　Top10：${counts.t10}　Top20：${counts.t20}<br>
-            Top50：${counts.t50}　Top100：${counts.t100}<br>
-            累计流媒：${(tAlb.stmGlobal||0).toLocaleString()}　销量：${(tAlb.slTotal||0).toLocaleString()}
-        </div>`;
-        var list = A(a.s).map(function(song){
+        var stat = `<details style="margin:0 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:8px;">
+            <summary style="cursor:pointer;font-size:12px;color:#8a6d16;font-weight:bold;padding:7px 0;">查看专辑详细统计</summary>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#e5e7eb;border:1px solid #e5e7eb;margin-top:6px;">
+                ${[["#1",counts.n1],["#2",counts.n2],["#3",counts.n3],["Top 5",counts.t5],["Top 10",counts.t10],["Top 20",counts.t20],["Top 50",counts.t50],["Top 100",counts.t100]].map(function(x){return `<div style="background:#fff;padding:7px 3px;text-align:center;font-size:10px;color:#777;"><b style="display:block;font-size:14px;color:#222;">${x[1]}</b>${x[0]}</div>`;}).join("")}
+            </div>
+        </details>`;
+        var list = A(a.s).map(function(song,pos){
             var t = song && song.id ? findTrack(song.id) : albumTracks({s:[song]})[0];
-            if(!t) return `<div class="card"><b>${E(song && song.n || "")}</b>（暂无数据）</div>`;
-            return `<div class="card" style="padding:10px;margin-bottom:5px;background:#fcfcfc;border:1px solid #eee;">
-                <b>${E(t.n)}</b> ${trackTagHTML(t)}<br><span style="font-size:11px;color:#666;">SPO全球 ${rk(t.lastW)} / BB ${rk(t.lastB)} / 在榜 ${t.chartWeeks||0} 周</span><br>
-                <button class="sec inline" style="margin-top:5px;font-size:11px;" onclick="viewSongStats('${t.id}')">详情</button>
+            if(!t) return `<div style="padding:10px 2px;border-bottom:1px solid #eee;"><b>${pos+1}. ${E(song && song.n || "")}</b><span style="font-size:11px;color:#999;">　暂无数据</span></div>`;
+            return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid #eee;">
+                <div style="min-width:0;"><div style="font-size:13px;font-weight:bold;overflow-wrap:anywhere;">${pos+1}. ${E(t.n)}</div><div style="margin:3px 0;">${trackTagHTML(t)}</div><div style="font-size:10px;color:#777;">SPO全球 ${rk(t.lastW)}　BB ${rk(t.lastB)}　在榜 ${t.chartWeeks||0} 周</div></div>
+                <button class="sec inline" style="margin:0;font-size:11px;white-space:nowrap;" onclick="viewSongStats('${t.id}')">详情</button>
             </div>`;
         }).join("");
         $("mAlbDetailTitle").innerText = "《" + a.n + "》歌曲一览";
-        $("mAlbDetailContent").innerHTML = stat + list;
+        $("mAlbDetailContent").innerHTML = `<div style="font-size:11px;color:#777;padding-bottom:8px;border-bottom:1px solid #ddd;">${A(a.s).length} 首　累计流媒 ${(tAlb.stmGlobal||0).toLocaleString()}　销量 ${(tAlb.slTotal||0).toLocaleString()}</div>` + stat + `<div>${list || "暂无歌曲"}</div>`;
         $("mAlbDetail").classList.add("open");
     };
 
@@ -922,10 +921,11 @@ setTimeout(function installFinalUserRequestedFixes(){
             ceremony: regs.filter(function(a){return (a.month||12) === curM;})
         };
     };
-    window.openAwardSubmitUI = function(){
+    window.openAwardSubmitUI = function(awardId){
         ensureAwardDataFinal();
         var info = getCurrentAwardStageInfo();
         var awds = info.submit.length ? info.submit : A(awardRegistry);
+        if(awardId) awds = A(awardRegistry).filter(function(a){return a.id===awardId;});
         var tracks = A(trackPool).filter(function(t){return t && t.isMe && t.type==="track";}).slice().sort(function(a,b){return (b._entityCreatedAt||0)-(a._entityCreatedAt||0);});
         var albums = A(trackPool).filter(function(t){return t && t.isMe && t.type==="album";}).slice().sort(function(a,b){return (b._entityCreatedAt||0)-(a._entityCreatedAt||0);});
         var html = `<p style="font-size:12px;color:#666;">每个奖项最多报名 1 首歌、1 张专辑、1 支 MV；艺人奖默认报名你本人。</p>`;
@@ -951,9 +951,10 @@ setTimeout(function installFinalUserRequestedFixes(){
         };
         saveGame(); alert("报名已保存。");
     };
-    window.viewNominationsUI = function(){
+    window.viewNominationsUI = function(awardId){
         ensureAwardDataFinal();
         var info = getCurrentAwardStageInfo(), awds = info.nomination.length ? info.nomination : A(awardRegistry);
+        if(awardId) awds = A(awardRegistry).filter(function(a){return a.id===awardId;});
         var html = awds.map(function(awd){
             var key = time.y+"_"+awd.id, noms = ad.awardData.nominations[key] || {};
             var cats = A(awd.categories);
@@ -967,11 +968,117 @@ setTimeout(function installFinalUserRequestedFixes(){
         $("mInfoContent").innerHTML = html || "暂无提名。";
         $("mInfo").classList.add("open");
     };
-    window.viewAwardHistoryUI = function(){
-        $("mInfoTitle").innerText = "🏆 查看历届获奖";
-        $("mInfoContent").innerHTML = `<div style="max-height:70vh;overflow-y:auto;">${A(historyAwards).length ? A(historyAwards).map(function(x){return `<div class="card" style="font-size:12px;line-height:1.7;">${x}</div>`;}).join("") : "暂无历史记录"}</div>`;
+    window.viewAwardHistoryUI = function(awardId){
+        var awd = awardId ? A(awardRegistry).find(function(a){return a.id===awardId;}) : null;
+        var records = A(historyAwards).filter(function(x){return !awd || String(x).indexOf(awd.name)>=0;});
+        $("mInfoTitle").innerText = "🏆 " + (awd ? awd.name + "历届获奖" : "查看历届获奖");
+        $("mInfoContent").innerHTML = `<div style="max-height:70vh;overflow-y:auto;">${records.length ? records.map(function(x){return `<div class="card" style="font-size:12px;line-height:1.7;">${x}</div>`;}).join("") : "暂无该奖项历史获奖记录"}</div>`;
         $("mInfo").classList.add("open");
     };
+
+    function ensureAwardHallEditor(){
+        var modal = $("mAwardHallEditor");
+        if(modal) return modal;
+        modal = document.createElement("div");
+        modal.id = "mAwardHallEditor";
+        modal.className = "modal";
+        modal.innerHTML = `<div class="modal-content" style="max-width:660px;">
+            <span class="close" onclick="closeM('mAwardHallEditor')">&times;</span>
+            <h3 id="mAwardHallEditorTitle" class="tg">奖项编辑</h3>
+            <div id="mAwardHallEditorContent"></div>
+        </div>`;
+        document.body.appendChild(modal);
+        return modal;
+    }
+    function awardCategoryEditorRow(c,i){
+        c = c || {};
+        var scope = c.scope === "branch" ? "branch" : "general";
+        return `<div class="card awardHallCatRow" data-cat-id="${E(c.id||"")}" style="padding:10px;margin-bottom:7px;">
+            <div style="display:grid;grid-template-columns:minmax(120px,2fr) minmax(90px,1fr);gap:6px;">
+                <input class="awardCatName" value="${E(c.name||"")}" placeholder="奖项类目名称">
+                <select class="awardCatScope"><option value="general" ${scope==="general"?"selected":""}>通类</option><option value="branch" ${scope==="branch"?"selected":""}>支线</option></select>
+                <select class="awardCatTarget"><option value="track" ${c.targetType==="track"?"selected":""}>歌曲</option><option value="album" ${c.targetType==="album"?"selected":""}>专辑</option><option value="mv" ${c.targetType==="mv"?"selected":""}>MV</option><option value="artist" ${c.targetType==="artist"?"selected":""}>艺人</option></select>
+                <input class="awardCatGenre" value="${E(c.targetGenre||"ALL")}" placeholder="曲风/支线，如 流行；通类填 ALL">
+            </div>
+            <button class="red inline" style="margin-top:6px;" onclick="this.closest('.awardHallCatRow').remove()">删除类目</button>
+        </div>`;
+    }
+    window.addAwardHallCategoryRow = function(){
+        var box = $("awardHallCategoryRows");
+        if(box) box.insertAdjacentHTML("beforeend", awardCategoryEditorRow({name:"新奖项",scope:"general",targetType:"track",targetGenre:"ALL"}, box.children.length));
+    };
+    window.openAwardHallEditor = function(idx){
+        ensureAwardHallEditor();
+        var isNew = idx === undefined || idx === null || Number(idx) < 0;
+        var awd = isNew ? {name:"",desc:"",month:12,scope:"general",rules:{weightSpub:0.5,weightSales:0.3,weightCatchy:0.2},categories:[]} : A(awardRegistry)[Number(idx)];
+        if(!awd) return;
+        window.currentAwardHallEditIndex = isNew ? -1 : Number(idx);
+        var rules = awd.rules || {};
+        $("mAwardHallEditorTitle").innerText = isNew ? "创立新奖项" : "编辑奖项：" + awd.name;
+        $("mAwardHallEditorContent").innerHTML = `<div style="max-height:72vh;overflow-y:auto;">
+            <label>奖项名称</label><input id="awardHallName" value="${E(awd.name||"")}">
+            <label>奖项说明</label><textarea id="awardHallDesc" style="height:65px;">${E(awd.desc||"")}</textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div><label>奖项结构</label><select id="awardHallScope"><option value="general" ${awd.scope!=="branch"?"selected":""}>通类奖项</option><option value="branch" ${awd.scope==="branch"?"selected":""}>支线奖项</option></select></div>
+                <div><label>举办月份</label><input id="awardHallMonth" type="number" min="1" max="12" value="${Number(awd.month||12)}"></div>
+            </div>
+            <div class="card" style="font-size:12px;"><b>评选权重</b><br><label>乐评口碑</label><input id="awardHallWSpub" type="number" min="0" step="0.01" value="${Number(rules.weightSpub||0)}"><label>商业成绩</label><input id="awardHallWSales" type="number" min="0" step="0.01" value="${Number(rules.weightSales||0)}"><label>流行度</label><input id="awardHallWCatchy" type="number" min="0" step="0.01" value="${Number(rules.weightCatchy||0)}"></div>
+            <h4 class="tg">奖项类目</h4><div id="awardHallCategoryRows">${A(awd.categories).map(awardCategoryEditorRow).join("")}</div>
+            <button class="sec" onclick="addAwardHallCategoryRow()">增加类目</button>
+            <button onclick="saveAwardHallEditor()">保存奖项设置</button>
+        </div>`;
+        $("mAwardHallEditor").classList.add("open");
+    };
+    window.openAwardCustomization = function(){
+        ensureAwardHallEditor();
+        $("mAwardHallEditorTitle").innerText = "奖项自定义";
+        $("mAwardHallEditorContent").innerHTML = `<div style="max-height:72vh;overflow-y:auto;">
+            <button onclick="openAwardHallEditor(-1)">创立新奖项</button>
+            ${A(awardRegistry).map(function(awd,i){return `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid #eee;"><div><b>${E(awd.name)}</b><br><span style="font-size:11px;color:#777;">${awd.scope==="branch"?"支线奖项":"通类奖项"}　${A(awd.categories).length} 个类目</span></div><button class="sec inline" style="margin:0;" onclick="openAwardHallEditor(${i})">编辑</button></div>`;}).join("")}
+        </div>`;
+        $("mAwardHallEditor").classList.add("open");
+    };
+    window.editAwardFull = window.openAwardHallEditor;
+    window.createCustomAward = function(){ openAwardHallEditor(-1); };
+    window.saveAwardHallEditor = function(){
+        var name = ($("awardHallName")||{}).value || "";
+        if(!name.trim()) return alert("奖项名称不能为空。");
+        var weights = [Number(($("awardHallWSpub")||{}).value||0),Number(($("awardHallWSales")||{}).value||0),Number(($("awardHallWCatchy")||{}).value||0)];
+        var total = weights[0]+weights[1]+weights[2];
+        if(total <= 0) return alert("评选权重总和必须大于 0。");
+        weights = weights.map(function(x){return x/total;});
+        var cats = A(document.querySelectorAll("#awardHallCategoryRows .awardHallCatRow")).map(function(row,i){
+            var scope = row.querySelector(".awardCatScope").value;
+            return {id:row.getAttribute("data-cat-id")||("cat_"+Date.now()+"_"+i),name:row.querySelector(".awardCatName").value.trim()||("奖项"+(i+1)),scope:scope,targetType:row.querySelector(".awardCatTarget").value,targetGenre:scope==="general"?"ALL":(row.querySelector(".awardCatGenre").value.trim()||"ALL"),targetForm:"ALL"};
+        });
+        if(!cats.length) return alert("至少保留一个奖项类目。");
+        var idx = Number(window.currentAwardHallEditIndex);
+        var old = idx >= 0 ? A(awardRegistry)[idx] : null;
+        var awd = old || {id:"awd_custom_"+Date.now()};
+        awd.name=name.trim(); awd.desc=($("awardHallDesc")||{}).value||""; awd.scope=($("awardHallScope")||{}).value||"general"; awd.month=Math.max(1,Math.min(12,Number(($("awardHallMonth")||{}).value||12))); awd.rules={weightSpub:weights[0],weightSales:weights[1],weightCatchy:weights[2]}; awd.categories=cats;
+        if(!old) awardRegistry.push(awd);
+        saveGame(); closeM("mAwardHallEditor"); renderAwardRegistry(); renderAwardsMap(); alert("奖项设置已保存。");
+    };
+
+    var baseRenderAwardRegistryHall = window.renderAwardRegistry;
+    window.renderAwardRegistry = function(){
+        if(typeof baseRenderAwardRegistryHall === "function") baseRenderAwardRegistryHall();
+        var box = $("awardIntroBox"); if(!box) return;
+        box.innerHTML = A(awardRegistry).map(function(awd,i){
+            return `<div style="padding:11px 0;border-bottom:1px solid #e5e7eb;"><b>${E(awd.name)}</b><br><span style="font-size:11px;color:#777;">${A(awd.categories).map(function(c){return E(c.name);}).join("、")||"暂无类目"}</span><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:8px;"><button class="sec" style="font-size:11px;padding:7px 3px;" onclick="openAwardSubmitUI('${awd.id}')">报名奖项</button><button class="sec" style="font-size:11px;padding:7px 3px;" onclick="viewNominationsUI('${awd.id}')">查看提名</button><button class="sec" style="font-size:11px;padding:7px 3px;" onclick="viewAwardHistoryUI('${awd.id}')">历届获奖</button></div></div>`;
+        }).join("") || "暂无奖项";
+    };
+    function installAwardHallActions(){
+        var hall = $("mapAwards"); if(!hall) return;
+        var title = hall.querySelector("h3"); if(title) title.innerText = "🏆 奖项殿堂";
+        var oldActions=$("awardHallActions"); if(oldActions) oldActions.remove();
+        var createBtn = hall.querySelector("button[onclick='createCustomAward()']");
+        var controls = createBtn ? createBtn.parentElement : null;
+        if(controls && !$("awardCustomizeEntry")) controls.innerHTML=`<button id="awardCustomizeEntry" class="sec" onclick="openAwardCustomization()">奖项自定义</button>`;
+    }
+    var baseRenderAwardsMapHall = window.renderAwardsMap;
+    window.renderAwardsMap = function(){ if(typeof baseRenderAwardsMapHall === "function") baseRenderAwardsMapHall(); installAwardHallActions(); };
+    installAwardHallActions();
     var baseRefreshTodoFinalUser = window.refreshTodoStatus;
     window.refreshTodoStatus = function(){
         if(typeof baseRefreshTodoFinalUser === "function") baseRefreshTodoFinalUser();
@@ -1342,7 +1449,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       <button class="sec" onclick="showMap('mapFashion')">✨ 四大时尚周</button>
       <button class="sec" id="btnMapCompany" onclick="showMap('mapLabel')">🏢 唱片公司</button>
       <button class="sec" onclick="showMap('mapShows')">🏟️ 巅峰舞台</button>
-      <button class="sec" onclick="showMap('mapAwards')">🏆 历届奖项</button>
+      <button class="sec" onclick="showMap('mapAwards')">🏆 奖项殿堂</button>
       <button class="sec" onclick="showMap('mapHome')">🏠 我的家</button>
       
       <!-- 地图子内容区 -->
@@ -1425,7 +1532,7 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
       
       <!-- 全新设计的动态大奖系统 -->
       <div id="mapAwards" class="card" style="display:none;margin-top:15px;background:#fefcf5;">
-          <h3 class="tg" style="margin-bottom:10px;">🏆 颁奖季殿堂</h3>
+          <h3 class="tg" style="margin-bottom:10px;">🏆 奖项殿堂</h3>
           <p id="txtAwardStatus" style="font-size:12px;color:#888;margin-bottom:10px;">每年 9月上报，11月提名，次年 2月颁奖典礼</p>
           
           <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px;">
