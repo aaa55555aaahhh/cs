@@ -654,6 +654,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     }
     function albumSingleLabel(no){
         no = Math.max(1, Math.floor(Number(no) || 1));
+        if(no === 1) return "首单";
         var digits = ["零","一","二","三","四","五","六","七","八","九"];
         function chineseNumber(n){
             if(n < 10) return digits[n];
@@ -722,9 +723,22 @@ setTimeout(function installFinalUserRequestedFixes(){
         return html;
     }
     window.refreshTrackIndustryTags = refreshTrackIndustryTags;
+    function updateSpotifyUSChartHistory(){
+        var pool = A(trackPool).filter(function(t){ return t && t.type === "track"; }).slice();
+        pool.sort(function(a,b){ return Number(b.stmUS_Week||0) - Number(a.stmUS_Week||0); });
+        pool.forEach(function(t,i){
+            var rank = i < 100 && Number(t.stmUS_Week||0) > 0 ? i + 1 : 999;
+            t.lastSpotifyUS = rank;
+            t.peakSpotifyUS = Math.min(Number(t.peakSpotifyUS||999),rank);
+            if(!Array.isArray(t.spotifyUSHistory)) t.spotifyUSHistory = [];
+            t.spotifyUSHistory.push(rank);
+            if(t.spotifyUSHistory.length > 520) t.spotifyUSHistory.shift();
+        });
+    }
     var baseAdvTimeForIndustryTags = window.advTime;
     window.advTime = function(weeks, showMsg){
         if(typeof baseAdvTimeForIndustryTags === "function") baseAdvTimeForIndustryTags(weeks, showMsg);
+        updateSpotifyUSChartHistory();
         A(trackPool).forEach(refreshTrackIndustryTags);
     };
 
@@ -734,10 +748,78 @@ setTimeout(function installFinalUserRequestedFixes(){
             var ref = a.trackRef || {};
             var dlxBtn = `<button class="sec inline" style="margin-top:5px;" onclick="openDeluxe(${i})">🌟追加豪华版</button>`;
             var detailBtn = `<button class="sec inline" style="margin-top:5px;" onclick="openAlbDetail(${i})">📖 歌曲一览</button>`;
+            var statsBtn = `<button class="sec inline" style="margin-top:5px;background:#fff8e8;color:#8a6500;border-color:#d8bd68;" onclick="openAlbumStats(${i})">📊 专辑成绩</button>`;
             var singleBtn = `<button class="sec inline" style="margin-top:5px;background:#fff7ed;color:#9a3412;border-color:#fed7aa;" onclick="openAlbumSingleManager(${i})">🎤 打单管理</button>`;
             var promoBtn = `<button class="inline" style="margin-top:5px;background:#e0f2fe;color:#0369a1;" onclick="openAlbPromo(${i})">📢 专辑宣发</button>`;
-            return `<div class="card"><b>${E(a.n)}</b> (${E(a.st||"已发")}) <br><span style="font-size:12px;color:#666;">收录:${A(a.s).length}首歌曲</span><br>感知分: ${ref.Spub!==undefined?Number(ref.Spub).toFixed(1):"--"} <br>累计销量: ${(ref.slTotal||0).toLocaleString()} <br>${dlxBtn} ${detailBtn} ${singleBtn} ${promoBtn}</div>`;
+            return `<div class="card"><b>${E(a.n)}</b> (${E(a.st||"已发")}) <br><span style="font-size:12px;color:#666;">收录:${A(a.s).length}首歌曲</span><br>感知分: ${ref.Spub!==undefined?Number(ref.Spub).toFixed(1):"--"} <br>累计销量: ${(ref.slTotal||0).toLocaleString()} <br>${dlxBtn} ${detailBtn} ${statsBtn} ${singleBtn} ${promoBtn}</div>`;
         }).join("");
+    };
+
+    function ensureAlbumStatsModal(){
+        var modal = $("mAlbumStats");
+        if(modal) return modal;
+        modal = document.createElement("div");
+        modal.id = "mAlbumStats";
+        modal.className = "modal";
+        modal.innerHTML = `<div class="modal-box" style="max-width:560px;background:#fff;color:#111;">
+            <button class="modal-x" onclick="closeM('mAlbumStats')">关闭</button>
+            <h3 id="mAlbumStatsTitle" class="tg">专辑成绩</h3>
+            <div id="mAlbumStatsContent"></div>
+        </div>`;
+        document.body.appendChild(modal);
+        return modal;
+    }
+    window.openAlbumStats = function(idx){
+        var a = A(albs)[idx]; if(!a) return;
+        ensureAlbumStatsModal();
+        var tracks = albumTracks(a);
+        function blankCounts(){ return {p1:0,p2:0,p3:0,p10:0,p20:0,p50:0,p100:0,out:0}; }
+        var charts = {global:blankCounts(),spotifyUS:blankCounts(),bb:blankCounts()};
+        var c = {s2b:0,s1b:0,s500m:0,s100m:0,dia:0,plat:0,gold:0};
+        function countPeak(counts,peak){
+            var p = Number(peak || 999);
+            if(p === 1) counts.p1++; else if(p === 2) counts.p2++; else if(p === 3) counts.p3++;
+            else if(p <= 10) counts.p10++; else if(p <= 20) counts.p20++; else if(p <= 50) counts.p50++; else if(p <= 100) counts.p100++; else counts.out++;
+        }
+        function trendValues(t,type){
+            var values = [];
+            if(type === "spotifyUS") values = A(t.spotifyUSHistory);
+            else if(Array.isArray(t.chartHistory)) values = t.chartHistory.map(function(x){ return type === "global" ? x && x.global : x && x.us; });
+            else if(t.chartHistory && Array.isArray(t.chartHistory[type === "global" ? "global" : "bb"])) values = t.chartHistory[type === "global" ? "global" : "bb"];
+            values = values.filter(function(x){ return x !== undefined && x !== null; }).slice(-12);
+            return values.length ? values.map(function(x){ return Number(x) > 100 ? "OUT" : "#"+Number(x); }).join(" → ") : "暂无历史";
+        }
+        tracks.forEach(function(t){
+            countPeak(charts.global,t.peakS);
+            countPeak(charts.spotifyUS,t.peakSpotifyUS);
+            countPeak(charts.bb,t.peakB);
+            var stm = Number(t.stmGlobal || 0);
+            if(stm >= 2000000000) c.s2b++; else if(stm >= 1000000000) c.s1b++; else if(stm >= 500000000) c.s500m++; else if(stm >= 100000000) c.s100m++;
+            var sales = Number(t.slTotal || 0);
+            if(sales >= 10000000) c.dia++; else if(sales >= 1000000) c.plat++; else if(sales >= 500000) c.gold++;
+        });
+        var missing = Math.max(0,A(a.s).length-tracks.length);
+        charts.global.out += missing; charts.spotifyUS.out += missing; charts.bb.out += missing;
+        var title = charts.global.p1 >= 2 ? `<div style="text-align:center;margin-bottom:8px;"><b style="display:inline-block;color:#e6683c;font-size:14px;background:#fff0f5;padding:4px 10px;border-radius:20px;">✨ 荣耀称号：一专 ${charts.global.p1} 冠 ✨</b></div>` : "";
+        function countsText(x){ return `Peak #1 x${x.p1} | Peak #2 x${x.p2} | Peak #3 x${x.p3} | 前10 x${x.p10} | 前20 x${x.p20} | 前50 x${x.p50} | 前100 x${x.p100} | 未入榜 x${x.out}`; }
+        function chartBlock(title,type,currentField,peakField,counts,color){
+            var rows = tracks.map(function(t){ return `<div style="padding:7px 0;border-top:1px solid #eee;"><b>${E(t.n)}</b><br><span style="color:#666;">当前 ${rk(t[currentField])}　Peak ${rk(t[peakField])}</span><br><span style="font-size:10px;color:#888;overflow-wrap:anywhere;">走势：${trendValues(t,type)}</span></div>`; }).join("");
+            return `<details style="background:#fff;border:1px solid #e5e7eb;border-left:3px solid ${color};padding:8px;margin-top:8px;"><summary style="cursor:pointer;font-weight:bold;color:#333;">${title}</summary><div style="padding-top:7px;color:#555;">${countsText(counts)}</div>${rows||"暂无歌曲数据"}</details>`;
+        }
+        var streams = `20亿流媒 x${c.s2b} | 10亿流媒 x${c.s1b} | 5亿流媒 x${c.s500m} | 1亿流媒 x${c.s100m}`;
+        var certs = `💎 钻石单曲 x${c.dia} | 💿 白金单曲 x${c.plat} | 📀 黄金单曲 x${c.gold}`;
+        $("mAlbumStatsTitle").innerText = "《" + a.n + "》专辑成绩";
+        $("mAlbumStatsContent").innerHTML = `<div style="background:#fff8e8;padding:12px;border-radius:8px;border:1px dashed #c8a440;margin-bottom:8px;font-size:12px;line-height:1.8;">
+            <h4 style="color:#a67c00;margin:0 0 10px;text-align:center;">📋 专辑时代单曲成绩大满贯总结</h4>${title}
+            <div style="background:#fff;padding:8px;border-radius:6px;">
+                <b>🎧 流媒汇总：</b><br><span style="color:#555;">${streams}</span><br>
+                <b>🛒 销量认证：</b><br><span style="color:#555;">${certs}</span>
+            </div>
+            ${chartBlock("Spotify 全球榜","global","lastW","peakS",charts.global,"#1db954")}
+            ${chartBlock("Spotify 美国榜","spotifyUS","lastSpotifyUS","peakSpotifyUS",charts.spotifyUS,"#1688d4")}
+            ${chartBlock("Billboard Hot 100","bb","lastB","peakB",charts.bb,"#ef4444")}
+        </div>`;
+        $("mAlbumStats").classList.add("open");
     };
 
     window.openAlbPromo = window.openAlbPromo || function(idx){
@@ -780,16 +862,6 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.openAlbDetail = function(idx){
         var a = A(albs)[idx]; if(!a) return;
         syncAlbumSingleHistory(a);
-        var tAlb = a.trackRef || {};
-        var tracks = albumTracks(a);
-        var counts = {n1:0,n2:0,n3:0,t5:0,t10:0,t20:0,t50:0,t100:0};
-        tracks.forEach(function(t){ var p=Number(t.peakS||999); if(p===1)counts.n1++; if(p===2)counts.n2++; if(p===3)counts.n3++; if(p<=5)counts.t5++; if(p<=10)counts.t10++; if(p<=20)counts.t20++; if(p<=50)counts.t50++; if(p<=100)counts.t100++; });
-        var stat = `<details style="margin:0 0 8px;border-bottom:1px solid #e5e7eb;padding-bottom:8px;">
-            <summary style="cursor:pointer;font-size:12px;color:#8a6d16;font-weight:bold;padding:7px 0;">查看专辑详细统计</summary>
-            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#e5e7eb;border:1px solid #e5e7eb;margin-top:6px;">
-                ${[["#1",counts.n1],["#2",counts.n2],["#3",counts.n3],["Top 5",counts.t5],["Top 10",counts.t10],["Top 20",counts.t20],["Top 50",counts.t50],["Top 100",counts.t100]].map(function(x){return `<div style="background:#fff;padding:7px 3px;text-align:center;font-size:10px;color:#777;"><b style="display:block;font-size:14px;color:#222;">${x[1]}</b>${x[0]}</div>`;}).join("")}
-            </div>
-        </details>`;
         var list = A(a.s).map(function(song,pos){
             var t = song && song.id ? findTrack(song.id) : albumTracks({s:[song]})[0];
             if(!t) return `<div style="padding:10px 2px;border-bottom:1px solid #eee;"><b>${pos+1}. ${E(song && song.n || "")}</b><span style="font-size:11px;color:#999;">　暂无数据</span></div>`;
@@ -799,7 +871,7 @@ setTimeout(function installFinalUserRequestedFixes(){
             </div>`;
         }).join("");
         $("mAlbDetailTitle").innerText = "《" + a.n + "》歌曲一览";
-        $("mAlbDetailContent").innerHTML = `<div style="font-size:11px;color:#777;padding-bottom:8px;border-bottom:1px solid #ddd;">${A(a.s).length} 首　累计流媒 ${(tAlb.stmGlobal||0).toLocaleString()}　销量 ${(tAlb.slTotal||0).toLocaleString()}</div>` + stat + `<div>${list || "暂无歌曲"}</div>`;
+        $("mAlbDetailContent").innerHTML = `<div>${list || "暂无歌曲"}</div>`;
         $("mAlbDetail").classList.add("open");
     };
 
@@ -1183,12 +1255,14 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.performSongPromoById = function(id, showName){
         var t = findTrack(id); if(!t) return alert("找不到这首歌。");
         var rec = promoRecord(t);
-        if(rec.total >= 5) return alert("《"+t.n+"》的宣传次数已达上限（5次）。其他歌曲的次数不受影响。");
         if(rec.week >= 7) return alert("《"+t.n+"》本周通告已排满，请下周再来。");
         if(typeof costEnergy === "function" && !costEnergy(10)) return;
         if(typeof advHour === "function") advHour(24);
         var base = Math.max(50000, Number(t.stmGlobal_Week||0)*7 || Number(t.stmGlobal||0));
-        var normalBoost = Math.floor((base*0.15*(ad.Geffect||1)+100000)*Math.pow(0.72,rec.total));
+        var ownFreshness = Math.max(0.08, Math.pow(0.72,rec.total));
+        var singleOrder = Math.max(1,Number(t.albumSingleNo||1));
+        var eraFreshness = Math.max(0.68,Math.pow(0.94,singleOrder-1));
+        var normalBoost = Math.floor((base*0.15*(ad.Geffect||1)+100000)*ownFreshness*eraFreshness);
         var skill = ((ad.sk&&ad.sk.s)||0)*0.6 + ((ad.sk&&ad.sk.v)||0)*0.4;
         var godChance = Math.min(0.02,0.008 + Math.max(0,skill-700)/150000);
         var isGod = Math.random() < godChance;
@@ -1204,7 +1278,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         rec.total++; rec.week++; t.promoCount=rec.total; t.promoCountThisWeek=rec.week; t._independentPromoConfirmed=true;
         if(typeof updatePeakRanks === "function") updatePeakRanks();
         saveGame();
-        alert((isGod?"神级现场爆发！\n":"现场宣传成功！\n")+"《"+t.n+"》在"+(showName||"电视舞台")+"增加流媒 "+extra.toLocaleString()+"。\n该歌曲宣传次数："+rec.total+"/5"+(isGod?"\n神级现场不受300万上限限制。":""));
+        alert((isGod?"神级现场爆发！\n":"打单现场完成！\n")+"《"+t.n+"》在"+(showName||"电视舞台")+"增加流媒 "+extra.toLocaleString()+"。\n该歌曲打单次数："+rec.total+"\n现场新鲜度："+Math.round(ownFreshness*100)+"%　专辑时代新鲜度："+Math.round(eraFreshness*100)+"%"+(isGod?"\n神级现场不受300万上限限制。":""));
         return true;
     };
     window.promoAlbSong = function(id){ return performSongPromoById(id,"现场通告"); };
@@ -10265,7 +10339,9 @@ var rawAdvTimeForDetailedStats = window.advTime;
 window.advTime = function(weeks, showMsg) {
     // 执行推演前先更新周榜追踪
     trackPool.forEach(t => {
-        if (!t.chartHistory) t.chartHistory = { global: [], bb: [] };
+        if (!t.chartHistory || typeof t.chartHistory !== 'object') t.chartHistory = {};
+        if (!Array.isArray(t.chartHistory.global)) t.chartHistory.global = [];
+        if (!Array.isArray(t.chartHistory.bb)) t.chartHistory.bb = [];
         if (t.type === 'track' && t.weeks > 0) {
             t.chartHistory.global.push(t.lastW || t.peakS || 100);
             t.chartHistory.bb.push(t.peakB || 100);
