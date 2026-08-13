@@ -1330,14 +1330,48 @@ setTimeout(function installFinalUserRequestedFixes(){
     var baseRenderFashionFinalUser = window.renderFashionHouse;
     window.renderFashionHouse = function(){
         if(typeof baseRenderFashionFinalUser === "function") baseRenderFashionFinalUser();
-        var map = $("mapFashion"); if(!map || $("fashionGuideBox")) return;
-        map.insertAdjacentHTML("afterbegin", `<div id="fashionGuideBox" class="card" style="font-size:12px;line-height:1.7;background:#f8fafc;">
-            <b>📌 时尚屋攻略</b><br>
-            代言梯度示例：全球代言人 / 全球品牌大使 / 品牌大使 / 品牌挚友 / 形象大使。<br>
-            品牌支线示例：高级定制、成衣、珠宝、腕表、包袋、皮具、香水美妆、鞋履、家居。<br>
-            主支线代表品牌最强领域，可多选；全部都是主支线 = 全领域强势。<br>
-            杂志梯度示例：T0 五大刊 / T1 一线刊 / T2 区域强刊 / T3 小众独立刊。
-        </div>`);
+        var map = $("mapFashion"); if(!map) return;
+        var oldGuide=$("fashionGuideBox");if(oldGuide)oldGuide.remove();
+        if(!$("fashionGuideEntry")){
+            var title=map.querySelector("h3");
+            if(title)title.insertAdjacentHTML("afterend", `<button id="fashionGuideEntry" class="sec" style="margin-bottom:10px;" onclick="openFashionGuidePage()">📖 查看时尚屋攻略</button>`);
+        }
+    };
+    window.openFashionGuidePage=function(){
+        $("mInfoTitle").innerText="时尚屋攻略";
+        $("mInfoContent").innerHTML=`<div style="font-size:12px;line-height:1.85;">
+            <h4 class="tg" style="font-size:14px;margin-bottom:6px;">杂志梯度</h4>
+            <div class="card" style="padding:10px;margin-bottom:12px;">
+                <b>T0</b>：顶级刊物与最高规格封面<br>
+                <b>T1</b>：一线核心刊物<br>
+                <b>T2</b>：区域强刊与重要专业刊<br>
+                <b>T3</b>：成熟的小众独立刊<br>
+                <b>T4</b>：新兴刊物与区域普通刊<br>
+                <b>T5</b>：入门刊物与小型数字刊<br>
+                <b style="color:var(--baby-yellow-text);">跨类型比较：T0 男刊 &gt; T1 女刊。</b><br>
+                同梯度内可根据刊物类型、封面规格和艺人表现继续区分含金量。
+            </div>
+            <h4 class="tg" style="font-size:14px;margin-bottom:6px;">品牌与代言</h4>
+            <div class="card" style="padding:10px;margin-bottom:12px;">
+                <b>代言人梯度示例：</b>全球代言人 / 全球品牌大使 / 品牌大使 / 品牌挚友 / 形象大使。<br>
+                品牌不一定设置全球代言人，也可以将全球品牌大使设为最高等级。
+            </div>
+            <h4 class="tg" style="font-size:14px;margin-bottom:6px;">品牌支线</h4>
+            <div class="card" style="padding:10px;margin-bottom:0;">
+                <b>支线示例：</b>高级定制、成衣、珠宝、腕表、包袋、皮具、香水美妆、鞋履、家居。<br>
+                主支线代表品牌最强的领域，可以选择多个；全部支线均设为主支线，代表品牌在所有领域都很强。
+            </div>
+        </div>`;
+        $("mInfo").classList.add("open");
+    };
+    var baseEditFashionMagTierFinal=window.editFashionMag;
+    window.editFashionMag=function(i){
+        if(typeof baseEditFashionMagTierFinal==="function")baseEditFashionMagTierFinal(i);
+        var field=$("editMagTier");if(!field||field.tagName==="SELECT")return;
+        var selected=String(field.value||"T1").toUpperCase(),select=document.createElement("select");
+        select.id="editMagTier";
+        ["T0","T1","T2","T3","T4","T5"].forEach(function(tier){var option=document.createElement("option");option.value=tier;option.textContent=tier;if(tier===selected)option.selected=true;select.appendChild(option);});
+        field.replaceWith(select);
     };
     function tryFashionOffers(){
         if(!ad || !ad.st) return;
@@ -1749,6 +1783,11 @@ setTimeout(function installFinalUserRequestedFixes(){
         for(var i=1;i<7;i+=2){var av=parseInt(a.slice(i,i+2),16),bv=parseInt(b.slice(i,i+2),16);out+=(Math.round(av+(bv-av)*amount)).toString(16).padStart(2,"0");}
         return out;
     }
+    function shadeThemeColor(color,factor){
+        color=validThemeHex(color)||"#f1d477";var out="#";
+        for(var i=1;i<7;i+=2)out+=Math.max(0,Math.round(parseInt(color.slice(i,i+2),16)*factor)).toString(16).padStart(2,"0");
+        return out;
+    }
     function normalizeUITheme(theme){
         theme=theme&&typeof theme==="object"?theme:{};
         var preset=UI_THEME_PRESETS[theme.preset]||UI_THEME_PRESETS.yellow;
@@ -1761,13 +1800,12 @@ setTimeout(function installFinalUserRequestedFixes(){
     }
     function themePalette(theme){
         var main=theme.color;
-        return {main:main,border:mixThemeColor(main,"#4b3f4d",.46),strong:mixThemeColor(main,"#342d36",.60),text:mixThemeColor(main,"#262228",.76),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
+        return {main:main,border:shadeThemeColor(main,.72),strong:shadeThemeColor(main,.58),text:shadeThemeColor(main,.40),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
     }
     function darkerButtonBorder(background){
         var nums=String(background||"").match(/[\d.]+/g);
         if(!nums||nums.length<3||Number(nums[3])===0)return getComputedStyle(document.documentElement).getPropertyValue("--baby-yellow-border").trim()||"#b99a3f";
-        var target=[45,42,48],ratio=.34;
-        return "rgb("+[0,1,2].map(function(i){return Math.max(0,Math.round(Number(nums[i])*(1-ratio)+target[i]*ratio));}).join(",")+")";
+        return "rgb("+[0,1,2].map(function(i){return Math.max(0,Math.round(Number(nums[i])*.72));}).join(",")+")";
     }
     function outlineUIButtons(root){
         var buttons=[];
@@ -2131,6 +2169,7 @@ button.red {
 input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
   border-color:var(--baby-yellow-border);
 }
+.attr-bar-wrap { background:var(--baby-yellow-muted) !important;border:1px solid var(--baby-yellow-border); }
 .g-tag,.log,.prog-wrap { background:var(--baby-yellow-soft); }
 .cmt-box { border-left-color:var(--baby-yellow-border); }
 
