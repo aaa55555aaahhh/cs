@@ -17652,7 +17652,7 @@ window.confirmStartWrite = function() {
 
 // ==================== 全局密码与系统配置 (已修复冲突) ====================
 // 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642"];
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
 
@@ -21821,7 +21821,7 @@ window.checkAutoAward = function() {
     // 1. 登录逻辑已由 15358 行的统一版本接管，此处不再重复定义 checkLoginPwd，
     //    避免普通 alert 被全局 gameAlert 劫持后造成模态层卡死。
     //    仅保留密码表，供主逻辑使用。
-    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642"];
     // 2. 修复玩家头像无法更改：每次上传后强制清空 input 值
     window.uploadMyAvatar = function(input) {
         if (input.files && input.files[0]) {
@@ -23240,6 +23240,85 @@ document.addEventListener("DOMContentLoaded", function(){
     };
     var oldAdvForRumorSettlement=window.advTime;
     window.advTime=function(){var result=typeof oldAdvForRumorSettlement==='function'?oldAdvForRumorSettlement.apply(this,arguments):undefined;checkRumorSettlements();return result;};
+})();
+</script>
+<script>
+// Runtime authority layer. Installed after the game's deferred initialization.
+(function(){
+function installRuntimeAuthority(){
+    if(window.__runtimeAuthorityInstalled)return;window.__runtimeAuthorityInstalled=true;
+    if(!Array.isArray(window.VALID_PASSWORDS))window.VALID_PASSWORDS=[];
+    ['366880642'].forEach(function(pwd){if(window.VALID_PASSWORDS.indexOf(pwd)<0)window.VALID_PASSWORDS.push(pwd);});
+    var esc=window.E||function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};window.E=esc;
+    function saveNow(){if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();}
+
+    function mountAvatarInput(){
+        var trigger=document.querySelector("#boxBasic [onclick*='myAvatarInput']")||document.querySelector('#boxBasic > div > div');if(!trigger)return;
+        var input=document.getElementById('myAvatarInput');if(!input){input=document.createElement('input');input.type='file';input.id='myAvatarInput';input.accept='image/*';}
+        trigger.removeAttribute('onclick');trigger.style.position='relative';trigger.style.cursor='pointer';
+        if(input.parentElement!==trigger)trigger.appendChild(input);
+        input.style.cssText='display:block;position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:5;';
+        input.onchange=function(){window.uploadMyAvatar(input);};
+    }
+    window.uploadMyAvatar=function(input){
+        var file=input&&input.files&&input.files[0];if(!file)return;
+        var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){var max=180,scale=Math.min(1,max/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);ad.avatar=canvas.toDataURL('image/jpeg',.86);input.value='';saveNow();if(typeof updAttr==='function')updAttr();setTimeout(mountAvatarInput,0);};img.src=ev.target.result;};reader.readAsDataURL(file);
+    };
+    var baseUpd=window.updAttr;if(typeof baseUpd==='function')window.updAttr=function(){var r=baseUpd.apply(this,arguments);setTimeout(mountAvatarInput,0);return r;};mountAvatarInput();
+
+    function ensureGlobalChartButton(){
+        var us=document.getElementById('btnChartUS');if(!us)return null;var global=document.getElementById('btnChartGlobal');
+        if(!global){global=document.createElement('button');global.id='btnChartGlobal';global.className='sec inline';global.textContent='🌍 全球';global.onclick=function(){switchChartRegion('Global');};us.parentElement.insertBefore(global,us);}
+        global.style.display=curChartPlatform==='BB'?'none':'';if(curChartPlatform==='BB'&&curChReg==='Global')curChReg='US';return global;
+    }
+    var baseRenderChartAuthority=window.renderChart;window.renderChart=function(){ensureGlobalChartButton();var r=baseRenderChartAuthority.apply(this,arguments);ensureGlobalChartButton();return r;};
+    var baseOpenAppAuthority=window.openApp;window.openApp=function(appId){var r=baseOpenAppAuthority.apply(this,arguments);if(['BB','Spot','Sale','Daily'].indexOf(appId)>=0)setTimeout(ensureGlobalChartButton,0);return r;};ensureGlobalChartButton();
+
+    function dailyMarketBase(){var input=document.getElementById('customMarketBase'),stored=ad&&ad.marketSettings&&ad.marketSettings.dailyBase;return Math.max(100000,Number(input&&input.value||0)*10000||Number(stored||0)||3000000);}
+    function normalizeDailyMarket(){
+        var tracks=(trackPool||[]).filter(function(t){return t&&t.type==='track';}),target=dailyMarketBase(),top=tracks.reduce(function(m,t){var day=Number(t.stmGlobal_Day||0),source=day>0?day:Number(t.stmGlobal_Week||0)/7;return Math.max(m,source);},0);if(!top)return;
+        var scale=top>target?target/top:1;
+        tracks.forEach(function(t){
+            var day=Number(t.stmGlobal_Day||0),source=Math.max(0,day>0?day:Number(t.stmGlobal_Week||0)/7);
+            t.stmGlobal_Day=Math.min(target,Math.floor(source*scale));
+            t.stmGlobal_Week=t.stmGlobal_Day;
+            t.stmUS_Day=Math.min(t.stmGlobal_Day,Math.max(0,Math.floor(Number(t.stmUS_Day||t.stmUS_Week||0)*scale)));
+            t.stmUS_Week=t.stmUS_Day;
+            t._billboardGlobalWeek=t.stmGlobal_Day*7;t._billboardUSWeek=t.stmUS_Day*7;
+        });
+    }
+    var chartBeforeDaily=window.renderChart;window.renderChart=function(){
+        normalizeDailyMarket();var saved=[];
+        if(curChartPlatform==='BB')(trackPool||[]).forEach(function(t){if(!t||t.type!=='track')return;saved.push([t,t.stmGlobal_Week,t.stmUS_Week]);t.stmGlobal_Week=Number(t._billboardGlobalWeek||t.stmGlobal_Day*7);t.stmUS_Week=Number(t._billboardUSWeek||t.stmUS_Day*7);});
+        var r=chartBeforeDaily.apply(this,arguments);saved.forEach(function(x){x[0].stmGlobal_Week=x[1];x[0].stmUS_Week=x[2];});return r;
+    };
+
+    function fashionData(){if(!Array.isArray(ad.coutureBrands))ad.coutureBrands=[];if(!Array.isArray(ad.specialCustomLooks))ad.specialCustomLooks=[];return {mags:Array.isArray(window.fashionMags)?window.fashionMags:[],brands:Array.isArray(window.luxuryBrands)?window.luxuryBrands:[],couture:ad.coutureBrands};}
+    function tab(id,label,active){return '<div class="sub-tab '+(active?'active':'')+'" onclick="switchSubTab(this,\''+id+'\',\'fashionTabs\')">'+label+'</div>';}
+    window.renderFashionHouse=function(){var d=fashionData(),map=document.getElementById('mapFashion');if(!map)return;
+        function cards(items,type){return items.map(function(x,i){return '<div class="card" style="padding:10px;"><b>'+esc(x.n||'未命名')+'</b><br><span style="font-size:11px;color:#666;">'+esc(x.tier||'')+(type==='couture'?' · '+esc(x.model||'艺术高定')+' · 创意总监：'+esc(x.creativeDirector||'未设置'):'')+'</span><br>'+(type==='mag'?'<button class="sec inline" onclick="editFashionMag('+i+')">编辑</button><button class="sec inline" onclick="viewMagHistory('+i+')">杂志人物</button><button class="sec inline" onclick="joinFashionGalaByType(\'mag\','+i+')">杂志晚宴</button>':type==='brand'?'<button class="sec inline" onclick="editLuxuryBrand('+i+')">编辑</button><button class="sec inline" onclick="joinFashionGalaByType(\'brand\','+i+')">品牌晚宴</button>':'<button class="sec inline" onclick="editCoutureBrand('+i+')">编辑品牌</button><button class="sec inline" onclick="strollCoutureBrand('+i+')">随便逛逛</button><button class="sec inline" onclick="viewCoutureArchive('+i+')">历届高定</button>')+'</div>';}).join('');}
+        var guide='<div class="card"><b>杂志刊期攻略</b><br>T0：金九与重要周年叠加；T1：独立金九或重要周年；T2：三月开季；T3：银十；T4：开年或普通周年；T5：季度与常规刊。</div><div class="card"><b>品牌与高定攻略</b><br>艺术高定以高定为核心；商业高定兼有香水、鞋包和配饰；独立高定工作室提供轻量定制。普通奢牌的高定支线不等于高定屋。</div><div class="card"><b>时装周与特殊定制</b><br>时装周集中在2-3月和9-10月。登上时装周或参加品牌、杂志晚宴时，有概率随机获得特别定制；它会进入档案，不是单独攻略。</div>';
+        map.innerHTML='<h3 class="tg">✨ 时装屋</h3><div class="sub-tab-bar">'+tab('fashionMag','时尚杂志',true)+tab('fashionBrand','奢侈品品牌')+tab('fashionCouture','高定品牌')+tab('fashionWeek','时装周')+tab('fashionGuidePage','攻略')+'</div><div style="display:flex;gap:6px;margin:9px 0;"><button id="openSpecialCustomBtn" class="sec" onclick="openSpecialCustomization()">特殊定制档案</button></div><div id="fashionTabs"><div id="fashionMag" class="sub-page active">'+cards(d.mags,'mag')+'</div><div id="fashionBrand" class="sub-page">'+cards(d.brands,'brand')+'</div><div id="fashionCouture" class="sub-page">'+cards(d.couture,'couture')+'</div><div id="fashionWeek" class="sub-page"><button onclick="joinFashionWeek(\'巴黎时装周\')">巴黎时装周</button><button onclick="joinFashionWeek(\'米兰时装周\')">米兰时装周</button><button onclick="joinFashionWeek(\'纽约时装周\')">纽约时装周</button><button onclick="joinFashionWeek(\'伦敦时装周\')">伦敦时装周</button></div><div id="fashionGuidePage" class="sub-page">'+guide+'</div></div>';
+    };
+    function grantSpecial(source){var d=fashionData();if(Math.random()>.22)return false;var levels=[1,2,3,6,7,8,9],level=levels[Math.floor(Math.random()*levels.length)],season=['春季','夏季','秋季','冬季'][Math.floor(Math.random()*4)];d.couture=d.couture||[];ad.specialCustomLooks.unshift({id:'special_'+Date.now(),n:time.y+' '+season+'特别定制',level:level,officialCouture:level<=5,brand:source,releaseYear:time.y,releaseSeason:season,wearers:[]});saveNow();alert('✨ 时尚事件：你获得了一次特别定制，已存入档案。');return true;}
+    var baseWeek=window.joinFashionWeek;if(typeof baseWeek==='function')window.joinFashionWeek=function(name){var valid=[2,3,9,10].indexOf(Number(time.m))>=0,r=baseWeek.apply(this,arguments);if(valid)grantSpecial(name);return r;};
+    var baseGalaType=window.joinFashionGalaByType;if(typeof baseGalaType==='function')window.joinFashionGalaByType=function(type,i){var d=fashionData(),x=type==='mag'?d.mags[i]:d.brands[i],valid=x&&(!Array.isArray(x.galaMonths)||x.galaMonths.indexOf(Number(time.m))>=0),r=baseGalaType.apply(this,arguments);if(valid)grantSpecial(x.n+'晚宴');return r;};
+
+    function ensureBasement(){if(!ad.basement)ad.basement={level:1,guards:0,occupants:[],jokes:[]};return ad.basement;}
+    function mountBasement(){var home=document.getElementById('mapHome');if(!home||document.getElementById('homeBasementEntry'))return;var box=document.createElement('div');box.id='homeBasementEntry';box.className='card';box.innerHTML='<h4>🪄 地下室（玩梗）</h4><p style="font-size:12px;color:#777;">仅为我家内的综艺式玩梗，不影响 NPC 正常活动或发专。</p><button onclick="openBasement()">进入地下室</button>';home.appendChild(box);}
+    window.openBasement=function(){var b=ensureBasement(),npcs=Array.isArray(worldArtists)?worldArtists:[],names=b.occupants.map(function(id){var n=npcs.find(function(x){return x.id===id;});return n?n.n:id;});document.getElementById('mInfoTitle').innerText='地下室（玩梗）';document.getElementById('mInfoContent').innerHTML='<p>等级 '+b.level+' · 保安 '+b.guards+' · 人员 '+names.map(esc).join('、')+'</p><select id="basementTarget">'+npcs.map(function(n){return '<option value="'+esc(n.id)+'">'+esc(n.n)+'</option>';}).join('')+'</select><button onclick="basementCapture()">请来做客（玩梗）</button><button class="sec" onclick="basementRelease()">送客</button><button class="sec" onclick="basementJokeSong()">催歌玩梗</button><button class="sec" onclick="expandBasement()">扩建</button><button class="sec" onclick="hireBasementGuard()">增加保安</button><p style="font-size:11px;color:#777;">不会伤害、强迫或获得歌曲。</p>';document.getElementById('mInfo').classList.add('open');};
+    window.basementCapture=function(){var b=ensureBasement(),id=(document.getElementById('basementTarget')||{}).value;if(id&&b.occupants.indexOf(id)<0)b.occupants.push(id);saveNow();openBasement();};window.basementRelease=function(){ensureBasement().occupants.pop();saveNow();openBasement();};window.basementJokeSong=function(){ensureBasement().jokes.unshift('NPC 拒绝催稿并照常发专，你没有获得歌曲。');saveNow();openBasement();};window.expandBasement=function(){var b=ensureBasement(),cost=b.level*500000;if(Number(ad.m||0)<cost)return alert('资金不足');ad.m-=cost;b.level++;saveNow();openBasement();};window.hireBasementGuard=function(){var b=ensureBasement();if(Number(ad.m||0)<100000)return alert('资金不足');ad.m-=100000;b.guards++;saveNow();openBasement();};
+
+    function rumorKey(a,c){return [String(a.id),String(c.id)].sort().join('::');}
+    function scanRumors(force){if(!Array.isArray(worldArtists)||!ad)return;if(!Array.isArray(ad.rumorLeverage))ad.rumorLeverage=[];if(!ad.rumorDramaKeys)ad.rumorDramaKeys={};var all=worldArtists.slice();all.forEach(function(a){Object.keys(a.relations||{}).forEach(function(id){var c=all.find(function(x){return String(x.id)===String(id);}),rel=a.relations[id],key=c&&rumorKey(a,c);if(!c||!rel||rel.p!=='恋人'||ad.rumorDramaKeys[key]||(!force&&Math.random()>.18))return;ad.rumorDramaKeys[key]=1;var pool=all.filter(function(x){return x.id!==a.id&&x.id!==c.id;}),third=pool[Math.floor(Math.random()*pool.length)],fa=Number(a.fans||0),fc=Number(c.fans||0),mode=Math.abs(fa-fc)>1000000?'虐粉':'互撕';ad.rumorLeverage.unshift({a:a.id,c:c.id,third:third&&third.id||'',kind:third?'绯闻小三':'小三传闻',mode:mode,weakId:fa<fc?a.id:c.id,year:time.y,month:time.m,used:false});if(posts&&posts.mom)posts.mom.unshift({t:'💔 [小三争议] '+a.n+' × '+c.n+' × '+(third?third.n:'神秘对象'),c:'粉丝普遍认为是假料。'+(mode==='虐粉'?'双方体量差距较大，强势方开始单方面虐粉。':'双方体量接近，粉圈直接进入互撕。')});saveNow();});});}
+    function settleRumors(){(ad.rumorLeverage||[]).forEach(function(x){if(x.mode!=='虐粉')return;var a=worldArtists.find(function(n){return n.id===x.a;}),c=worldArtists.find(function(n){return n.id===x.c;});if(a&&c&&Math.abs(Number(a.fans||0)-Number(c.fans||0))<=1000000){x.mode='互撕';x.settled=true;x.settledAt=time.y+'_'+time.m;if(posts&&posts.mom)posts.mom.unshift({t:'⚡ [虐粉清算] '+a.n+' 与 '+c.n+' 转入互撕',c:'粉丝差距缩小至100万以内，单方面虐粉结束，双方开始势均力敌地互撕。'});saveNow();}});}
+    window.triggerRumorDrama=function(){scanRumors(true);};window.checkRumorSettlements=settleRumors;
+    var baseAdvAuthority=window.advTime;window.advTime=function(){var r=baseAdvAuthority.apply(this,arguments);normalizeDailyMarket();scanRumors(false);settleRumors();return r;};
+    var baseShowMapAuthority=window.showMap;window.showMap=function(id){var r=baseShowMapAuthority.apply(this,arguments);if(id==='mapHome')mountBasement();if(id==='mapFashion')window.renderFashionHouse();return r;};
+    var baseLoadAuthority=window.mainMenuLoad;if(typeof baseLoadAuthority==='function')window.mainMenuLoad=function(){var r=baseLoadAuthority.apply(this,arguments);setTimeout(function(){mountAvatarInput();mountBasement();ensureGlobalChartButton();},50);return r;};
+    mountBasement();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(installRuntimeAuthority,100);});else setTimeout(installRuntimeAuthority,100);
 })();
 </script>
 </body>
