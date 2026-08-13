@@ -1865,7 +1865,7 @@ setTimeout(function installFinalUserRequestedFixes(){
 
     var UI_THEME_KEY="starPro_ui_theme_v1";
     var UI_THEME_PRESETS={
-        yellow:{name:"Baby 黄",color:"#f1d477"},
+        yellow:{name:"蜂蜜燕麦黄",color:"#dfc477"},
         pink:{name:"Baby 粉",color:"#f3c8d5"},
         blue:{name:"Baby 蓝",color:"#bfe3ff"},
         purple:{name:"Baby 紫",color:"#ddc8ff"},
@@ -1878,13 +1878,13 @@ setTimeout(function installFinalUserRequestedFixes(){
         return /^#[0-9a-f]{6}$/i.test(value)?value.toLowerCase():null;
     }
     function mixThemeColor(a,b,amount){
-        a=validThemeHex(a)||"#f1d477";b=validThemeHex(b)||"#ffffff";
+        a=validThemeHex(a)||"#dfc477";b=validThemeHex(b)||"#ffffff";
         var out="#";
         for(var i=1;i<7;i+=2){var av=parseInt(a.slice(i,i+2),16),bv=parseInt(b.slice(i,i+2),16);out+=(Math.round(av+(bv-av)*amount)).toString(16).padStart(2,"0");}
         return out;
     }
     function shadeThemeColor(color,factor){
-        color=validThemeHex(color)||"#f1d477";var out="#";
+        color=validThemeHex(color)||"#dfc477";var out="#";
         for(var i=1;i<7;i+=2)out+=Math.max(0,Math.round(parseInt(color.slice(i,i+2),16)*factor)).toString(16).padStart(2,"0");
         return out;
     }
@@ -1892,7 +1892,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         theme=theme&&typeof theme==="object"?theme:{};
         var preset=UI_THEME_PRESETS[theme.preset]||UI_THEME_PRESETS.yellow;
         var presetName=theme.preset&&UI_THEME_PRESETS[theme.preset]?theme.preset:(theme.preset==="custom"?"custom":"yellow");
-        if(String(theme.color||"").toLowerCase()==="#fff2a8"){presetName="yellow";theme.color=UI_THEME_PRESETS.yellow.color;}
+        if(["#fff2a8","#f1d477"].indexOf(String(theme.color||"").toLowerCase())>=0){presetName="yellow";theme.color=UI_THEME_PRESETS.yellow.color;}
         return {preset:presetName,color:validThemeHex(theme.color)||preset.color,scope:theme.scope==="fill"?"fill":"global"};
     }
     function readUITheme(){
@@ -1904,7 +1904,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     }
     function darkerButtonBorder(background){
         var nums=String(background||"").match(/[\d.]+/g);
-        if(!nums||nums.length<3||Number(nums[3])===0)return getComputedStyle(document.documentElement).getPropertyValue("--baby-yellow-border").trim()||"#b99a3f";
+        if(!nums||nums.length<3||Number(nums[3])===0)return getComputedStyle(document.documentElement).getPropertyValue("--baby-yellow-border").trim()||"#a08d56";
         return "rgb("+[0,1,2].map(function(i){return Math.max(0,Math.round(Number(nums[i])*.72));}).join(",")+")";
     }
     function outlineUIButtons(root){
@@ -1924,7 +1924,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         if(theme.scope==="global"){
             root.setProperty("--baby-yellow-soft",p.soft);root.setProperty("--baby-yellow-muted",p.muted);root.setProperty("--ui-theme-body",p.body);
         }else{
-            root.setProperty("--baby-yellow-soft","#fffaf0");root.setProperty("--baby-yellow-muted","#f8ebbd");root.setProperty("--ui-theme-body","#fffdf7");
+            root.setProperty("--baby-yellow-soft","#f9f5e7");root.setProperty("--baby-yellow-muted","#f2e7c6");root.setProperty("--ui-theme-body","#fcfaf3");
         }
         if(persist!==false){try{localStorage.setItem(UI_THEME_KEY,JSON.stringify(theme));}catch(e){}}
         requestAnimationFrame(function(){outlineUIButtons(document);});
@@ -1948,7 +1948,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.previewUITheme=function(){
         var theme=selectedThemeFromPanel();if(!theme)return;
         var p=themePalette(theme),box=$("uiThemePreview"),chip=$("uiThemePreviewChip");
-        if(box){box.style.background=theme.scope==="global"?p.soft:"#fffaf0";box.style.borderColor=p.border;}
+        if(box){box.style.background=theme.scope==="global"?p.soft:"#f9f5e7";box.style.borderColor=p.border;}
         if(chip){chip.style.background=p.main;chip.style.borderColor=p.border;chip.style.color=p.text;}
         applyUITheme(theme,false);
     };
@@ -1962,7 +1962,7 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.openUIThemeSettings=function(){
         var theme=readUITheme(),swatches=Object.keys(UI_THEME_PRESETS).map(function(key){var item=UI_THEME_PRESETS[key],border=themePalette({color:item.color}).border;return `<button type="button" class="ui-theme-swatch ${theme.preset===key?"selected":""}" data-preset="${key}" style="--swatch-color:${item.color};--swatch-border:${border};" onclick="selectUIThemePreset('${key}')">${item.name}</button>`;}).join("");
         $("mInfoTitle").innerText="更改 UI 颜色";
-        $("mInfoContent").innerHTML=`<p style="font-size:12px;color:#666;line-height:1.6;">选择预设色或输入自定义色号。描边会自动生成比主色更深的同系颜色。</p><div class="ui-theme-swatches">${swatches}</div><label>自定义颜色</label><div style="display:grid;grid-template-columns:52px 1fr;gap:8px;"><input id="uiThemeColorPicker" type="color" value="${theme.color}" style="height:42px;padding:3px;" oninput="syncCustomUITheme(this.value)"><input id="uiThemeCustomHex" value="${theme.color}" placeholder="#bfe3ff" oninput="syncCustomUITheme(this.value)"></div><label>应用范围</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;"><input type="radio" name="uiThemeScope" value="fill" ${theme.scope==="fill"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">只更改主填充和对应描边</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;"><input type="radio" name="uiThemeScope" value="global" ${theme.scope==="global"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">全局覆盖主题背景、次级按钮和文字</label><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复默认 Baby Yellow</button>`;
+        $("mInfoContent").innerHTML=`<p style="font-size:12px;color:#666;line-height:1.6;">选择预设色或输入自定义色号。描边会自动生成比主色更深的同系颜色。</p><div class="ui-theme-swatches">${swatches}</div><label>自定义颜色</label><div style="display:grid;grid-template-columns:52px 1fr;gap:8px;"><input id="uiThemeColorPicker" type="color" value="${theme.color}" style="height:42px;padding:3px;" oninput="syncCustomUITheme(this.value)"><input id="uiThemeCustomHex" value="${theme.color}" placeholder="#bfe3ff" oninput="syncCustomUITheme(this.value)"></div><label>应用范围</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;"><input type="radio" name="uiThemeScope" value="fill" ${theme.scope==="fill"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">只更改主填充和对应描边</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;"><input type="radio" name="uiThemeScope" value="global" ${theme.scope==="global"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">全局覆盖主题背景、次级按钮和文字</label><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复默认蜂蜜燕麦黄</button>`;
         $("mInfo").classList.add("open");previewUITheme();
     };
     applyUITheme(readUITheme(),false);
@@ -2309,15 +2309,15 @@ input,select,textarea{width:100%;padding:10px;margin-bottom:10px;border:1px soli
 .modal { pointer-events: none !important; }
 .modal-box { pointer-events: auto !important; }
 
-/* Muted cream yellow is the default theme; brighter colors remain optional. */
+/* Low-saturation honey oat yellow keeps the default warm without visual glare. */
 :root {
-  --baby-yellow: #f1d477;
-  --baby-yellow-soft: #fffaf0;
-  --baby-yellow-muted: #f8ebbd;
-  --baby-yellow-border: #b99a3f;
-  --baby-yellow-strong: #977a2f;
-  --baby-yellow-text: #66531f;
-  --ui-theme-body: #fffdf7;
+  --baby-yellow: #dfc477;
+  --baby-yellow-soft: #f9f5e7;
+  --baby-yellow-muted: #f2e7c6;
+  --baby-yellow-border: #a08d56;
+  --baby-yellow-strong: #817145;
+  --baby-yellow-text: #594e30;
+  --ui-theme-body: #fcfaf3;
 }
 
 body { background:var(--ui-theme-body); }
@@ -2379,7 +2379,7 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
 .ui-theme-preview { padding:12px;border:2px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);border-radius:8px;margin:10px 0; }
 .ui-theme-preview-chip { display:inline-block;padding:6px 12px;border-radius:6px;background:var(--baby-yellow);border:1px solid var(--baby-yellow-border);font-size:12px;font-weight:bold;color:#2f280d; }
 
-#loginPage { background:#fffdf7 !important; }
+#loginPage { background:#fcfaf3 !important; }
 #loginPage .card { border:1px solid var(--baby-yellow-border);background:#fff !important; }
 #loginPage h2,#createPage > h2 { color:var(--baby-yellow-text) !important; }
 
