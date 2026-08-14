@@ -23856,7 +23856,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 // Cloud device-license authority. This must remain after every legacy login override.
 (function installCloudDeviceLogin(){
     'use strict';
-    var AUTH_API='https://star-pro-device-auth.3800069889.workers.dev';
+    var AUTH_API='https://yoihsbnncbejpvznxhuj.supabase.co/functions/v1/device-auth';
     var DEVICE_KEY='starPro_device_id';
     var VERIFIED_KEY='starPro_device_verified';
     var loginBusy=false;
@@ -23887,9 +23887,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         if(create){create.style.display='block';create.classList.add('active');}
     }
     async function request(path,body){
-        var response=await fetch(AUTH_API+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
-        var data={};try{data=await response.json();}catch(error){}
-        return {ok:response.ok&&data.ok,data:data,status:response.status};
+        var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},12000);
+        try{
+            var response=await fetch(AUTH_API+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),cache:'no-store',signal:controller.signal});
+            var data={};try{data=await response.json();}catch(error){}
+            return {ok:response.ok&&data.ok,data:data,status:response.status};
+        }finally{clearTimeout(timer);}
     }
     window.checkLoginPwd=async function(){
         if(loginBusy)return;
