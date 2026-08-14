@@ -7,7 +7,7 @@
 <script>
 // 登录兜底：必须在页面按钮之前定义，避免主游戏脚本异常时入口不可用。
 (function(){
-  window.VALID_PASSWORDS = window.VALID_PASSWORDS || ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199"];
+  window.VALID_PASSWORDS = window.VALID_PASSWORDS || ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169"];
   window.checkLoginPwd = window.checkLoginPwd || function() {
     var input = document.getElementById("loginPwd");
     var inputPwd = input ? input.value.trim() : "";
@@ -1173,6 +1173,7 @@ setTimeout(function installFinalUserRequestedFixes(){
         return submitMonth>(awd.month||12)?y+1:y;
     }
     function awardDeadlineState(awd){
+        // Keep the submission month open; only close after the configured deadline.
         var submitMonth=getOffsetMonthFinal(awd.month||12,awardSubmitLead(awd)),week=Math.max(1,Math.min(4,Number(awd.deadlineWeek)||4)),day=Math.max(1,Math.min(7,Number(awd.deadlineDay)||7));
         var closed=time.m!==submitMonth||Number(time.w||1)>week||(Number(time.w||1)===week&&Number(time.d||1)>day);
         return {month:submitMonth,week:week,day:day,closed:closed,label:submitMonth+"月第"+week+"周第"+day+"天"};
@@ -17653,7 +17654,7 @@ window.confirmStartWrite = function() {
 
 // ==================== 全局密码与系统配置 (已修复冲突) ====================
 // 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642"];
+window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169"];
 window.checkLoginPwd = function() {
     let inputPwd = document.getElementById("loginPwd").value.trim();
 
@@ -21822,7 +21823,7 @@ window.checkAutoAward = function() {
     // 1. 登录逻辑已由 15358 行的统一版本接管，此处不再重复定义 checkLoginPwd，
     //    避免普通 alert 被全局 gameAlert 劫持后造成模态层卡死。
     //    仅保留密码表，供主逻辑使用。
-    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642"];
+    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169"];
     // 2. 修复玩家头像无法更改：每次上传后强制清空 input 值
     window.uploadMyAvatar = function(input) {
         if (input.files && input.files[0]) {
@@ -23152,6 +23153,14 @@ document.addEventListener("DOMContentLoaded", function(){
 </script>
 <script>
 (function(){
+  function recoverArtists(){
+    if(Array.isArray(window.worldArtists)&&worldArtists.length)return;
+    var by={};(window.trackPool||[]).forEach(function(t){if(!t||t.isMe)return;var id=t.ownerId||('recovered_'+String(t.artist||t.n||'artist'));if(!by[id])by[id]={id:id,n:t.artist||'未命名艺人',fans:Number(t.fans||0),albums:[],discography:[]};});
+    if(Object.keys(by).length)window.worldArtists=Object.keys(by).map(function(k){return by[k];});
+  }
+  recoverArtists();
+  var originalAwardOpen=window.openAwardSubmitUI;
+  window.openAwardSubmitUI=function(){var r=originalAwardOpen&&originalAwardOpen.apply(this,arguments);setTimeout(function(){var m=Number(window.time&&time.m||0);document.querySelectorAll('.awardSubmissionCard').forEach(function(card){var btns=card.querySelectorAll('button[disabled]');var d=typeof awardDeadlineState==='function'?awardDeadlineState({month:m}):null;if(d&&Number(d.month)===m)Array.prototype.forEach.call(btns,function(b){b.disabled=false;});});},0);return r;};
     // Keep all fashion guidance in one tab; special custom looks are an event/archive.
     var fashionRenderBeforeUnified=window.renderFashionHouse;
     window.renderFashionHouse=function(){
@@ -23254,7 +23263,7 @@ document.addEventListener("DOMContentLoaded", function(){
 function installRuntimeAuthority(){
     if(window.__runtimeAuthorityInstalled)return;window.__runtimeAuthorityInstalled=true;
     if(!Array.isArray(window.VALID_PASSWORDS))window.VALID_PASSWORDS=[];
-    ['366880642'].forEach(function(pwd){if(window.VALID_PASSWORDS.indexOf(pwd)<0)window.VALID_PASSWORDS.push(pwd);});
+    ['366880642','2868289169'].forEach(function(pwd){if(window.VALID_PASSWORDS.indexOf(pwd)<0)window.VALID_PASSWORDS.push(pwd);});
     var esc=window.E||function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};window.E=esc;
     function saveNow(){if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();}
 
@@ -23993,11 +24002,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     window.openPortfolioDetails=function(){var rows=portfolioRows();document.getElementById('mInfoTitle').innerText='作品一览 · 详细数据';document.getElementById('mInfoContent').innerHTML=rows.map(function(x){return '<div class="card"><span style="font-size:10px;color:#777;">'+x.kind+'</span><br><b>'+esc(x.name)+'</b><br><span style="font-size:11px;color:#666;line-height:1.7;">'+x.metric+'<br>'+x.detail+'</span></div>';}).join('')||'暂无作品';document.getElementById('mInfo').classList.add('open');};
     window.openPortfolioItem=function(index){var rows=portfolioRows(),x=rows[index];if(!x)return;var raw=x.raw||{};var lines=['类型：'+x.kind,'名称：'+(x.name||'未命名'),x.metric,x.detail];if(x.kind==='单曲'||x.kind==='专辑'){lines.push('曲风：'+((raw.gnr||raw.genre||[]).join?raw.gnr.join('、'):(raw.genre||'未设置')));lines.push('发行时间：'+(raw.releaseYear||'未知'));lines.push('累计销量：'+Number(raw.slTotal||0).toLocaleString());lines.push('全球流媒：'+Number(raw.stmGlobal||0).toLocaleString());}else if(x.kind==='电影'||x.kind==='电视剧'||x.kind==='短剧'){lines.push('风格：'+(raw.style||'未设置'));lines.push('上映/播出：'+(raw.releaseYear||'未知')+'年 '+(raw.releaseMonth||'未知')+'月');lines.push('热度：'+Number(raw.heat||0).toLocaleString());lines.push('IMDb：'+Number(raw.imdb||0).toFixed(1));lines.push('烂番茄：'+Number(raw.rottenCritic||0)+'% / 观众 '+Number(raw.rottenAudience||0)+'%');if(x.kind==='电影')lines.push('全球票房：$'+Number(raw.boxOffice||0).toLocaleString());else lines.push('观看量：'+Number(raw.watchHours||0).toLocaleString()+' 万小时');}else if(x.kind==='团体'){lines.push('阶段：'+(raw.phase||'未知'));lines.push('粉丝：'+Number(raw.fans||0).toLocaleString());lines.push('凝聚力：'+Number(raw.cohesion||0));}document.getElementById('mInfoTitle').innerText=x.name+' · 详细数据';document.getElementById('mInfoContent').innerHTML='<div class="card" style="line-height:2;white-space:pre-line;">'+esc(lines.join('\n'))+'</div><button class="sec" onclick="openPortfolioDetails()">返回作品列表</button>';document.getElementById('mInfo').classList.add('open');};
     window.openPortfolioDetails=function(){var rows=portfolioRows();document.getElementById('mInfoTitle').innerText='作品一览';document.getElementById('mInfoContent').innerHTML=rows.map(function(x,i){return '<div class="card"><span style="font-size:10px;color:#777;">'+x.kind+'</span><br><b>'+esc(x.name)+'</b><br><span style="font-size:11px;color:#666;line-height:1.7;">'+x.metric+'<br>'+x.detail+'</span><br><button class="sec" onclick="openPortfolioItem('+i+')">查看详细数据</button></div>';}).join('')||'暂无作品';document.getElementById('mInfo').classList.add('open');};
-    function mountPortfolioButton(){var box=document.getElementById('tabWorks');if(box&&!document.getElementById('btnPortfolioDetails'))box.insertAdjacentHTML('afterbegin','<button class="sec" id="btnPortfolioDetails" style="width:100%;margin-bottom:9px;" onclick="openPortfolioDetails()">查看作品列表</button>');}
+    function mountPortfolioButton(){var old=document.getElementById('btnPortfolioDetails');if(old)old.remove();var box=document.getElementById('tabWorks');if(!box)return;Array.from(box.children).forEach(function(card,i){if(card.dataset&&card.dataset.detailBound)return;if(!card.querySelector||!card.textContent.trim()||card.textContent.trim()==='无')return;var b=document.createElement('button');b.className='sec inline';b.style.cssText='font-size:11px;padding:3px 7px;margin-top:5px;';b.textContent='查看详情';b.onclick=function(e){e.stopPropagation();openPortfolioItem(i);};card.appendChild(b);card.dataset.detailBound='1';});}
     function mountBuildBadge(){var top=document.getElementById('topBar');if(top&&!document.getElementById('entertainmentBuildBadge'))top.insertAdjacentHTML('beforeend','<span id="entertainmentBuildBadge" style="font-size:9px;color:#777;margin-left:auto;white-space:nowrap;">影视体系 v2026.08.14-C</span>');}
     var cinemaAuthority=window.openCinema,castingAuthority=window.openCastingBoard,recommendOpenAuthority=window.openRecommendActor,recommendAuthority=window.recommendActorToDirector;
     function removeHomeCharity(){var old=document.getElementById('charityGalaEntry');if(old)old.remove();}
-    function install(){if(window.__entertainmentExperienceInstalled)return;window.__entertainmentExperienceInstalled=true;var underlyingCasting=window.openCastingBoard;window.__castingSourceOpen=underlyingCasting;window.openCinema=cinemaAuthority;window.openCastingBoard=castingAuthority;window.openRecommendActor=recommendOpenAuthority;window.recommendActorToDirector=recommendAuthority;seedScreenLibrary();normalizeScreenLifecycle();var oldBasement=window.openBasement;window.openBasement=function(){var r=oldBasement&&oldBasement.apply(this,arguments);decorateBasement();return r;};var oldAdv=window.advTime;if(typeof oldAdv==='function')window.advTime=function(){var weeks=arguments[0],r=oldAdv.apply(this,arguments);advanceScreenExhibition(weeks);maybeScreenMail();return r;};var oldUpd=window.updAttr;if(typeof oldUpd==='function')window.updAttr=function(){var r=oldUpd.apply(this,arguments);seedScreenLibrary();normalizeScreenLifecycle();removeHomeCharity();mountPortfolioButton();mountBuildBadge();return r;};var oldShowMap=window.showMap;if(typeof oldShowMap==='function')window.showMap=function(){var r=oldShowMap.apply(this,arguments);removeHomeCharity();return r;};removeHomeCharity();mountPortfolioButton();mountBuildBadge();}
+    function install(){if(window.__entertainmentExperienceInstalled)return;window.__entertainmentExperienceInstalled=true;var underlyingCasting=window.openCastingBoard;window.__castingSourceOpen=underlyingCasting;window.openCinema=cinemaAuthority;window.openCastingBoard=castingAuthority;window.openRecommendActor=recommendOpenAuthority;window.recommendActorToDirector=recommendAuthority;seedScreenLibrary();normalizeScreenLifecycle();var oldBasement=window.openBasement;window.openBasement=function(){var r=oldBasement&&oldBasement.apply(this,arguments);decorateBasement();return r;};var oldAdv=window.advTime;if(typeof oldAdv==='function')window.advTime=function(){var weeks=arguments[0],r=oldAdv.apply(this,arguments);advanceScreenExhibition(weeks);maybeScreenMail();return r;};var oldUpd=window.updAttr;if(typeof oldUpd==='function')window.updAttr=function(){var r=oldUpd.apply(this,arguments);seedScreenLibrary();normalizeScreenLifecycle();removeHomeCharity();mountPortfolioButton();mountCharityEntry();mountBuildBadge();return r;};var oldShowMap=window.showMap;if(typeof oldShowMap==='function')window.showMap=function(){var r=oldShowMap.apply(this,arguments);removeHomeCharity();mountCharityEntry();return r;};removeHomeCharity();mountPortfolioButton();mountCharityEntry();mountBuildBadge();}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(install,1400);});else setTimeout(install,1400);
 })();
 
@@ -24029,6 +24038,31 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 
 // Cloud device-license authority. This must remain after every legacy login override.
+function normalizeGroupState(){(ad&&ad.entertainmentGroups||[]).forEach(function(g){g.members=g.members||[];g.fans=Math.max(Number(g.fans)||0,g.members.reduce(function(s,m){return s+Math.max(0,Number(m.fans)||0);},0));if(g.fans<=0)g.fans=Math.max(1000,g.members.length*1000);g.cohesion=Math.max(1,Math.min(100,Number(g.cohesion)||55));});}
+normalizeGroupState();setTimeout(normalizeGroupState,1800);
+window.prepareGroupComeback=function(){var g=playerGroup();if(!g)return;g.groupDraft={prepared:true,name:(document.getElementById('groupSongName')||{}).value||g.name+' Anthem',genre:(document.getElementById('groupSongGenre')||{}).value||g.concept||'流行'};save();openGroupRelease();};
+window.shootGroupMV=function(){var g=playerGroup();if(!g||!g.groupDraft||!g.groupDraft.prepared)return alert('请先筹备团体歌曲。');g.groupDraft.mv=true;g.cohesion=Math.max(1,g.cohesion-1);save();openGroupRelease();alert('团体 MV 拍摄完成，已进入发布准备。');};
+var _groupReleaseUI=window.openGroupRelease;window.openGroupRelease=function(){var g=playerGroup();if(!g)return;normalizeGroupState();var d=g.groupDraft||{};document.getElementById('mInfoTitle').innerText=g.name+' 团体发歌';document.getElementById('mInfoContent').innerHTML='<label>团体单曲名称</label><input id="groupSongName" value="'+esc(d.name||'')+'"><label>曲风 / 概念</label><input id="groupSongGenre" value="'+esc(d.genre||g.concept||'流行')+'"><label>打单歌曲与资源分配</label><select id="groupResourcePlan"><option value="equal">平均分配</option><option value="popular">人气成员优先</option><option value="player">重点突出我</option></select><button class="sec" onclick="prepareGroupComeback()">筹备歌曲</button><button class="sec" onclick="shootGroupMV()">拍摄 MV</button><button onclick="releaseGroupSingle()" '+(d.mv?'':'disabled')+'>发布团体单曲</button><p style="font-size:11px;color:#777;">国际化团体：流程与 Solo 类似，需筹备、选主打并拍摄 MV。</p>';document.getElementById('mInfo').classList.add('open');};
+var _releaseGroupSingle=window.releaseGroupSingle;window.releaseGroupSingle=function(){var g=playerGroup();if(!g||!g.groupDraft||!g.groupDraft.mv)return alert('请先完成歌曲筹备并拍摄 MV。');var r=_releaseGroupSingle&&_releaseGroupSingle.apply(this,arguments);g.groupDraft=null;normalizeGroupState();save();return r;};
+var _submitOST=window.contributeOST;
+window.openOSTStudio=function(projectId){var p=(ad.screenProjects||[]).find(function(x){return String(x.id)===String(projectId);});if(!p)return;var released=(trackPool||[]).filter(function(t){return t&&t.isMe&&t.type==='track';}),unreleased=(lib||[]).filter(function(t){return t&&!t.released;});document.getElementById('mInfoTitle').innerText='为《'+p.name+'》争取 OST';document.getElementById('mInfoContent').innerHTML='<label>争取方式</label><select id="ostRoute"><option value="audition">主动试镜</option>'+(p.ostDirectorInvite||p.ostActorInvite?'<option value="invite">接受剧组邀请</option>':'')+(p.isFinanced?'<option value="finance">带资进组</option>':'')+'</select><label>歌曲来源</label><select id="ostSongSource"><option value="new">现场录制新歌</option>'+released.map(function(t){return '<option value="released:'+t.id+'">已发行 · '+esc(t.n)+'</option>';}).join('')+unreleased.map(function(t,i){return '<option value="library:'+i+'">未发行曲库 · '+esc(t.n)+'</option>';}).join('')+'</select><input id="ostNewName" placeholder="新 OST 名称"><input id="ostNewGenre" value="流行"><button onclick="contributeOST(\''+p.id+'\')">提交 OST 申请</button>';document.getElementById('mInfo').classList.add('open');};
+window.contributeOST=function(projectId){var source=(document.getElementById('ostSongSource')||{}).value||'new';if(source.indexOf('library:')===0){var song=lib[Number(source.split(':')[1])];if(song){document.getElementById('ostNewName').value=song.n;document.getElementById('ostNewGenre').value=(song.g||['流行'])[0];song.ostPendingProjectId=projectId;song.released=true;}}else if(source.indexOf('released:')===0){var track=(trackPool||[]).find(function(t){return String(t.id)===source.split(':')[1];});if(track){document.getElementById('ostNewName').value=track.n;document.getElementById('ostNewGenre').value=(track.gnr||['流行'])[0];}}return _submitOST&&_submitOST.apply(this,arguments);};
+function applyOstStreamingLift(p){if(!p||!Array.isArray(p.ostTrackIds)||p._ostLiftHeat===Number(p.heat||0))return;p.ostTrackIds.forEach(function(id){var t=(trackPool||[]).find(function(x){return String(x.id)===String(id);});if(!t)return;var base=Math.max(1000,Math.floor(Number(p.heat||0)*Number(p.kind==='film'?180:p.kind==='tv'?260:90)));t.stmGlobal=Math.max(Number(t.stmGlobal||0),Number(t.stmGlobal||0)+base);t.stmGlobal_Day=Math.max(Number(t.stmGlobal_Day||0),Math.floor(base/28));t.stmGlobal_Week=Math.max(Number(t.stmGlobal_Week||0),Math.floor(base/4));t.ostBreakoutChance=Math.min(1,.1+Number(p.heat||0)/45000);});p._ostLiftHeat=Number(p.heat||0);}
+var _completeScreenFinal=window.completeScreenProduction;if(typeof _completeScreenFinal==='function')window.completeScreenProduction=function(){var r=_completeScreenFinal.apply(this,arguments);applyOstStreamingLift(r||((ad.screenProjects||[])[0]));save();return r;};
+var _ostAdvance=window.advTime;if(typeof _ostAdvance==='function')window.advTime=function(){var r=_ostAdvance.apply(this,arguments);(ad.screenProjects||[]).forEach(applyOstStreamingLift);save();return r;};
+function repairZeroStreamSongs(){(trackPool||[]).forEach(function(t){if(!t||t.type!=='track')return;var total=Number(t.stmGlobal||0),day=Number(t.stmGlobal_Day||0),week=Number(t.stmGlobal_Week||0);if(total>0&&day<=0){t.stmGlobal_Day=1;t.stmGlobal_Week=Math.max(1,week||7);}if(total<=0&&((t.isMe||t.isGroupWork)&&Number(t.weeks||1)>0)){t.stmGlobal=1;t.stmGlobal_Day=1;t.stmGlobal_Week=7;}});}
+repairZeroStreamSongs();setInterval(repairZeroStreamSongs,1500);
+function recordAllSongTrends(){var songs=(trackPool||[]).filter(function(t){return t&&t.type==='track';}),global=songs.slice().sort(function(a,b){return Number(b.stmGlobal||0)-Number(a.stmGlobal||0);}),us=songs.slice().sort(function(a,b){return Number(b.stmUS||b.stmGlobal||0)-Number(a.stmUS||a.stmGlobal||0);}),key=[time&&time.y,time&&time.m,time&&time.w].join('_');songs.forEach(function(t){if(!Array.isArray(t.chartHistory))t.chartHistory=[];if(t._trendKey===key)return;var gi=global.indexOf(t)+1,ui=us.indexOf(t)+1;t.chartHistory.push({key:key,global:gi<=100?gi:'OUT',us:ui<=100?ui:'OUT',inGlobal:gi<=100,inUS:ui<=100,streams:Number(t.stmGlobal||0)});t.trendChart=t.chartHistory.map(function(x){return x.global;});t._trendKey=key;});}
+recordAllSongTrends();
+var _trendAdvance=window.advTime;if(typeof _trendAdvance==='function')window.advTime=function(){var r=_trendAdvance.apply(this,arguments);recordAllSongTrends();return r;};
+var _shootMVBase=window.shootMV;window.shootMV=function(tid,type){var t=(trackPool||[]).find(function(x){return String(x.id)===String(tid);});if(!t||typeof _shootMVBase!=='function')return;type=Number(type)||0;var count=type===0?Number(t.mvLyricCount||0):Number(t.mvRealCount||0),limit=type===0?5:3;if(count>=limit)return alert((type===0?'歌词 MV':'真人 MV')+' 已达到最多 '+limit+' 次拍摄次数。');if(type===0)t.hasLyricMV=false;else t.hasRealMV=false;var result=_shootMVBase.apply(this,arguments);if(type===0){t.mvLyricCount=count+1;t.hasLyricMV=false;}else{t.mvRealCount=count+1;t.hasRealMV=false;}t.mvN=Number(t.mvN||0);save();return result;};
+function normalizeEntertainmentCredits(){
+  var directors=['Alex Morgan','Sofia Bennett','Jordan Reed','Maya Collins'],writersList=['Evan Brooks','Nora Hayes','Liam Carter','Ivy Morgan'],cameras=['Theo Grant','Riley Stone','Clara Woods','Noah Blake'],locations=['Vancouver Studio','Atlanta Backlot','London Stage','Los Angeles Lot'];
+  if(window.ad){(ad.screenProjects||[]).forEach(function(p,i){p.director=p.director||directors[i%directors.length];p.writer=p.writer||writersList[i%writersList.length];p.camera=p.camera||cameras[i%cameras.length];p.location=p.location||locations[i%locations.length];p.scriptGrade=p.scriptGrade||'C';p.tier=p.tier||'扑街';});(ad.castingAnnouncements||[]).forEach(function(p,i){p.director=p.director||directors[i%directors.length];p.writer=p.writer||writersList[i%writersList.length];p.camera=p.camera||cameras[i%cameras.length];p.location=p.location||locations[i%locations.length];p.scriptGrade=p.scriptGrade||'C';});}
+  (trackPool||[]).forEach(function(t){if(!t||t.type==='album')return;if(!Number.isFinite(Number(t.rating)))t.rating=Math.max(1,Math.min(100,Math.round((Number(t.Spub||60)+Number(t.sk||60))/2)));if(!t.ratingLabel)t.ratingLabel=t.rating>=90?'S':t.rating>=80?'A':t.rating>=70?'B':t.rating>=60?'C':'D';});
+}
+normalizeEntertainmentCredits();
+setTimeout(normalizeEntertainmentCredits,1800);
 function ensureScreenMarketLimits(){if(!ad.screenMarketLimits)ad.screenMarketLimits={film:50000000000,tv:180000,short:30000};return ad.screenMarketLimits;}
 window.openScreenMarketLimits=function(){var l=ensureScreenMarketLimits();document.getElementById('mInfoTitle').innerText='影视大盘限制';document.getElementById('mInfoContent').innerHTML='<p style="font-size:11px;color:#777;">限制影视作品可计入的大盘数据上限，电影按美元票房，电视剧和短剧按万小时观看量。</p><label>电影全球票房上限（美元）</label><input id="limitFilm" type="number" value="'+l.film+'"><label>电视剧观看量上限（万小时）</label><input id="limitTV" type="number" value="'+l.tv+'"><label>短剧观看量上限（万小时）</label><input id="limitShort" type="number" value="'+l.short+'"><button onclick="saveScreenMarketLimits()">保存限制</button>';document.getElementById('mInfo').classList.add('open');};
 window.saveScreenMarketLimits=function(){var l=ensureScreenMarketLimits();l.film=Math.max(0,Number(document.getElementById('limitFilm').value)||0);l.tv=Math.max(0,Number(document.getElementById('limitTV').value)||0);l.short=Math.max(0,Number(document.getElementById('limitShort').value)||0);(ad.screenProjects||[]).forEach(function(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);});save();alert('影视大盘限制已保存。');};
@@ -24118,6 +24152,17 @@ window.renderNpcList=function(){var box=document.getElementById('uiNpcList');if(
     }
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(start,20);});
     else setTimeout(start,20);
+})();
+</script>
+<script>
+(function(){
+  var oldBasementJokeSong=window.basementJokeSong;
+  function basementName(){var el=document.getElementById('basementTarget'),id=el&&el.value,n=(window.worldArtists||[]).find(function(x){return String(x.id)===String(id);});return n&&n.n||'对家艺人';}
+  window.basementJokeSong=function(){var name=basementName(),b=typeof basementState==='function'?basementState():ad.basement||(ad.basement={jokes:[]});b.jokes=b.jokes||[];var replies=['“'+name+'”把新歌文件夹锁上了：先交版权费，再谈写歌。','“'+name+'”回了一句：我可以写，但副歌只唱你的名字。','“'+name+'”正在地下室即兴创作，第一句是“今天也不交稿”。'];b.jokes.unshift(replies[Math.floor(Math.random()*replies.length)]);if(typeof save==='function')save();else if(typeof saveGame==='function')saveGame();openBasement();};
+  var oldWhip=window.basementWhipRival;
+  window.basementWhipRival=function(){var name=basementName(),b=basementState();b.jokes.unshift('“'+name+'”躲过了玩梗攻击，反手发来一张“谢谢关注”的表情包。');save();openBasement();};
+  var oldCapture=window.basementCapture;
+  window.basementCapture=function(){var name=basementName(),b=basementState();if(typeof oldCapture==='function')oldCapture.apply(this,arguments);b.jokes.unshift('“'+name+'”刚进地下室就开始吐槽灯光，并要求把全名写进节目单。');save();openBasement();};
 })();
 </script>
 </body>
