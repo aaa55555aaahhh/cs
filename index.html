@@ -24157,12 +24157,35 @@ window.renderNpcList=function(){var box=document.getElementById('uiNpcList');if(
 <script>
 (function(){
   var oldBasementJokeSong=window.basementJokeSong;
-  function basementName(){var el=document.getElementById('basementTarget'),id=el&&el.value,n=(window.worldArtists||[]).find(function(x){return String(x.id)===String(id);});return n&&n.n||'对家艺人';}
-  window.basementJokeSong=function(){var name=basementName(),b=typeof basementState==='function'?basementState():ad.basement||(ad.basement={jokes:[]});b.jokes=b.jokes||[];var replies=['“'+name+'”把新歌文件夹锁上了：先交版权费，再谈写歌。','“'+name+'”回了一句：我可以写，但副歌只唱你的名字。','“'+name+'”正在地下室即兴创作，第一句是“今天也不交稿”。'];b.jokes.unshift(replies[Math.floor(Math.random()*replies.length)]);if(typeof save==='function')save();else if(typeof saveGame==='function')saveGame();openBasement();};
+  function basementStore(){if(!window.ad)window.ad={};if(!ad.basement)ad.basement={level:1,guards:0,occupants:[],jokes:[]};if(!Array.isArray(ad.basement.jokes))ad.basement.jokes=[];return ad.basement;}
+  function artistList(){return typeof worldArtists!=='undefined'&&Array.isArray(worldArtists)?worldArtists:[];}
+  function selectedArtist(){var el=document.getElementById('basementTarget'),id=el&&el.value;return artistList().find(function(x){return String(x.id)===String(id);});}
+  function basementName(){var n=selectedArtist();return n&&n.n||'对家艺人';}
+  function playerFullName(){return String(ad&&ad.s||ad&&ad.r||'你');}
+  function basementSave(){if(typeof save==='function')save();else if(typeof saveGame==='function')saveGame();}
+  var oldOpenBasement=window.openBasement;
+  window.openBasement=function(){var r=oldOpenBasement&&oldOpenBasement.apply(this,arguments),b=basementStore(),box=document.getElementById('mInfoContent');if(box){var old=document.getElementById('basementResponseLog');if(old)old.remove();var log=document.createElement('div');log.id='basementResponseLog';log.className='card';log.style.cssText='margin-top:10px;line-height:1.8;';log.innerHTML='<b>现场回应</b><br>'+(b.jokes.slice(0,8).map(function(x){return (typeof E==='function'?E(x):String(x));}).join('<br>')||'还没有现场回应。');box.appendChild(log);}return r;};
+  window.basementJokeSong=function(){var name=basementName(),thanks=playerFullName(),b=basementStore();var replies=[name+'一边写副歌一边反复唱：“谢谢 '+thanks+'，谢谢 '+thanks+'！”',name+'交来一段即兴小样，结尾突然大喊：“谢谢 '+thanks+'！”',name+'把歌名改成了《谢谢 '+thanks+'》，并坚持把这句写进每一遍副歌。'];b.jokes.unshift(replies[Math.floor(Math.random()*replies.length)]);basementSave();openBasement();};
   var oldWhip=window.basementWhipRival;
-  window.basementWhipRival=function(){var name=basementName(),b=basementState();b.jokes.unshift('“'+name+'”躲过了玩梗攻击，反手发来一张“谢谢关注”的表情包。');save();openBasement();};
+  window.basementWhipRival=function(){var name=basementName(),thanks=playerFullName(),b=basementStore();b.jokes.unshift(name+'一边挨着玩梗攻击一边疯狂重复：“谢谢 '+thanks+'！谢谢 '+thanks+'！谢谢 '+thanks+'！”');basementSave();openBasement();};
   var oldCapture=window.basementCapture;
-  window.basementCapture=function(){var name=basementName(),b=basementState();if(typeof oldCapture==='function')oldCapture.apply(this,arguments);b.jokes.unshift('“'+name+'”刚进地下室就开始吐槽灯光，并要求把全名写进节目单。');save();openBasement();};
+  window.basementCapture=function(){var n=selectedArtist();if(!n)return alert('请选择一位艺人。');var b=basementStore();if(b.occupants.indexOf(n.id)<0)b.occupants.push(n.id);b.jokes.unshift(n.n+'刚进地下室就对着镜头说：“谢谢 '+playerFullName()+'！”');basementSave();openBasement();};
+  window.basementRelease=function(){var b=basementStore();if(!b.occupants.length)return alert('地下室现在没有嘉宾。');var id=b.occupants.pop(),n=artistList().find(function(x){return String(x.id)===String(id);}),name=n&&n.n||'嘉宾';b.jokes.unshift(name+'离场前最后回头喊了一句：“谢谢 '+playerFullName()+'！”');basementSave();openBasement();};
+
+  var oldContributeOSTFinal=window.contributeOST;
+  window.contributeOST=function(projectId){
+    var project=(ad.screenProjects||[]).find(function(x){return String(x.id)===String(projectId);});
+    var source=(document.getElementById('ostSongSource')||{}).value||'new';
+    var title=((document.getElementById('ostNewName')||{}).value||'').trim();
+    if(source.indexOf('released:')===0){var released=(trackPool||[]).find(function(t){return String(t.id)===source.split(':')[1];});if(released)title=released.n;}
+    if(source.indexOf('library:')===0){var draft=(lib||[])[Number(source.split(':')[1])];if(draft)title=draft.n;}
+    var captured=[],nativeAlert=window.alert;window.alert=function(message){captured.push(String(message));};
+    try{if(typeof oldContributeOSTFinal==='function')oldContributeOSTFinal.apply(this,arguments);}finally{window.alert=nativeAlert;}
+    var failed=captured.some(function(x){return /拒绝|暂未同意|请输入/.test(x);});
+    var response=failed?'《'+(project&&project.name||'该项目')+'》剧组听完后暂时没有采用《'+(title||'这首歌')+'》，但导演记住了 '+playerFullName()+' 的现场表现。':'《'+(project&&project.name||'该项目')+'》现场录制完成。剧组播放《'+(title||'新 OST')+'》后全场回应：“谢谢 '+playerFullName()+'！”';
+    nativeAlert(response);
+    var box=document.getElementById('mInfoContent');if(box){var note=document.createElement('div');note.className='card';note.style.cssText='margin-top:10px;line-height:1.8;';note.innerHTML='<b>现场回应</b><br>'+(typeof E==='function'?E(response):response);box.appendChild(note);}
+  };
 })();
 </script>
 </body>
