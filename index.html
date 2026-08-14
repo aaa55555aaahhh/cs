@@ -2626,6 +2626,91 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
   opacity:.55;
   pointer-events:none;
 }
+/* Real-photo millennium collage: rhinestones, candid street energy, glossy found-object texture. */
+[data-ui-style="millennium"] body::before {
+  content:"";
+  position:fixed;
+  right:10px;
+  bottom:14px;
+  z-index:40;
+  width:148px;
+  aspect-ratio:1.65;
+  background-image:url("assets/millennium/rhinestone-tiara-optimized.jpg");
+  background-size:cover;
+  background-position:center;
+  border:5px solid rgba(255,255,255,.92);
+  box-shadow:0 5px 18px rgba(35,12,40,.28);
+  transform:rotate(-5deg);
+  pointer-events:none;
+}
+[data-ui-style="millennium"] body::after {
+  content:"";
+  position:fixed;
+  left:8px;
+  bottom:62px;
+  z-index:39;
+  width:108px;
+  height:148px;
+  background-image:url("assets/millennium/rhinestone-person-optimized.jpg");
+  background-size:310%;
+  background-position:57% 39%;
+  border:6px solid rgba(255,255,255,.94);
+  box-shadow:0 6px 20px rgba(35,12,40,.25);
+  transform:rotate(4deg);
+  pointer-events:none;
+}
+[data-ui-style="millennium"] .top-bar::after {
+  content:"";
+  right:8px;
+  bottom:-18px;
+  width:64px;
+  height:40px;
+  padding:0;
+  background-image:url("assets/millennium/rhinestone-tiara-optimized.jpg");
+  background-size:cover;
+  background-position:center;
+  border:3px solid #fff;
+  box-shadow:0 3px 9px rgba(25,8,32,.24);
+  transform:rotate(-7deg);
+}
+[data-ui-style="millennium"] .card {
+  border:1px solid color-mix(in srgb,var(--ui-border) 74%,#ffffff) !important;
+  background:color-mix(in srgb,#ffffff 88%,var(--ui-secondary)) !important;
+  box-shadow:0 3px 12px rgba(50,14,50,.12),inset 0 1px rgba(255,255,255,.75) !important;
+}
+[data-ui-style="millennium"] .modal-box {
+  border:1px solid color-mix(in srgb,var(--ui-border) 72%,#ffffff) !important;
+  background:color-mix(in srgb,#ffffff 91%,var(--ui-secondary)) !important;
+  box-shadow:0 14px 38px rgba(42,12,48,.28) !important;
+}
+[data-ui-style="millennium"] .modal-box::before {
+  content:"";
+  top:7px;
+  right:9px;
+  width:42px;
+  height:28px;
+  background-image:url("assets/millennium/rhinestone-tiara-optimized.jpg");
+  background-size:cover;
+  border:2px solid #fff;
+  box-shadow:0 2px 7px rgba(34,10,42,.22);
+  transform:rotate(5deg);
+}
+[data-ui-style="millennium"] button {
+  border:1px solid color-mix(in srgb,var(--ui-border) 78%,#ffffff) !important;
+  border-radius:5px !important;
+  box-shadow:0 2px 5px rgba(39,10,48,.12) !important;
+}
+[data-ui-style="millennium"] .app-icon {
+  border:1px solid rgba(255,255,255,.82) !important;
+  border-radius:9px !important;
+  box-shadow:0 4px 10px rgba(30,8,38,.2),inset 0 1px rgba(255,255,255,.48) !important;
+  filter:saturate(1.08) contrast(1.02);
+}
+[data-ui-style="millennium"] .app-icon::after { content:"";width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 32% 28%,#fff 0 16%,var(--ui-crystal-1) 22% 48%,var(--ui-crystal-2) 60% 100%);box-shadow:0 0 0 1px rgba(255,255,255,.7),0 2px 4px rgba(30,7,38,.28); }
+[data-ui-style="millennium"][data-ui-intensity="light"] body::after { display:none; }
+[data-ui-style="millennium"][data-ui-intensity="light"] body::before { width:105px;opacity:.78; }
+[data-ui-style="millennium"][data-ui-intensity="maximal"] body::before { width:180px;transform:rotate(-8deg); }
+[data-ui-style="millennium"][data-ui-intensity="maximal"] body::after { width:130px;height:178px;transform:rotate(7deg); }
 [data-ui-style="european-vintage"] body {
   color:var(--ui-text);
   background-color:var(--ui-secondary);
@@ -2662,6 +2747,8 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
   .ui-theme-style-switch { grid-template-columns:1fr; }
   .ui-theme-ai-row { grid-template-columns:1fr; }
   [data-ui-style="millennium"] .top-bar::after { display:none; }
+  [data-ui-style="millennium"] body::after { display:none; }
+  [data-ui-style="millennium"] body::before { width:88px;right:5px;bottom:70px;opacity:.72; }
   [data-ui-style="millennium"] .card { box-shadow:2px 2px 0 color-mix(in srgb,var(--ui-accent) 60%,transparent); }
 }
 
@@ -24467,9 +24554,177 @@ window.importLocalSave=function(input){var file=input&&input.files&&input.files[
 })();
 </script>
 <style>
+/* 2026 polished theme rebuild */
+[data-ui-style="european-vintage"] body {
+  color:var(--ui-text);
+  background:#ede5d4;
+  background-image:linear-gradient(rgba(70,45,26,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(70,45,26,.025) 1px,transparent 1px);
+  background-size:23px 23px;
+  font-family:Georgia,"Times New Roman",serif;
+}
+[data-ui-style="european-vintage"] body::before {
+  content:"";
+  position:fixed;
+  right:12px;
+  bottom:18px;
+  z-index:35;
+  width:138px;
+  height:190px;
+  background-image:url("assets/themes/european-vintage-jewel-optimized.jpg");
+  background-size:cover;
+  background-position:center 38%;
+  border:7px solid #f7f0df;
+  outline:1px solid #826832;
+  box-shadow:0 8px 24px rgba(48,26,18,.22);
+  transform:rotate(2deg);
+  pointer-events:none;
+}
+[data-ui-style="european-vintage"] .top-bar {
+  background:#6f2635 !important;
+  color:#fff7e8 !important;
+  border:0 !important;
+  border-bottom:3px double #c9aa69 !important;
+  box-shadow:0 3px 12px rgba(51,24,22,.22) !important;
+}
+[data-ui-style="european-vintage"] .card {
+  border:1px solid #ad986e !important;
+  border-radius:3px !important;
+  background:#f8f1e3 !important;
+  box-shadow:0 2px 8px rgba(61,39,27,.1) !important;
+}
+[data-ui-style="european-vintage"] .modal-box {
+  border:1px solid #846c3c !important;
+  border-top:5px solid #6f2635 !important;
+  border-radius:3px !important;
+  background:#faf5ea !important;
+  box-shadow:0 14px 34px rgba(49,29,22,.27) !important;
+}
+[data-ui-style="european-vintage"] button {
+  border:1px solid #7c683d !important;
+  border-radius:3px !important;
+  background:#31533b !important;
+  color:#fff9ec !important;
+  box-shadow:none !important;
+  font-family:Georgia,"Times New Roman",serif;
+}
+[data-ui-style="european-vintage"] button.sec { background:#eee3cb !important;color:#3d3125 !important; }
+[data-ui-style="european-vintage"] input,[data-ui-style="european-vintage"] select,[data-ui-style="european-vintage"] textarea { border:1px solid #a58d60 !important;border-radius:2px !important;background:#fffdf7 !important;color:#352a22 !important;box-shadow:inset 0 1px 3px rgba(73,48,30,.08); }
+[data-ui-style="european-vintage"] .app-icon { border:1px solid #d6bd80 !important;border-radius:5px !important;box-shadow:0 3px 8px rgba(52,28,23,.2),inset 0 0 0 1px rgba(255,255,255,.32) !important;filter:saturate(.82) contrast(1.04); }
+[data-ui-style="european-vintage"] .tg,[data-ui-style="european-vintage"] h2,[data-ui-style="european-vintage"] h3 { color:#6f2635 !important;text-decoration:none !important; }
+
+[data-ui-style="computer-2010s"] body {
+  color:#173b61;
+  background:#dceeff;
+  background-image:linear-gradient(180deg,#85c9f5 0,#c9eaff 22%,#eef8ff 58%,#dceeff 100%);
+  background-attachment:fixed;
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+}
+[data-ui-style="computer-2010s"] .top-bar {
+  background:rgba(239,248,255,.82) !important;
+  color:#17466f !important;
+  border:1px solid rgba(255,255,255,.92) !important;
+  border-bottom-color:#70a9d4 !important;
+  box-shadow:inset 0 1px rgba(255,255,255,.95),0 4px 14px rgba(31,90,137,.2) !important;
+  backdrop-filter:blur(10px) saturate(1.25);
+}
+[data-ui-style="computer-2010s"] .card {
+  border:1px solid #9cbfdc !important;
+  border-top-color:#ffffff !important;
+  border-radius:5px !important;
+  background:rgba(250,253,255,.91) !important;
+  box-shadow:inset 0 1px #ffffff,0 3px 10px rgba(42,100,145,.12) !important;
+  backdrop-filter:blur(5px);
+}
+[data-ui-style="computer-2010s"] .modal-box {
+  border:1px solid #6f9fc7 !important;
+  border-radius:5px !important;
+  background:rgba(244,250,255,.96) !important;
+  box-shadow:inset 0 1px #ffffff,0 16px 42px rgba(28,84,130,.27) !important;
+}
+[data-ui-style="computer-2010s"] button {
+  border:1px solid #6b9ac3 !important;
+  border-radius:4px !important;
+  background:linear-gradient(180deg,#ffffff 0,#e8f5ff 46%,#bfdcf2 51%,#e8f6ff 100%) !important;
+  color:#16466f !important;
+  box-shadow:inset 0 1px #ffffff,0 1px 3px rgba(36,88,130,.16) !important;
+  font-family:"Segoe UI",Tahoma,Arial,sans-serif;
+}
+[data-ui-style="computer-2010s"] button:active { background:linear-gradient(180deg,#b7d8f1,#e8f6ff) !important;color:#123a5d !important; }
+[data-ui-style="computer-2010s"] input,[data-ui-style="computer-2010s"] select,[data-ui-style="computer-2010s"] textarea { border:1px solid #86acd0 !important;border-radius:3px !important;background:#ffffff !important;color:#173b61 !important;box-shadow:inset 0 1px 3px rgba(35,85,126,.14) !important; }
+[data-ui-style="computer-2010s"] .app-icon { border:1px solid rgba(255,255,255,.92) !important;border-radius:9px !important;box-shadow:inset 0 1px rgba(255,255,255,.8),0 3px 7px rgba(29,74,112,.22) !important;filter:saturate(.96) contrast(1.02); }
+[data-ui-style="computer-2010s"] .tg,[data-ui-style="computer-2010s"] h2,[data-ui-style="computer-2010s"] h3 { color:#215d8c !important;text-decoration:none !important;text-shadow:0 1px #ffffff; }
+
+[data-ui-style="deconstructed-2020s"] body {
+  color:#17151d;
+  background:#f7f7f4;
+  background-image:linear-gradient(116deg,transparent 0 62%,rgba(216,255,56,.54) 62% 70%,transparent 70%),linear-gradient(18deg,transparent 0 84%,rgba(255,95,159,.38) 84%);
+  font-family:Arial,"Helvetica Neue",sans-serif;
+}
+[data-ui-style="deconstructed-2020s"] body::before {
+  content:"";
+  position:fixed;
+  right:4px;
+  bottom:12px;
+  z-index:34;
+  width:142px;
+  height:210px;
+  background-image:url("assets/millennium/rhinestone-person-optimized.jpg");
+  background-size:300%;
+  background-position:57% 42%;
+  filter:grayscale(.38) contrast(1.12);
+  clip-path:polygon(8% 0,100% 7%,91% 100%,0 91%);
+  box-shadow:10px 10px 0 #d8ff38;
+  pointer-events:none;
+}
+[data-ui-style="deconstructed-2020s"] .top-bar {
+  background:#17151d !important;
+  color:#ffffff !important;
+  border:0 !important;
+  border-bottom:5px solid #d8ff38 !important;
+  box-shadow:none !important;
+}
+[data-ui-style="deconstructed-2020s"] .card {
+  border:1px solid #24222a !important;
+  border-radius:1px !important;
+  background:rgba(255,255,255,.93) !important;
+  box-shadow:4px 4px 0 rgba(185,167,255,.68) !important;
+}
+[data-ui-style="deconstructed-2020s"] .modal-box {
+  border:1px solid #17151d !important;
+  border-top:7px solid #d8ff38 !important;
+  border-radius:1px !important;
+  background:#ffffff !important;
+  box-shadow:10px 10px 0 #b9a7ff !important;
+}
+[data-ui-style="deconstructed-2020s"] button {
+  border:1px solid #17151d !important;
+  border-radius:1px !important;
+  background:#17151d !important;
+  color:#ffffff !important;
+  box-shadow:none !important;
+  font-family:Arial,"Helvetica Neue",sans-serif;
+}
+[data-ui-style="deconstructed-2020s"] button.sec { background:#d8ff38 !important;color:#17151d !important; }
+[data-ui-style="deconstructed-2020s"] input,[data-ui-style="deconstructed-2020s"] select,[data-ui-style="deconstructed-2020s"] textarea { border:1px solid #17151d !important;border-radius:0 !important;background:#ffffff !important;color:#17151d !important;box-shadow:none !important; }
+[data-ui-style="deconstructed-2020s"] .app-icon { border:1px solid #17151d !important;border-radius:2px !important;box-shadow:3px 3px 0 #d8ff38 !important;filter:saturate(1.08) contrast(1.05); }
+[data-ui-style="deconstructed-2020s"] .tg,[data-ui-style="deconstructed-2020s"] h2,[data-ui-style="deconstructed-2020s"] h3 { color:#17151d !important;text-decoration:none !important;text-transform:none; }
+[data-ui-style="deconstructed-2020s"] .tg::after { content:" / 2020";display:inline-block;margin-left:6px;padding:1px 4px;background:#ff5f9f;color:#17151d;font-size:8px;vertical-align:middle; }
+@media(max-width:560px){
+  [data-ui-style="european-vintage"] body::before,[data-ui-style="deconstructed-2020s"] body::before{display:none}
+  [data-ui-style="computer-2010s"] .top-bar{backdrop-filter:blur(5px)}
+}
 #desktopPetLayer{position:fixed;right:18px;bottom:76px;z-index:8500;pointer-events:none;user-select:none}
 .desktop-pet{position:relative;width:96px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;pointer-events:auto;transform:scale(var(--pet-scale,1));transform-origin:bottom right;filter:drop-shadow(0 5px 4px rgba(0,0,0,.22))}
+.pet-habitat{position:absolute;inset:0;pointer-events:none}.pet-bed-art{position:absolute;left:5px;bottom:21px;width:86px;height:34px;border:3px solid #49394d;border-radius:45%;background:var(--habitat-bed,#e9b9d1);box-shadow:inset 0 -8px rgba(255,255,255,.28)}.pet-bed-art::after{content:"";position:absolute;inset:7px 12px;border:2px dashed rgba(73,57,77,.55);border-radius:50%}.pet-bowl-art{position:absolute;left:-24px;bottom:8px;width:34px;height:17px;border:3px solid #49394d;border-radius:3px 3px 15px 15px;background:var(--habitat-bowl,#80c9df)}.pet-bowl-art::before{content:"";position:absolute;left:3px;right:3px;top:-5px;height:7px;border:2px solid #49394d;border-radius:50%;background:#f7d69a}.pet-water-art{position:absolute;right:-25px;bottom:7px;width:25px;height:45px;border:3px solid #49394d;border-radius:8px 8px 4px 4px;background:rgba(168,226,240,.72)}.pet-water-art::before{content:"";position:absolute;left:5px;top:-10px;width:11px;height:12px;border:3px solid #49394d;border-bottom:0;border-radius:5px 5px 0 0;background:#f2f7fa}.pet-water-art::after{content:"";position:absolute;left:-8px;bottom:-3px;width:37px;height:9px;border:3px solid #49394d;border-radius:50%;background:#b9dce7}
 .desktop-pet:active{cursor:grabbing}.desktop-pet-body{position:relative;width:76px;height:68px;display:grid;place-items:center;border:3px solid #433646;background:var(--pet-color,#ddd);font-size:45px;line-height:1}
+.pet-art{position:relative;width:62px;height:58px;color:var(--pet-color,#ddd)}.pet-art-head{position:absolute;left:10px;top:10px;width:42px;height:38px;background:currentColor;border:3px solid #433646;z-index:2}.pet-art-ear{position:absolute;top:1px;width:18px;height:22px;background:currentColor;border:3px solid #433646;z-index:1}.pet-art-ear.left{left:7px;transform:rotate(-18deg)}.pet-art-ear.right{right:7px;transform:rotate(18deg)}.pet-art-face{position:absolute;inset:0}.pet-art-eye{position:absolute;top:14px;width:5px;height:7px;background:#302331}.pet-art-eye.left{left:9px}.pet-art-eye.right{right:9px}.pet-art-nose{position:absolute;left:50%;top:23px;width:5px;height:4px;background:#e78da8;transform:translateX(-50%)}.pet-art-tail{position:absolute;right:0;bottom:2px;width:20px;height:9px;background:currentColor;border:3px solid #433646;transform:rotate(-24deg)}
+.pet-trait-layer{position:absolute;z-index:7;pointer-events:none;box-sizing:border-box;color:hsl(var(--trait-hue) 92% 62%);animation-delay:var(--trait-delay);opacity:.82}.pet-trait-layer.pixel{border-radius:1px;image-rendering:pixelated;animation-timing-function:steps(3,end)}.pet-trait-layer.cream{border-radius:50%;filter:drop-shadow(0 0 4px currentColor);mix-blend-mode:screen}
+.pet-trait-layer.slot-0{inset:-5px;border:2px solid currentColor}.pet-trait-layer.slot-1{left:13px;top:18px;width:36px;height:25px}.pet-trait-layer.slot-2{left:20px;top:23px;width:6px;height:6px;box-shadow:17px 0 currentColor}.pet-trait-layer.slot-3{left:8px;top:-4px;width:14px;height:20px;box-shadow:32px 0 currentColor}.pet-trait-layer.slot-4{right:-5px;bottom:2px;width:24px;height:9px}.pet-trait-layer.slot-5{left:17px;bottom:-5px;width:8px;height:6px;box-shadow:20px 0 currentColor}.pet-trait-layer.slot-6{left:-22px;top:24px;width:24px;height:8px}.pet-trait-layer.slot-7{inset:-11px}.pet-trait-layer.slot-8{right:-14px;top:15px;width:12px;height:12px}.pet-trait-layer.slot-9{left:8px;right:8px;top:-15px;height:13px}
+.pet-trait-layer.slot-2::before,.pet-trait-layer.slot-2::after{content:"";position:absolute;top:-1px;width:7px;height:7px;background:currentColor;filter:drop-shadow(0 0 3px currentColor)}.pet-trait-layer.slot-2::before{left:-1px}.pet-trait-layer.slot-2::after{left:16px}.pet-trait-layer.cream.slot-2::before,.pet-trait-layer.cream.slot-2::after{clip-path:polygon(50% 0,61% 34%,98% 35%,68% 56%,79% 94%,50% 71%,21% 94%,32% 56%,2% 35%,39% 34%);background:linear-gradient(135deg,#fff,currentColor 48%,#b9f6ff)}.pet-trait-layer.pixel.slot-2::before,.pet-trait-layer.pixel.slot-2::after{clip-path:polygon(0 0,70% 0,70% 28%,100% 28%,100% 100%,28% 100%,28% 72%,0 72%)}
+.pet-trait-layer.effect-0{border:2px dashed currentColor;box-shadow:3px 0 color-mix(in srgb,currentColor 55%,#ff2bd6);animation:trait-pulse 1.8s infinite}.pet-trait-layer.effect-1{background:conic-gradient(from 45deg,currentColor 0 25%,transparent 0 50%,currentColor 0 75%,transparent 0);background-size:8px 8px;animation:trait-shift 1.4s infinite}.pet-trait-layer.effect-2{border:2px solid transparent;background:linear-gradient(120deg,#fff,currentColor,#77f7ff,#ff8cda) border-box;box-shadow:0 0 7px currentColor;animation:trait-holo 2.2s linear infinite}.pet-trait-layer.effect-3{background:currentColor;clip-path:polygon(0 0,38% 0,38% 28%,70% 28%,70% 0,100% 0,100% 44%,78% 44%,78% 72%,100% 72%,100% 100%,52% 100%,52% 78%,20% 78%,20% 100%,0 100%);animation:trait-blink 1.7s steps(2,end) infinite}.pet-trait-layer.effect-4{background:currentColor;box-shadow:5px -4px #00e7ff,-4px 5px #ff2bd6,8px 6px #d8ff38;animation:trait-overflow 1.2s steps(2,end) infinite}.pet-trait-layer.effect-5{background:repeating-linear-gradient(0deg,currentColor 0 2px,transparent 2px 5px);animation:trait-scan 1.4s linear infinite}.pet-trait-layer.effect-6{border:1px solid currentColor;background:repeating-linear-gradient(90deg,currentColor 0 2px,transparent 2px 5px);box-shadow:0 0 6px currentColor;animation:trait-code 1.1s steps(2,end) infinite}.pet-trait-layer.effect-7{border:2px solid currentColor;box-shadow:-5px 2px color-mix(in srgb,currentColor 60%,transparent),5px -2px color-mix(in srgb,currentColor 35%,transparent);animation:trait-frame 1.3s steps(3,end) infinite}.pet-trait-layer.effect-8{background:linear-gradient(135deg,currentColor 0 24%,transparent 25% 48%,currentColor 49% 72%,transparent 73%);box-shadow:0 0 8px currentColor;animation:trait-cache 2s ease-in-out infinite}.pet-trait-layer.effect-9{border:2px solid currentColor;box-shadow:4px 0 color-mix(in srgb,currentColor 65%,#fff),-4px 0 color-mix(in srgb,currentColor 55%,#ff5f9f);animation:trait-quantum 1.6s ease-in-out infinite}
+.pet-trait-layer.cream.effect-0,.pet-trait-layer.cream.effect-2{background:radial-gradient(circle at 35% 30%,#fff 0 12%,currentColor 18% 42%,transparent 48%)}.pet-trait-layer.cream.effect-1,.pet-trait-layer.cream.effect-4{background:linear-gradient(135deg,#fff6fb,currentColor,#dff6ff,#fff1b8)}.pet-trait-layer.cream.effect-3,.pet-trait-layer.cream.effect-8{clip-path:none;background:radial-gradient(circle,currentColor 0 28%,transparent 32%) 0 0/9px 9px}.pet-trait-layer.cream.effect-5{background:linear-gradient(180deg,transparent,currentColor,transparent)}.pet-trait-layer.cream.effect-6{background:radial-gradient(circle at 50% 50%,#fff 0 18%,currentColor 22% 48%,transparent 52%)}.pet-trait-layer.cream.effect-7{border:3px dotted currentColor}.pet-trait-layer.cream.effect-9{background:conic-gradient(from 0deg,transparent,currentColor,transparent,currentColor,transparent)}
+.pet-art.dog .pet-art-ear{top:9px;height:27px;border-radius:10px}.pet-art.dog .pet-art-ear.left{left:2px;transform:rotate(15deg)}.pet-art.dog .pet-art-ear.right{right:2px;transform:rotate(-15deg)}.pet-art.dog .pet-art-head{border-radius:18px 18px 15px 15px}.pet-art.dog .pet-art-nose{width:8px;background:#302331}.pet-art.rabbit .pet-art-ear{top:-10px;height:32px;width:13px;border-radius:12px}.pet-art.rabbit .pet-art-ear.left{left:14px;transform:rotate(-7deg)}.pet-art.rabbit .pet-art-ear.right{right:14px;transform:rotate(7deg)}.pet-art.rabbit .pet-art-head{top:14px;border-radius:19px}.pet-art.rabbit .pet-art-tail{width:13px;height:13px;border-radius:50%;right:1px;bottom:1px}
+.desktop-pet.pixel .pet-art-head,.desktop-pet.pixel .pet-art-ear,.desktop-pet.pixel .pet-art-tail{border-radius:1px;box-shadow:3px 0 0 color-mix(in srgb,currentColor 65%,#00e7ff)}.desktop-pet.pixel .pet-art-eye{border-radius:0}.desktop-pet.cream .pet-art-head{border-radius:45% 45% 38% 38%;box-shadow:inset 0 0 0 4px rgba(255,255,255,.35)}.desktop-pet.cream .pet-art-ear,.desktop-pet.cream .pet-art-tail{border-radius:50%}.desktop-pet.shiny .pet-art::after{content:"";position:absolute;inset:-5px;z-index:4;pointer-events:none;background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.9) 42%,transparent 58%);mix-blend-mode:screen;animation:pet-shine-sweep 2.4s linear infinite}.desktop-pet.shiny.pixel .pet-art::before{content:"01 / RGB / 10";position:absolute;left:-8px;top:18px;z-index:5;width:78px;color:#00e7ff;text-shadow:2px 0 #ff2bd6;font:7px/1 Consolas;overflow:hidden;animation:pet-code-jump 1.4s steps(2,end) infinite}
 .desktop-pet.pixel .desktop-pet-body{border-radius:3px;box-shadow:6px 0 var(--pet-accent,#6cf),0 6px #ff4fa3;image-rendering:pixelated}
 .desktop-pet.cream .desktop-pet-body{border-radius:36px 36px 30px 30px;background:radial-gradient(circle at 35% 28%,#fff 0 10%,var(--pet-color,#f5d9cd) 45%,var(--pet-accent,#ffd9ee));box-shadow:inset 0 0 0 5px rgba(255,255,255,.5)}
 .desktop-pet.shiny.pixel .desktop-pet-body{animation:pet-glitch 1.8s steps(2,end) infinite;box-shadow:6px 0 #00e7ff,-5px 3px #ff2bd6,0 7px #d8ff38}
@@ -24482,57 +24737,77 @@ window.importLocalSave=function(input){var file=input&&input.files&&input.files[
 .pet-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pet-card{position:relative}.pet-badges{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0}.pet-badge{padding:2px 5px;border:1px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);font-size:9px}
 .pet-actions{display:flex;gap:5px;flex-wrap:wrap}.pet-actions button{width:auto;margin:0;font-size:10px;padding:5px 7px}.pet-shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.pet-shop-grid button{margin:0;min-height:48px}
 .pet-trait-list{max-height:140px;overflow:auto;font-size:10px;line-height:1.7}.pet-code-box{font-family:Consolas,monospace;font-size:9px;word-break:break-all;background:#f3f4f6;padding:6px;border:1px solid #bbb}
+.pet-egg-stage{position:relative;width:112px;height:126px;margin:2px auto 10px;display:flex;align-items:flex-start;justify-content:center}.pet-hatch-mat{position:absolute;left:5px;right:5px;bottom:4px;height:35px;border:3px solid #49394d;border-radius:50%;background:var(--egg-mat,#efc7d9);box-shadow:inset 0 -8px rgba(255,255,255,.32)}.pet-hatch-mat::after{content:"";position:absolute;inset:7px 15px;border:2px dashed rgba(73,57,77,.52);border-radius:50%}.pet-egg-shell{position:absolute;top:8px;width:66px;height:84px;border:4px solid #49394d;border-radius:50% 50% 46% 46% / 58% 58% 42% 42%;background:var(--egg-color,#eee);box-shadow:inset 9px 3px rgba(255,255,255,.28),inset -7px -7px rgba(40,20,45,.08);overflow:hidden;z-index:2}.pet-egg-shell.pixel{border-radius:46% 46% 40% 40% / 58% 58% 42% 42%;box-shadow:5px 0 var(--egg-accent,#6cf),inset 7px 0 rgba(255,255,255,.22)}.pet-egg-shell.cream::after{content:"";position:absolute;inset:16px 10px;border-radius:50%;background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.72) 0 10%,transparent 12%),linear-gradient(135deg,transparent 44%,rgba(255,255,255,.35) 45% 56%,transparent 57%)}.pet-egg-shell.shiny{animation:pet-egg-glow 1.8s ease-in-out infinite}.pet-egg-shell.shiny::before{content:"";position:absolute;inset:-15px;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.94) 45%,transparent 58%);animation:pet-shine-sweep 1.7s linear infinite}.pet-egg-shell.shiny.pixel{box-shadow:5px 0 #00e7ff,-4px 3px #ff2bd6,0 0 12px #d8ff38}.pet-egg-time{text-align:center;font-size:10px;color:#6b5a6c;line-height:1.5}.pet-furnishing-preview{position:relative;height:70px;margin:5px 0}.pet-furnishing-preview .pet-bed-art{left:50%;transform:translateX(-50%);bottom:5px}.pet-furnishing-preview .pet-bowl-art{left:50%;transform:translateX(-50%);bottom:12px}.pet-furnishing-preview .pet-water-art{left:50%;right:auto;transform:translateX(-50%);bottom:5px}
 @keyframes pet-glitch{0%,82%,100%{transform:translate(0);filter:hue-rotate(0)}86%{transform:translate(3px,-2px);filter:hue-rotate(110deg)}91%{transform:translate(-3px,1px);filter:hue-rotate(240deg)}}
 @keyframes pet-pearl{0%,100%{filter:saturate(1) brightness(1)}50%{filter:saturate(1.45) brightness(1.12)}}
+@keyframes pet-egg-glow{0%,100%{filter:saturate(1) brightness(1)}50%{filter:saturate(1.55) brightness(1.14)}}
+@keyframes trait-pulse{50%{opacity:.3;transform:scale(1.08)}}@keyframes trait-shift{50%{background-position:7px 3px}}@keyframes trait-holo{to{filter:hue-rotate(360deg)}}@keyframes trait-blink{50%{opacity:.25}}@keyframes trait-overflow{50%{transform:translate(3px,-2px)}}@keyframes trait-scan{to{background-position:0 12px}}@keyframes trait-code{50%{transform:scaleX(.72)}}@keyframes trait-frame{50%{transform:translate(-3px,2px)}}@keyframes trait-cache{50%{filter:brightness(1.6);transform:scale(.88)}}@keyframes trait-quantum{50%{transform:scale(1.12) rotate(5deg)}}
+@keyframes pet-shine-sweep{0%{transform:translateX(-70%)}100%{transform:translateX(70%)}}@keyframes pet-code-jump{0%,82%,100%{transform:translate(0)}86%{transform:translate(4px,-3px)}92%{transform:translate(-3px,2px)}}
 @media(max-width:560px){#desktopPetLayer{right:8px;bottom:66px}.pet-list{grid-template-columns:1fr}.pet-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 <div id="desktopPetLayer" aria-live="polite"></div>
 <script>
 var PET_SYSTEM_VERSION=1;
 var PET_SHINY_BASE_RATE=1/1000;
-var PET_SPECIES={cat:{name:"猫",icon:"🐱"},dog:{name:"狗",icon:"🐶"},rabbit:{name:"兔子",icon:"🐰"}};
+var PET_SPECIES={cat:{name:"猫"},dog:{name:"狗"},rabbit:{name:"兔子"}};
 var PET_BASE_COLORS=["#171719","#f5f2ea","#8d8d92","#c78150","#e7c6a5","#b8a28e","#6f4e3d","#d8b4cf","#91c9df","#b7d78f","#f0d15f","#a996d9"];
 var PET_TRAIT_SLOTS=["轮廓","毛发","眼睛","耳朵","尾巴","爪印","移动","待机","互动","登场"];
 function buildPetTraitPool(family,effects,details){var out=[];effects.forEach(function(effect,ei){details.forEach(function(detail,di){out.push({id:family+"_"+(ei*10+di+1),family:family,name:effect+"·"+detail,slot:PET_TRAIT_SLOTS[di],effect:effect,detail:detail});});});return out;}
 var PIXEL_SHINY_TRAITS=buildPetTraitPool("pixel",["RGB残影","彩码错位","全息描边","数据缺口","像素溢出","扫描脉冲","乱码闪烁","帧率漂移","霓虹缓存","量子贴图"],["轮廓分色","毛色代码块","符号瞳孔","信号耳尖","延迟尾迹","数据脚印","故障冲刺","待机弹窗","互动乱码","启动重组"]);
 var CREAM_SHINY_TRAITS=buildPetTraitPool("cream",["玫瑰珍珠","蓝月极光","香槟糖霜","彩虹星砂","牛奶银河","果冻晶糖","梦境云锦","季节糖晶","音乐虹光","皇冠星屑"],["珍珠轮廓","糖霜毛色","宝石瞳孔","水晶耳尖","梦境尾迹","糖果脚印","极光移动","彩虹呼吸","泡泡互动","星光登场"]);
+function petTraitVisual(trait){if(!trait||!trait.id)return "";var number=Math.max(1,Number(String(trait.id).split("_").pop())||1),effectIndex=Math.floor((number-1)/10),slotIndex=(number-1)%10,family=String(trait.family||String(trait.id).split("_")[0]).replace(/[^a-z]/g,""),hue=(effectIndex*36+slotIndex*11+(family==="cream"?18:0))%360,delay=-(slotIndex*.13+effectIndex*.07).toFixed(2);return '<i class="pet-trait-layer '+family+' effect-'+effectIndex+' slot-'+slotIndex+'" data-trait-id="'+String(trait.id).replace(/[^a-z0-9_\-]/gi,"")+'" data-effect-name="'+String(trait.effect||"").replace(/["<>]/g,"")+'" data-slot-name="'+String(trait.slot||"").replace(/["<>]/g,"")+'" style="--trait-hue:'+hue+';--trait-delay:'+delay+'s;--trait-variant:'+number+'"></i>';}
 function petShinyPool(style){return style==="fusion"?PIXEL_SHINY_TRAITS.concat(CREAM_SHINY_TRAITS):style==="pixel"?PIXEL_SHINY_TRAITS:CREAM_SHINY_TRAITS;}
 function petInheritedShinyRate(parentAShiny,parentBShiny){return parentAShiny&&parentBShiny?.002:parentAShiny||parentBShiny?.0015:PET_SHINY_BASE_RATE;}
 function petRandomItem(list,random){return list[Math.floor((random||Math.random)()*list.length)%list.length];}
 function pickPetShinyTraits(style,random,count){var pool=petShinyPool(style),rng=random||Math.random,total=count||2+Math.floor(rng()*3),base=Math.floor(rng()*pool.length),out=[];for(var i=0;i<total;i++)out.push(pool[(base+i*17)%pool.length]);return out;}
 function petId(prefix){return prefix+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);}
-function createPetBirth(species,random,options){var rng=random||Math.random,opt=options||{},style=opt.style||petRandomItem(["pixel","cream"],rng),shiny=opt.forceShiny===true||rng()<Math.max(0,Math.min(.01,Number(opt.shinyRate||PET_SHINY_BASE_RATE))),heterochromia=opt.forceHeterochromia===true||rng()<.006,color=opt.color||petRandomItem(PET_BASE_COLORS,rng),accent=opt.accent||petRandomItem(PET_BASE_COLORS,rng),traits=shiny?pickPetShinyTraits(style,rng):[];return {id:petId("pet"),code:"",name:(PET_SPECIES[species]||PET_SPECIES.cat).name+"宝宝",species:PET_SPECIES[species]?species:"cat",hybridParents:opt.hybridParents||[],generation:Number(opt.generation||1),style:style,color:color,accent:accent,eyeLeft:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",eyeRight:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",heterochromia:heterochromia,shiny:shiny,shinyTraits:traits.map(function(x){return x.id;}),laterShinyTraits:[],personality:petRandomItem(["黏人","好奇","冷静","活泼","骄傲","温柔","贪吃","爱听歌"],rng),stage:"幼崽",hunger:80,health:100,mood:80,affection:0,growthMode:"hybrid",buffs:[],awardFeedIds:[],demoFeedIds:[],feedHistory:[],events:[{type:"birth",text:shiny?"以闪光形态孵化":"普通孵化",at:Date.now()}],partner:null,children:[],createdAt:Date.now()};}
+function createPetEgg(species,random,options){var rng=random||Math.random,opt=options||{},generation=Number(opt.generation||1),style=opt.style||petRandomItem(["pixel","cream"],rng),color=opt.color||petRandomItem(opt.colors||PET_BASE_COLORS,rng),accent=generation===1?color:(opt.accent||petRandomItem(opt.colors||[color],rng)),rate=Math.max(0,Math.min(.01,Number(opt.shinyRate!==undefined?opt.shinyRate:PET_SHINY_BASE_RATE))),shiny=opt.forceShiny===true||rng()<rate,createdAt=Number(opt.createdAt||Date.now());return {id:opt.id||petId("egg"),species:PET_SPECIES[species]?species:"cat",label:opt.label||(PET_SPECIES[species]||PET_SPECIES.cat).name+"宠物蛋",generation:generation,parents:opt.parents||[],hybridParents:opt.hybridParents||[],colors:opt.colors||null,style:style,color:color,accent:accent,shinyRate:rate,shiny:shiny,shinyTraits:shiny?pickPetShinyTraits(style,rng).map(function(x){return x.id;}):[],createdAt:createdAt,hatchReadyAt:createdAt+(shiny?2:1)*60*60*1000};}
+function ensurePetEgg(egg){if(!egg)return egg;var seeded=createPetEgg(egg.species,Math.random,egg);Object.keys(seeded).forEach(function(k){if(egg[k]===undefined||egg[k]===null)egg[k]=seeded[k];});if(!egg.hatchReadyAt)egg.hatchReadyAt=Number(egg.createdAt||Date.now())+(egg.shiny?2:1)*60*60*1000;return egg;}
+function createPetBirth(species,random,options){var rng=random||Math.random,opt=options||{},generation=Number(opt.generation||1),style=opt.style||petRandomItem(["pixel","cream"],rng),birthRate=opt.shinyRate!==undefined?Number(opt.shinyRate):PET_SHINY_BASE_RATE,shiny=opt.forceShiny===true||rng()<Math.max(0,Math.min(.01,birthRate)),heterochromia=opt.forceHeterochromia===true||rng()<.006,color=opt.color||petRandomItem(PET_BASE_COLORS,rng),accent=generation===1?color:(opt.accent||color),traits=shiny?pickPetShinyTraits(style,rng):[];return {id:petId("pet"),code:"",name:(PET_SPECIES[species]||PET_SPECIES.cat).name+"宝宝",species:PET_SPECIES[species]?species:"cat",hybridParents:opt.hybridParents||[],generation:generation,style:style,color:color,accent:accent,eyeLeft:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",eyeRight:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",heterochromia:heterochromia,shiny:shiny,shinyTraits:traits.map(function(x){return x.id;}),laterShinyTraits:[],personality:petRandomItem(["黏人","好奇","冷静","活泼","骄傲","温柔","贪吃","爱听歌"],rng),stage:"幼崽",hunger:80,health:100,mood:80,affection:0,growthMode:"hybrid",buffs:[],awardFeedIds:[],demoFeedIds:[],feedHistory:[],events:[{type:"birth",text:shiny?"以闪光形态孵化":"普通孵化",at:Date.now()}],partner:null,children:[],createdAt:Date.now()};}
 function encodePetCode(pet){var payload={v:1,id:pet.id,name:pet.name,species:pet.species,hybridParents:pet.hybridParents,generation:pet.generation,style:pet.style,color:pet.color,accent:pet.accent,eyeLeft:pet.eyeLeft,eyeRight:pet.eyeRight,heterochromia:pet.heterochromia,shiny:pet.shiny,shinyTraits:pet.shinyTraits,personality:pet.personality};return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));}
 function decodePetCode(code){var data;try{data=JSON.parse(decodeURIComponent(escape(atob(String(code||"").trim()))));}catch(e){throw new Error("宠物码无效");}if(!data||data.v!==1||!PET_SPECIES[data.species])throw new Error("宠物码内容无效");return data;}
 function petStore(){
   if(typeof ad==="undefined"||!ad)return null;
-  if(!ad.petSystem||typeof ad.petSystem!=="object")ad.petSystem={version:PET_SYSTEM_VERSION,pets:[],eggs:[],food:0,medicine:0,activePetId:null,desktopVisible:true,size:1,x:null,y:null};
-  var s=ad.petSystem;s.version=PET_SYSTEM_VERSION;if(!Array.isArray(s.pets))s.pets=[];if(!Array.isArray(s.eggs))s.eggs=[];s.pets.forEach(function(p){p.awardFeedIds=Array.isArray(p.awardFeedIds)?p.awardFeedIds:[];p.demoFeedIds=Array.isArray(p.demoFeedIds)?p.demoFeedIds:[];p.feedHistory=Array.isArray(p.feedHistory)?p.feedHistory:[];p.shinyTraits=Array.isArray(p.shinyTraits)?p.shinyTraits:[];p.laterShinyTraits=Array.isArray(p.laterShinyTraits)?p.laterShinyTraits:[];p.events=Array.isArray(p.events)?p.events:[];p.buffs=Array.isArray(p.buffs)?p.buffs:[];if(!p.code)p.code=encodePetCode(p);});return s;
+  if(!ad.petSystem||typeof ad.petSystem!=="object")ad.petSystem={version:PET_SYSTEM_VERSION,pets:[],eggs:[],food:0,medicine:0,habitatInventory:{bed:0,bowl:0,water:0},petShopMonth:"",petShopStock:[],activePetId:null,desktopVisible:true,size:1,x:null,y:null};
+  var s=ad.petSystem;s.version=PET_SYSTEM_VERSION;if(!Array.isArray(s.pets))s.pets=[];if(!Array.isArray(s.eggs))s.eggs=[];if(!Array.isArray(s.petShopStock))s.petShopStock=[];s.habitatInventory=s.habitatInventory||{bed:0,bowl:0,water:0};["bed","bowl","water"].forEach(function(k){s.habitatInventory[k]=Number(s.habitatInventory[k]||0);});s.eggs.forEach(ensurePetEgg);s.pets.forEach(function(p){p.awardFeedIds=Array.isArray(p.awardFeedIds)?p.awardFeedIds:[];p.demoFeedIds=Array.isArray(p.demoFeedIds)?p.demoFeedIds:[];p.feedHistory=Array.isArray(p.feedHistory)?p.feedHistory:[];p.shinyTraits=Array.isArray(p.shinyTraits)?p.shinyTraits:[];p.laterShinyTraits=Array.isArray(p.laterShinyTraits)?p.laterShinyTraits:[];p.events=Array.isArray(p.events)?p.events:[];p.buffs=Array.isArray(p.buffs)?p.buffs:[];p.habitat=p.habitat||{bed:false,bowl:false,water:false};if(Number(p.generation||1)===1)p.accent=p.color;if(!p.code)p.code=encodePetCode(p);});return s;
 }
 function petSave(){try{var s=petStore();if(s)localStorage.setItem("starPro_pet_ui_v1",JSON.stringify({desktopVisible:s.desktopVisible,size:s.size,activePetId:s.activePetId,x:s.x,y:s.y}));}catch(e){}if(typeof saveGame==="function")saveGame();}
 function petEsc(value){return typeof E==="function"?E(value):String(value||"").replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});}
 function findPet(id){var s=petStore();return s&&s.pets.find(function(p){return p.id===id;});}
 function petSpeciesLabel(p){if(p.hybridParents&&p.hybridParents.length>1)return p.hybridParents.map(function(x){return PET_SPECIES[x]&&PET_SPECIES[x].name||x;}).join("×")+"混种";return PET_SPECIES[p.species]&&PET_SPECIES[p.species].name||"宠物";}
 function petTraitObjects(p){var pool=petShinyPool(p.style),ids=(p.shinyTraits||[]).concat(p.laterShinyTraits||[]);return ids.map(function(id){return pool.find(function(x){return x.id===id;});}).filter(Boolean);}
-function maybeAddShinyTrait(p,random){if(!p.shiny||(random||Math.random)()>=.08)return null;var pool=petShinyPool(p.style),used=(p.shinyTraits||[]).concat(p.laterShinyTraits||[]),available=pool.filter(function(x){return used.indexOf(x.id)<0&&!petTraitObjects(p).some(function(t){return t.slot===x.slot;});});if(!available.length)return null;var trait=petRandomItem(available,random||Math.random);p.laterShinyTraits.push(trait.id);p.events.unshift({type:"shinyTrait",text:"成长中显现新闪光特征："+trait.name,at:Date.now()});return trait;}
+function petTraitLayers(p){return p&&p.shiny?petTraitObjects(p).map(petTraitVisual).join(""):"";}
+function maybeAddShinyTrait(p,random){if(!p.shiny||(random||Math.random)()>=.08)return null;var pool=petShinyPool(p.style),used=(p.shinyTraits||[]).concat(p.laterShinyTraits||[]),available=pool.filter(function(x){return used.indexOf(x.id)<0;});if(!available.length)return null;var trait=petRandomItem(available,random||Math.random);p.laterShinyTraits.push(trait.id);p.events.unshift({type:"shinyTrait",text:"成长中显现新闪光特征："+trait.name,at:Date.now()});return trait;}
 function makePetShiny(p,source,random){if(p.shiny)return false;p.shiny=true;p.shinyTraits=pickPetShinyTraits(p.style,random);p.events.unshift({type:"shiny",text:"因"+source+"转化为闪光宠物",at:Date.now()});return true;}
 function petAwardInstances(){var rows=Array.isArray(ad&&ad.awd)?ad.awd:[],store=ad.petAwardInstances=Array.isArray(ad.petAwardInstances)?ad.petAwardInstances:[],used={};return rows.map(function(raw){var text=String(raw),index=used[text]||0;used[text]=index+1;var matches=store.filter(function(x){return x.text===text;}),item=matches[index];if(!item){item={id:petId("award"),text:text};store.push(item);}return item;});}
 function petDemoInstances(){return (typeof lib!=="undefined"&&Array.isArray(lib)?lib:[]).map(function(draft,index){if(!draft.petDemoId)draft.petDemoId=petId("demo");return {id:draft.petDemoId,text:draft.n||draft.name||("Demo "+(index+1)),raw:draft,index:index};});}
 function petDemoQuality(demo){var d=demo.raw||{},nums=[d.quality,d.q,d.catchy,d.art,d.score,d.sk].filter(function(x){return isFinite(Number(x));}).map(Number);if(nums.length)return Math.max(0,Math.min(100,nums.reduce(function(a,b){return a+b;},0)/nums.length));return Math.max(1,Math.min(100,Number(ad&&ad.sk&&ad.sk.w||50)));}
-function renderDesktopPet(){var layer=document.getElementById("desktopPetLayer"),s=petStore();if(!layer||!s||!s.desktopVisible){if(layer)layer.innerHTML="";return;}var p=findPet(s.activePetId)||s.pets[0];if(!p){layer.innerHTML="";return;}s.activePetId=p.id;var icon=(PET_SPECIES[p.species]||PET_SPECIES.cat).icon,need=p.hunger<35?"我饿了……":p.health<50?"我有点不舒服":p.mood<40?"陪陪我吧":"今天也要闪闪发光";layer.style.right=s.x===null?"18px":"auto";layer.style.bottom=s.y===null?"76px":"auto";if(s.x!==null)layer.style.left=s.x+"px";if(s.y!==null)layer.style.top=s.y+"px";layer.innerHTML='<div class="desktop-pet '+p.style+(p.shiny?' shiny':'')+'" data-pet-id="'+p.id+'" style="--pet-scale:'+Math.max(.5,Math.min(2,Number(s.size||1)))+';--pet-color:'+p.color+';--pet-accent:'+p.accent+'" onclick="openPetDetail(\''+p.id+'\')"><div class="desktop-pet-speech">'+petEsc(need)+'</div><div class="desktop-pet-body">'+icon+'</div><div class="desktop-pet-name">'+petEsc(p.name)+(p.shiny?' ✦':'')+'</div></div>';enablePetDrag(layer.querySelector(".desktop-pet"));}
+function petArtwork(p){var species=PET_SPECIES[p.species]?p.species:"cat";return '<div class="pet-art '+species+'" role="img" aria-label="'+petEsc((PET_SPECIES[species]||PET_SPECIES.cat).name)+'"><i class="pet-art-ear left"></i><i class="pet-art-ear right"></i><i class="pet-art-tail"></i><div class="pet-art-head"><div class="pet-art-face"><i class="pet-art-eye left" style="background:'+petEsc(p.eyeLeft||'#302331')+'"></i><i class="pet-art-eye right" style="background:'+petEsc(p.eyeRight||'#302331')+'"></i><i class="pet-art-nose"></i></div></div>'+petTraitLayers(p)+'</div>';}
+function petHabitatArtwork(p){var h=p.habitat||{};return '<div class="pet-habitat">'+(h.bed?'<i class="pet-bed-art"></i>':'')+(h.bowl?'<i class="pet-bowl-art"></i>':'')+(h.water?'<i class="pet-water-art"></i>':'')+'</div>';}
+function petEggArtwork(egg){ensurePetEgg(egg);return '<div class="pet-egg-stage" style="--egg-color:'+petEsc(egg.color)+';--egg-accent:'+petEsc(egg.accent)+'"><div class="pet-egg-shell '+petEsc(egg.style)+(egg.shiny?' shiny':'')+'">'+petTraitLayers({style:egg.style,shiny:egg.shiny,shinyTraits:egg.shinyTraits||[],laterShinyTraits:[]})+'</div><div class="pet-hatch-mat"></div></div>';}
+function petEggRemaining(egg){return Math.max(0,Number(egg.hatchReadyAt||0)-Date.now());}
+function petEggCountdown(egg){var ms=petEggRemaining(egg),mins=Math.ceil(ms/60000);if(!ms)return "可以孵化";return "孵化剩余 "+Math.floor(mins/60)+"小时 "+(mins%60)+"分钟";}
+function renderDesktopPet(){var layer=document.getElementById("desktopPetLayer"),s=petStore();if(!layer||!s||!s.desktopVisible){if(layer)layer.innerHTML="";return;}var p=findPet(s.activePetId)||s.pets[0];if(!p){layer.innerHTML="";return;}s.activePetId=p.id;var need=p.hunger<35?"我饿了……":p.health<50?"我有点不舒服":p.mood<40?"陪陪我吧":"今天也要闪闪发光";layer.style.right=s.x===null?"18px":"auto";layer.style.bottom=s.y===null?"76px":"auto";if(s.x!==null)layer.style.left=s.x+"px";if(s.y!==null)layer.style.top=s.y+"px";layer.innerHTML='<div class="desktop-pet '+p.style+(p.shiny?' shiny':'')+'" data-pet-id="'+p.id+'" style="--pet-scale:'+Math.max(.5,Math.min(2,Number(s.size||1)))+';--pet-color:'+p.color+';--pet-accent:'+p.accent+'" onclick="openPetDetail(\''+p.id+'\')">'+petHabitatArtwork(p)+'<div class="desktop-pet-speech">'+petEsc(need)+'</div><div class="desktop-pet-body">'+petArtwork(p)+'</div><div class="desktop-pet-name">'+petEsc(p.name)+(p.shiny?' ✦':'')+'</div></div>';enablePetDrag(layer.querySelector(".desktop-pet"));}
 function enablePetDrag(el){if(!el||el.dataset.dragReady)return;el.dataset.dragReady="1";var sx,sy,ox,oy,moved=false;el.addEventListener("pointerdown",function(e){sx=e.clientX;sy=e.clientY;var r=document.getElementById("desktopPetLayer").getBoundingClientRect();ox=r.left;oy=r.top;moved=false;el.setPointerCapture(e.pointerId);});el.addEventListener("pointermove",function(e){if(sx===undefined)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;var layer=document.getElementById("desktopPetLayer"),x=Math.max(0,Math.min(innerWidth-80,ox+dx)),y=Math.max(0,Math.min(innerHeight-80,oy+dy));layer.style.left=x+"px";layer.style.top=y+"px";layer.style.right="auto";layer.style.bottom="auto";var s=petStore();s.x=x;s.y=y;});el.addEventListener("pointerup",function(e){sx=undefined;if(moved){e.preventDefault();e.stopPropagation();petSave();}});}
 window.setPetDesktopVisible=function(value){var s=petStore();if(!s)return;s.desktopVisible=!!value;petSave();renderDesktopPet();};
 window.setPetDesktopSize=function(value){var s=petStore();if(!s)return;s.size=Math.max(.5,Math.min(2,Number(value)||1));petSave();renderDesktopPet();};
 window.setActiveDesktopPet=function(id){var s=petStore();if(!s)return;s.activePetId=id;petSave();renderDesktopPet();};
 window.setPetGrowthMode=function(id,mode){var p=findPet(id);if(!p||["hybrid","ai","local"].indexOf(mode)<0)return;p.growthMode=mode;p.events.unshift({type:"mode",text:"成长模式切换为 "+mode,at:Date.now()});petSave();openPetDetail(id);};
 function petCard(p){var traits=petTraitObjects(p),badges=[petSpeciesLabel(p),p.style==="fusion"?"像素×奶油融合":p.style==="pixel"?"电子像素":"可爱奶油",p.generation+"代",p.shiny?"闪光":"普通",p.heterochromia?"异瞳":"同色瞳"];return '<div class="card pet-card"><b>'+petEsc(p.name)+'</b><div class="pet-badges">'+badges.map(function(x){return '<span class="pet-badge">'+petEsc(x)+'</span>';}).join('')+'</div><div style="font-size:10px;line-height:1.7;">饱腹 '+Math.round(p.hunger)+' · 健康 '+Math.round(p.health)+' · 心情 '+Math.round(p.mood)+'<br>性格：'+petEsc(p.personality)+' · 特征 '+traits.length+'</div><div class="pet-actions"><button onclick="openPetDetail(\''+p.id+'\')">详情</button><button class="sec" onclick="openPetFeed(\''+p.id+'\')">喂养</button><button class="sec" onclick="setActiveDesktopPet(\''+p.id+'\')">展示</button></div></div>';}
-window.openPetSystem=function(){var s=petStore();if(!s)return alert("请先开始游戏再使用桌面宠物。");var eggs=s.eggs.map(function(e){return '<div class="card"><b>'+petEsc(e.label)+'</b><br><button onclick="hatchPetEgg(\''+e.id+'\')">孵化</button></div>';}).join('');document.getElementById("mInfoTitle").innerText="桌面宠物";document.getElementById("mInfoContent").innerHTML='<div class="pet-toolbar"><label><input type="checkbox" '+(s.desktopVisible?'checked':'')+' onchange="setPetDesktopVisible(this.checked)">显示桌宠</label><label>桌宠大小 <input type="range" min="0.5" max="2" step="0.1" value="'+s.size+'" oninput="setPetDesktopSize(this.value)"></label></div><h3 class="tg">我的宠物（'+s.pets.length+'）</h3><div class="pet-list">'+(s.pets.map(petCard).join('')||'还没有宠物，请先购买宠物蛋。')+'</div><h3 class="tg">待孵化宠物蛋</h3><div class="pet-list">'+(eggs||'暂无宠物蛋')+'</div><h3 class="tg">宠物商店</h3><div class="pet-shop-grid"><button onclick="buyPetEgg(\'cat\')">猫猫蛋<br>25,000</button><button onclick="buyPetEgg(\'dog\')">狗狗蛋<br>25,000</button><button onclick="buyPetEgg(\'rabbit\')">兔兔蛋<br>25,000</button><button class="sec" onclick="buyAdultPet(\'cat\')">普通成猫<br>40,000</button><button class="sec" onclick="buyAdultPet(\'dog\')">普通成狗<br>40,000</button><button class="sec" onclick="buyAdultPet(\'rabbit\')">普通成兔<br>40,000</button><button class="sec" onclick="buyPetFood()">宠物粮 ×5<br>5,000</button><button class="sec" onclick="buyPetMedicine()">治疗用品<br>8,000</button></div><p style="font-size:10px;color:#777;">库存：宠物粮 '+s.food+' · 治疗用品 '+s.medicine+'</p>';document.getElementById("mInfo").classList.add("open");};
-window.buyPetEgg=function(species){var s=petStore();if(Number(ad.m||0)<25000)return alert("资金不足，需要 25,000。");ad.m-=25000;s.eggs.push({id:petId("egg"),species:species,label:(PET_SPECIES[species]||PET_SPECIES.cat).name+"宠物蛋",generation:1,parents:[]});petSave();openPetSystem();};
-window.buyAdultPet=function(species){var s=petStore();if(Number(ad.m||0)<40000)return alert("资金不足，需要 40,000。");ad.m-=40000;var p=createPetBirth(species,Math.random,{forceShiny:false,forceHeterochromia:false});p.shiny=false;p.heterochromia=false;p.shinyTraits=[];p.stage="成年";p.name="普通"+(PET_SPECIES[species]||PET_SPECIES.cat).name;p.code=encodePetCode(p);s.pets.push(p);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();openPetSystem();};
-window.buyPetFood=function(){var s=petStore();if(Number(ad.m||0)<5000)return alert("资金不足。");ad.m-=5000;s.food+=5;petSave();openPetSystem();};
-window.buyPetMedicine=function(){var s=petStore();if(Number(ad.m||0)<8000)return alert("资金不足。");ad.m-=8000;s.medicine+=1;petSave();openPetSystem();};
-window.hatchPetEgg=function(id){var s=petStore(),index=s.eggs.findIndex(function(e){return e.id===id;}),egg=s.eggs[index];if(!egg)return;var opt={generation:egg.generation||1,hybridParents:egg.hybridParents||[],style:egg.style,shinyRate:egg.shinyRate};if(egg.colors){opt.color=petRandomItem(egg.colors,Math.random);opt.accent=petRandomItem(egg.colors,Math.random);}var p=createPetBirth(egg.species,Math.random,opt);p.code=encodePetCode(p);s.pets.push(p);s.eggs.splice(index,1);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();alert(p.shiny?"闪光孵化！"+p.name+" 出生时拥有 "+petTraitObjects(p).map(function(x){return x.name;}).join("、"):p.heterochromia?"孵化成功！这是一只异瞳宠物。":"孵化成功！");openPetSystem();};
-window.openPetDetail=function(id){var p=findPet(id);if(!p)return;var traits=petTraitObjects(p),events=p.events.slice(0,20).map(function(x){return '<div>· '+petEsc(x.text)+'</div>';}).join('');document.getElementById("mInfoTitle").innerText=p.name;document.getElementById("mInfoContent").innerHTML='<div class="card" style="text-align:center;"><div style="font-size:55px;">'+(PET_SPECIES[p.species]||PET_SPECIES.cat).icon+'</div><b>'+petEsc(petSpeciesLabel(p))+' · '+(p.style==='fusion'?'像素×奶油融合风':p.style==='pixel'?'电子像素风':'可爱奶油风')+(p.shiny?' · 闪光':'')+(p.heterochromia?' · 异瞳':'')+'</b><p>颜色 <span style="display:inline-block;width:14px;height:14px;background:'+p.color+';border:1px solid #333;"></span> / <span style="display:inline-block;width:14px;height:14px;background:'+p.accent+';border:1px solid #333;"></span></p></div><label>宠物名称<input id="petRenameInput" value="'+petEsc(p.name)+'"></label><button class="sec" onclick="renamePet(\''+p.id+'\')">保存名称</button><label>成长模式<select onchange="setPetGrowthMode(\''+p.id+'\',this.value)"><option value="hybrid" '+(p.growthMode==='hybrid'?'selected':'')+'>混合模式</option><option value="ai" '+(p.growthMode==='ai'?'selected':'')+'>AI 模式</option><option value="local" '+(p.growthMode==='local'?'selected':'')+'>本地模式</option></select></label><div class="pet-actions"><button onclick="openPetFeed(\''+p.id+'\')">喂养</button><button class="sec" onclick="copyPetCode(\''+p.id+'\')">复制宠物码</button><button class="sec" onclick="breedWithPetCode(\''+p.id+'\')">输入宠物码恋爱 / 繁育</button><button class="sec" onclick="generatePetPersonalityAI(\''+p.id+'\')">AI 生成性格</button></div><h4 class="tg">闪光特征（'+traits.length+'）</h4><div class="pet-trait-list">'+(traits.map(function(x){return petEsc(x.name)+'（'+x.slot+'）';}).join('<br>')||'普通宠物暂无闪光特征')+'</div><h4 class="tg">成长轨迹</h4><div class="card" style="font-size:10px;line-height:1.8;">'+(events||'暂无事件')+'</div>';document.getElementById("mInfo").classList.add("open");};
+window.openPetSystem=function(){var s=petStore();if(!s)return alert("请先开始游戏再使用桌面宠物。");var eggs=s.eggs.map(function(e){var waiting=petEggRemaining(e)>0;return '<div class="card">'+petEggArtwork(e)+'<div class="pet-egg-time"><b>'+petEsc(e.label)+'</b><br>蛋壳已透露未来主色'+(e.shiny?' · 闪光反应已显现':'')+'<br>'+petEggCountdown(e)+'</div><button '+(waiting?'disabled':'')+' onclick="hatchPetEgg(\''+e.id+'\')">'+(waiting?'孵化中':'孵化宠物')+'</button></div>';}).join('');document.getElementById("mInfoTitle").innerText="桌面宠物";document.getElementById("mInfoContent").innerHTML='<div class="pet-toolbar"><label><input type="checkbox" '+(s.desktopVisible?'checked':'')+' onchange="setPetDesktopVisible(this.checked)">显示桌宠</label><label>桌宠大小 <input type="range" min="0.5" max="2" step="0.1" value="'+s.size+'" oninput="setPetDesktopSize(this.value)"></label></div><h3 class="tg">我的宠物（'+s.pets.length+'）</h3><div class="pet-list">'+(s.pets.map(petCard).join('')||'还没有宠物，请前往手机里的宠物商店。')+'</div><h3 class="tg">待孵化宠物蛋</h3><div class="pet-list">'+(eggs||'暂无宠物蛋')+'</div>';document.getElementById("mInfo").classList.add("open");};
+function refreshPetShopStock(){var s=petStore(),monthKey=String(time.y)+"_"+String(time.m);if(!s||s.petShopMonth===monthKey)return;s.petShopMonth=monthKey;s.petShopStock=[];["cat","dog","rabbit"].forEach(function(species){var egg=createPetEgg(species,Math.random,{generation:1}),adult=createPetBirth(species,Math.random,{generation:1,shinyRate:0});adult.shiny=false;adult.heterochromia=false;adult.shinyTraits=[];adult.accent=adult.color;adult.stage="成年";adult.name="普通"+PET_SPECIES[species].name;s.petShopStock.push({id:petId("stock"),kind:"egg",price:25000,egg:egg});s.petShopStock.push({id:petId("stock"),kind:"adult",price:40000,pet:adult});});petSave();}
+function petShopStockCard(item){if(item.kind==="egg")return '<div class="card">'+petEggArtwork(item.egg)+'<b>'+petEsc(item.egg.label)+'</b><br><span style="font-size:10px;">'+(item.egg.style==="pixel"?'电子像素风':'可爱奶油风')+' · 蛋壳主色已显示</span><button onclick="buyPetShopStock(\''+item.id+'\')">购买 25,000</button></div>';var p=item.pet;return '<div class="card"><div class="desktop-pet '+p.style+'" style="margin:auto;--pet-color:'+p.color+';--pet-accent:'+p.accent+'"><div class="desktop-pet-body">'+petArtwork(p)+'</div></div><b>'+petEsc(p.name)+'</b><br><span style="font-size:10px;">纯色 · '+(p.style==="pixel"?'电子像素风':'可爱奶油风')+'</span><button onclick="buyPetShopStock(\''+item.id+'\')">购买 40,000</button></div>';}
+function habitatShopCard(type,name,price){return '<div class="card"><div class="pet-furnishing-preview"><i class="pet-'+type+'-art"></i></div><b>'+name+'</b><button onclick="buyPetHabitatItem(\''+type+'\','+price+')">购买 '+price.toLocaleString()+'</button><button class="sec" onclick="equipPetHabitatItem(\''+type+'\')">装备 / 收回</button></div>';}
+window.openPetShop=function(){var s=petStore();if(!s)return alert("请先开始游戏再使用宠物商店。");refreshPetShopStock();document.getElementById("mInfoTitle").innerText="宠物商店";document.getElementById("mInfoContent").innerHTML='<p style="font-size:10px;color:#777;">本期货架：'+time.y+'年'+time.m+'月 · 下个游戏月自动刷新</p><div class="pet-list">'+s.petShopStock.map(petShopStockCard).join('')+'</div><h3 class="tg">生活用品</h3><div class="pet-shop-grid">'+habitatShopCard("bed","宠物窝垫",18000)+habitatShopCard("bowl","宠物食盆",8000)+habitatShopCard("water","宠物饮水机",16000)+'</div><div class="pet-shop-grid" style="margin-top:8px;"><button class="sec" onclick="buyPetFood()">宠物粮 ×5<br>5,000</button><button class="sec" onclick="buyPetMedicine()">治疗用品<br>8,000</button></div><div class="card" style="margin-top:10px;font-size:11px;"><b>当前库存</b><br>宠物粮 '+s.food+' · 治疗用品 '+s.medicine+' · 窝垫 '+s.habitatInventory.bed+' · 食盆 '+s.habitatInventory.bowl+' · 饮水机 '+s.habitatInventory.water+'</div>';document.getElementById("mInfo").classList.add("open");};
+window.buyPetShopStock=function(id){var s=petStore(),index=s.petShopStock.findIndex(function(x){return x.id===id;}),item=s.petShopStock[index];if(!item)return alert("这只宠物已经售出。");if(Number(ad.m||0)<item.price)return alert("资金不足，需要 "+item.price.toLocaleString()+"。");ad.m-=item.price;if(item.kind==="egg"){var src=item.egg,egg=createPetEgg(src.species,Math.random,{generation:src.generation,style:src.style,color:src.color,accent:src.accent,forceShiny:src.shiny,shinyRate:src.shiny?1:0});egg.shiny=src.shiny;egg.shinyTraits=(src.shinyTraits||[]).slice();s.eggs.push(egg);}else{var p=item.pet;p.id=petId("pet");p.code=encodePetCode(p);s.pets.push(p);if(!s.activePetId)s.activePetId=p.id;}s.petShopStock.splice(index,1);petSave();renderDesktopPet();openPetShop();};
+window.buyPetHabitatItem=function(type,price){var s=petStore();if(["bed","bowl","water"].indexOf(type)<0)return;if(Number(ad.m||0)<price)return alert("资金不足。");ad.m-=price;s.habitatInventory[type]++;petSave();openPetShop();};
+window.equipPetHabitatItem=function(type){var s=petStore(),p=findPet(s.activePetId)||s.pets[0];if(!p)return alert("请先拥有一只宠物，并在宠物系统中选择展示。");p.habitat=p.habitat||{bed:false,bowl:false,water:false};if(p.habitat[type]){p.habitat[type]=false;s.habitatInventory[type]++;}else{if(!s.habitatInventory[type])return alert("库存中没有这件用品，请先购买。");s.habitatInventory[type]--;p.habitat[type]=true;}petSave();renderDesktopPet();openPetShop();};
+window.buyPetEgg=function(species){var s=petStore();if(Number(ad.m||0)<25000)return alert("资金不足，需要 25,000。");ad.m-=25000;s.eggs.push(createPetEgg(species,Math.random,{generation:1,parents:[]}));petSave();openPetShop();};
+window.buyAdultPet=function(species){var s=petStore();if(Number(ad.m||0)<40000)return alert("资金不足，需要 40,000。");ad.m-=40000;var p=createPetBirth(species,Math.random,{forceShiny:false,forceHeterochromia:false});p.shiny=false;p.heterochromia=false;p.shinyTraits=[];p.accent=p.color;p.stage="成年";p.name="普通"+(PET_SPECIES[species]||PET_SPECIES.cat).name;p.code=encodePetCode(p);s.pets.push(p);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();openPetShop();};
+window.buyPetFood=function(){var s=petStore();if(Number(ad.m||0)<5000)return alert("资金不足。");ad.m-=5000;s.food+=5;petSave();openPetShop();};
+window.buyPetMedicine=function(){var s=petStore();if(Number(ad.m||0)<8000)return alert("资金不足。");ad.m-=8000;s.medicine+=1;petSave();openPetShop();};
+window.hatchPetEgg=function(id){var s=petStore(),index=s.eggs.findIndex(function(e){return e.id===id;}),egg=s.eggs[index];if(!egg)return;ensurePetEgg(egg);if(petEggRemaining(egg)>0)return alert(petEggCountdown(egg)+"，请等待现实时间结束。");var opt={generation:egg.generation||1,hybridParents:egg.hybridParents||[],style:egg.style,forceShiny:egg.shiny,shinyRate:egg.shiny?1:0};opt.color=egg.color;opt.accent=egg.accent;var p=createPetBirth(egg.species,Math.random,opt);p.shiny=!!egg.shiny;p.shinyTraits=(egg.shinyTraits||[]).slice();p.code=encodePetCode(p);s.pets.push(p);s.eggs.splice(index,1);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();alert(p.shiny?"闪光孵化！"+p.name+" 出生时拥有 "+petTraitObjects(p).map(function(x){return x.name;}).join("、"):p.heterochromia?"孵化成功！这是一只异瞳宠物。":"孵化成功！");openPetSystem();};
+window.openPetDetail=function(id){var p=findPet(id);if(!p)return;var traits=petTraitObjects(p),events=p.events.slice(0,20).map(function(x){return '<div>· '+petEsc(x.text)+'</div>';}).join('');document.getElementById("mInfoTitle").innerText=p.name;document.getElementById("mInfoContent").innerHTML='<div class="card desktop-pet '+p.style+(p.shiny?' shiny':'')+'" style="margin:0 auto 12px;--pet-color:'+p.color+';--pet-accent:'+p.accent+'"><div class="desktop-pet-body">'+petArtwork(p)+'</div></div><div style="text-align:center;"><b>'+petEsc(petSpeciesLabel(p))+' · '+(p.style==='fusion'?'像素×奶油融合风':p.style==='pixel'?'电子像素风':'可爱奶油风')+(p.shiny?' · 闪光':'')+(p.heterochromia?' · 异瞳':'')+'</b><p>颜色 <span style="display:inline-block;width:14px;height:14px;background:'+p.color+';border:1px solid #333;"></span>'+(p.generation>1?' / <span style="display:inline-block;width:14px;height:14px;background:'+p.accent+';border:1px solid #333;"></span>':' · 初代纯色')+'</p></div><label>宠物名称<input id="petRenameInput" value="'+petEsc(p.name)+'"></label><button class="sec" onclick="renamePet(\''+p.id+'\')">保存名称</button><label>成长模式<select onchange="setPetGrowthMode(\''+p.id+'\',this.value)"><option value="hybrid" '+(p.growthMode==='hybrid'?'selected':'')+'>混合模式</option><option value="ai" '+(p.growthMode==='ai'?'selected':'')+'>AI 模式</option><option value="local" '+(p.growthMode==='local'?'selected':'')+'>本地模式</option></select></label><div class="pet-actions"><button onclick="openPetFeed(\''+p.id+'\')">喂养</button><button class="sec" onclick="copyPetCode(\''+p.id+'\')">复制宠物码</button><button class="sec" onclick="breedWithPetCode(\''+p.id+'\')">输入宠物码建立恋爱关系</button><button class="sec" onclick="generatePetPersonalityAI(\''+p.id+'\')">AI 生成性格</button></div><h4 class="tg">闪光特征（'+traits.length+'）</h4><div class="pet-trait-list">'+(traits.map(function(x){return petEsc(x.name)+'（'+x.slot+'）';}).join('<br>')||'普通宠物暂无闪光特征')+'</div><h4 class="tg">成长轨迹</h4><div class="card" style="font-size:10px;line-height:1.8;">'+(events||'暂无事件')+'</div>';document.getElementById("mInfo").classList.add("open");};
 window.renamePet=function(id){var p=findPet(id),input=document.getElementById("petRenameInput");if(!p||!input)return;p.name=input.value.trim().slice(0,24)||p.name;p.code=encodePetCode(p);petSave();renderDesktopPet();openPetDetail(id);};
 window.openPetFeed=function(id){var p=findPet(id);if(!p)return;var awards=petAwardInstances().filter(function(x){return p.awardFeedIds.indexOf(x.id)<0;}),demos=petDemoInstances().filter(function(x){return p.demoFeedIds.indexOf(x.id)<0;});document.getElementById("mInfoTitle").innerText="喂养 "+p.name;document.getElementById("mInfoContent").innerHTML='<button onclick="feedPetFood(\''+id+'\')">喂宠物粮</button><button class="sec" onclick="feedPetMoney(\''+id+'\')">喂 10,000 金钱</button><button class="sec" onclick="healPet(\''+id+'\')">使用治疗用品</button><label>喂一座未喂过的奖杯<select id="petAwardFeedSelect">'+awards.map(function(x){return '<option value="'+x.id+'">'+petEsc(x.text)+'</option>';}).join('')+'</select></label><button class="sec" '+(awards.length?'':'disabled')+' onclick="feedPetAward(\''+id+'\',document.getElementById(\'petAwardFeedSelect\').value)">喂奖杯</button><label>喂一首未喂过的 Demo<select id="petDemoFeedSelect">'+demos.map(function(x){return '<option value="'+x.id+'">'+petEsc(x.text)+' · 品质 '+Math.round(petDemoQuality(x))+'</option>';}).join('')+'</select></label><button class="sec" '+(demos.length?'':'disabled')+' onclick="feedPetDemo(\''+id+'\',document.getElementById(\'petDemoFeedSelect\').value)">喂 Demo</button>';document.getElementById("mInfo").classList.add("open");};
 window.feedPetFood=function(id){var s=petStore(),p=findPet(id);if(!p||s.food<1)return alert("没有宠物粮，请先去商店购买。");s.food--;p.hunger=Math.min(100,p.hunger+35);p.health=Math.min(100,p.health+5);p.mood=Math.min(100,p.mood+7);p.feedHistory.unshift({type:"food",at:Date.now()});maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(id);};
@@ -24541,16 +24816,22 @@ window.healPet=function(id){var s=petStore(),p=findPet(id);if(!p||s.medicine<1)r
 window.feedPetAward=function(petIdValue,awardId){var p=findPet(petIdValue),item=petAwardInstances().find(function(x){return x.id===awardId;});if(!p||!item||p.awardFeedIds.indexOf(awardId)>=0)return alert("这座奖杯已经喂过，或记录不存在。");p.awardFeedIds.push(awardId);p.mood=Math.min(100,p.mood+15);p.buffs.push({type:"prestige",name:"奖杯荣光",value:1,sourceId:awardId});p.feedHistory.unshift({type:"award",sourceId:awardId,text:item.text,at:Date.now()});var chance=Math.min(.01,PET_SHINY_BASE_RATE*.12+.00008);if(!p.shiny&&Math.random()<chance)makePetShiny(p,"奖杯荣光",Math.random);else maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(petIdValue);};
 window.feedPetDemo=function(petIdValue,demoId){var p=findPet(petIdValue),demo=petDemoInstances().find(function(x){return x.id===demoId;});if(!p||!demo||p.demoFeedIds.indexOf(demoId)>=0)return alert("这首 Demo 已经喂过，或记录不存在。");var quality=petDemoQuality(demo);p.demoFeedIds.push(demoId);p.feedHistory.unshift({type:"demo",sourceId:demoId,text:demo.text,quality:quality,at:Date.now()});p.hunger=Math.min(100,p.hunger+10);var badRoll=Math.max(.03,(55-quality)/110);if(Math.random()<badRoll){p.health=Math.max(10,p.health-22);p.mood=Math.max(10,p.mood-15);p.events.unshift({type:"illness",text:"吃了品质不合适的 Demo 后拉肚子",at:Date.now()});}else{p.mood=Math.min(100,p.mood+Math.round(quality/8));p.buffs.push({type:"music",name:"Demo 共鸣",value:Math.max(1,Math.round(quality/20)),sourceId:demoId});}var playerSkill=Math.max(1,Math.min(100,Number(ad&&ad.sk&&ad.sk.w||50))),chance=Math.min(.01,PET_SHINY_BASE_RATE*.1+(quality/100)*.0008+(playerSkill/100)*.0001),changed=!p.shiny&&Math.random()<chance&&makePetShiny(p,"Demo《"+demo.text+"》",Math.random);if(changed){demo.raw.flashResonance={petId:p.id,petName:p.name,at:Date.now(),bonus:"闪光共鸣",value:Math.max(2,Math.round(quality/12))};}else maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(petIdValue);};
 window.copyPetCode=function(id){var p=findPet(id);if(!p)return;p.code=encodePetCode(p);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p.code).then(function(){alert("宠物码已复制。");}).catch(function(){prompt("复制这个宠物码",p.code);});else prompt("复制这个宠物码",p.code);};
-function localBreedEgg(a,b){var species=a.species===b.species?a.species:petRandomItem([a.species,b.species],Math.random),hybrids=Array.from(new Set([a.species,b.species].concat(a.hybridParents||[],b.hybridParents||[]))),colors=[a.color,a.accent,b.color,b.accent].filter(Boolean);return {id:petId("egg"),species:species,label:(a.species===b.species?PET_SPECIES[species].name:hybrids.map(function(x){return PET_SPECIES[x].name;}).join("×"))+"二代蛋",generation:Math.max(Number(a.generation||1),Number(b.generation||1))+1,parents:[a.id,b.id],hybridParents:hybrids,colors:colors,style:a.style===b.style?a.style:"fusion",shinyRate:petInheritedShinyRate(!!a.shiny,!!b.shiny)};}
-window.breedWithPetCode=async function(id){var a=findPet(id);if(!a)return;var code=prompt("输入另一只宠物的宠物码");if(!code)return;var b;try{b=decodePetCode(code);}catch(e){return alert(e.message);}a.partner={id:b.id,name:b.name,species:b.species,affection:100};var egg=localBreedEgg(a,b),s=petStore();if(a.growthMode!=="local"&&typeof api==="function"){try{var aiReply=await api("根据两只可爱桌宠的父母色生成后代分区花色。只返回四个 #RRGGBB 颜色，用逗号分隔。父母色："+[a.color,a.accent,b.color,b.accent].join("、"));var aiColors=String(aiReply||"").match(/#[0-9a-f]{6}/ig);if(aiColors&&aiColors.length>=4)egg.colors=aiColors.slice(0,4).map(function(x){return x.toLowerCase();});}catch(aiError){console.warn("AI 宠物花色生成失败，已使用本地遗传",aiError);}}s.eggs.push(egg);a.children.push(egg.id);a.events.unshift({type:"love",text:"与 "+b.name+" 相恋并获得宠物蛋",at:Date.now()});petSave();alert("恋爱关系建立，并获得一颗 "+egg.label+"。跨物种后代会使用安全可爱模板。");openPetSystem();};
+function localBreedEgg(a,b){var species=a.species===b.species?a.species:petRandomItem([a.species,b.species],Math.random),hybrids=Array.from(new Set([a.species,b.species].concat(a.hybridParents||[],b.hybridParents||[]))),colors=[a.color,a.accent,b.color,b.accent].filter(Boolean),label=(a.species===b.species?PET_SPECIES[species].name:hybrids.map(function(x){return PET_SPECIES[x].name;}).join("×"))+"二代蛋";return createPetEgg(species,Math.random,{label:label,generation:Math.max(Number(a.generation||1),Number(b.generation||1))+1,parents:[a.id,b.id],hybridParents:hybrids,colors:colors,style:a.style===b.style?a.style:"fusion",shinyRate:petInheritedShinyRate(!!a.shiny,!!b.shiny)});}
+function petBreedingChance(a,b){var affection=Math.max(0,Math.min(100,Number(a.partner&&a.partner.affection||0)));return Math.min(.18,.04+affection*.0008+(a.mood>=70&&a.health>=70?.03:0));}
+function processWeeklyPetBreeding(random){var rng=random||Math.random,s=petStore();if(!s)return 0;var born=0;s.pets.forEach(function(a){var b=a.partner&&a.partner.pet;if(!b||a.partner.lastBreedingWeek===String(time.y)+"_"+time.m+"_"+time.w)return;a.partner.lastBreedingWeek=String(time.y)+"_"+time.m+"_"+time.w;if(rng()>=petBreedingChance(a,b))return;var egg=localBreedEgg(a,b);s.eggs.push(egg);a.children.push(egg.id);a.events.unshift({type:"egg",text:"本周与 "+b.name+" 共同孕育了一颗 "+egg.label,at:Date.now()});enrichPetEggColorsAI(a,b,egg);born++;});if(born){petSave();alert("宠物伴侣本周触发了繁育事件，获得宠物蛋 ×"+born+"。可在桌面宠物系统中孵化。");}return born;}
+async function enrichPetEggColorsAI(a,b,egg){if(a.growthMode==="local"||typeof api!=="function")return;try{var aiReply=await api("根据两只原创可爱桌宠的父母色生成后代分区花色。只返回四个 #RRGGBB 颜色，用逗号分隔。父母色："+[a.color,a.accent,b.color,b.accent].join("、"));var aiColors=String(aiReply||"").match(/#[0-9a-f]{6}/ig);if(aiColors&&aiColors.length>=4){egg.colors=aiColors.slice(0,4).map(function(x){return x.toLowerCase();});egg.color=egg.colors[0];egg.accent=egg.colors[1];petSave();}}catch(aiError){console.warn("AI 宠物花色生成失败，已保留本地遗传",aiError);}}
+window.breedWithPetCode=async function(id){var a=findPet(id);if(!a)return;var code=prompt("输入另一只宠物的宠物码");if(!code)return;var b;try{b=decodePetCode(code);}catch(e){return alert(e.message);}a.partner={id:b.id,name:b.name,species:b.species,affection:100,pet:b,lastBreedingWeek:null};a.events.unshift({type:"love",text:"与 "+b.name+" 建立恋爱关系",at:Date.now()});petSave();alert("恋爱关系已建立。恋爱不会立刻产蛋；今后每次转周时，所有宠物伴侣都有概率触发繁育事件。");openPetSystem();};
 window.generatePetPersonalityAI=async function(id){var p=findPet(id);if(!p)return;if(p.growthMode==="local")return alert("当前宠物使用本地模式，请切换到混合或 AI 模式。");try{var response=await api("为一只游戏桌宠生成一句20字以内的可爱性格描述。只返回文字。宠物信息："+petSpeciesLabel(p)+"，"+p.style+"风格，已有经历："+p.events.slice(0,5).map(function(x){return x.text;}).join("；"));if(!response)throw new Error("AI 无返回");p.personality=String(response).replace(/<[^>]*>/g,"").replace(/[{}\[\]`]/g,"").trim().slice(0,40)||p.personality;p.events.unshift({type:"personality",text:"AI 根据成长轨迹形成性格："+p.personality,at:Date.now()});petSave();openPetDetail(id);}catch(e){p.personality=petRandomItem(["外冷内热","爱听 Demo","喜欢追着光点跑","看到奖杯就兴奋","安静但很黏人"],Math.random);p.events.unshift({type:"personality",text:"AI 不可用，使用本地性格："+p.personality,at:Date.now()});petSave();openPetDetail(id);}};
-function mountPetSystem(){var page=document.getElementById("pApi");if(page&&!document.getElementById("petSystemSettingsCard")){var card=document.createElement("div");card.id="petSystemSettingsCard";card.className="card";card.innerHTML='<h2 class="tg" style="font-size:16px;margin-bottom:6px;">桌面宠物</h2><p style="font-size:11px;color:#666;">可选的时尚配饰支线：孵蛋、喂养、成长、恋爱、繁育与闪光轨迹。闪光特征池：电子像素 100 项 · 可爱奶油 100 项。</p><button onclick="openPetSystem()">打开宠物系统</button>';page.insertBefore(card,page.firstChild);}try{var local=JSON.parse(localStorage.getItem("starPro_pet_ui_v1")||"null"),s=petStore();if(local&&s){["desktopVisible","size","activePetId","x","y"].forEach(function(k){if(local[k]!==undefined&&s[k]===undefined)s[k]=local[k];});}}catch(e){}renderDesktopPet();}
+function mountPetShopApp(){var grid=document.getElementById("phoneGrid");if(!grid||document.getElementById("appPetShop"))return false;grid.insertAdjacentHTML("beforeend",'<div class="app-icon" id="appPetShop" style="background:#f7cde0;color:#3d2d3b;" onclick="openPetShop()"><div class="picon" style="font-weight:900;">P</div><span>宠物商店</span></div>');return true;}
+function mountPetSystem(){var page=document.getElementById("pApi");if(page&&!document.getElementById("petSystemSettingsCard")){var card=document.createElement("div");card.id="petSystemSettingsCard";card.className="card";card.innerHTML='<h2 class="tg" style="font-size:16px;margin-bottom:6px;">桌面宠物</h2><p style="font-size:11px;color:#666;">可选的时尚配饰支线：孵蛋、喂养、成长、恋爱、繁育与闪光轨迹。闪光特征池：电子像素 100 项 · 可爱奶油 100 项。</p><button onclick="openPetSystem()">打开宠物系统</button>';page.insertBefore(card,page.firstChild);}mountPetShopApp();setTimeout(mountPetShopApp,600);try{var local=JSON.parse(localStorage.getItem("starPro_pet_ui_v1")||"null"),s=petStore();if(local&&s){["desktopVisible","size","activePetId","x","y"].forEach(function(k){if(local[k]!==undefined&&s[k]===undefined)s[k]=local[k];});}}catch(e){}renderDesktopPet();}
 window.__petSystemDebug={pixelTraits:PIXEL_SHINY_TRAITS,creamTraits:CREAM_SHINY_TRAITS,createPetBirth:createPetBirth,decodePetCode:decodePetCode,encodePetCode:encodePetCode,localBreedEgg:localBreedEgg};
+var petOriginalAdvTime=window.advTime;window.advTime=function(weeks,showMsg){var count=Math.max(0,Math.floor(Number(weeks)||0)),result;if(!count)return petOriginalAdvTime.apply(this,arguments);for(var petWeek=0;petWeek<count;petWeek++){result=petOriginalAdvTime.call(this,1,!!showMsg&&petWeek===count-1);processWeeklyPetBreeding();}return result;};
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(mountPetSystem,50);});else setTimeout(mountPetSystem,50);
 setInterval(function(){var s=petStore();if(!s)return;s.pets.forEach(function(p){p.hunger=Math.max(0,Number(p.hunger||0)-.25);if(p.hunger<15)p.mood=Math.max(0,p.mood-.15);});renderDesktopPet();},60000);
 </script>
 </body>
 </html>
+
 
 
 
