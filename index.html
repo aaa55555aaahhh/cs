@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -1866,6 +1866,17 @@ setTimeout(function installFinalUserRequestedFixes(){
     window.addEventListener("pageshow",restoreApiConfigReliably);
 
     var UI_THEME_KEY="starPro_ui_theme_v1";
+    var UI_THEME_VERSION=2;
+    var UI_THEME_STYLE_PRESETS={
+        classic:{name:"原版",primary:"#dfc477",secondary:"#eadba9",accent:"#f2e7c6",text:"#594e30",border:"#a08d56"},
+        "european-vintage":{name:"欧洲复古风",primary:"#7d2638",secondary:"#e4d5b7",accent:"#31533b",text:"#35251d",border:"#8b6a36"},
+        "computer-2010s":{name:"10s 蓝白电脑风",primary:"#3b82d0",secondary:"#e8f4ff",accent:"#8fc7f1",text:"#173b61",border:"#6c9bc4"},
+        millennium:{name:"00s 千禧风",primary:"#ff4fa3",secondary:"#31c9ff",accent:"#ffe54f",text:"#341135",border:"#541a51"},
+        "deconstructed-2020s":{name:"20s 解构千禧风",primary:"#d8ff38",secondary:"#b9a7ff",accent:"#ff5f9f",text:"#17151d",border:"#303038"},
+        "ai-generated":{name:"AI 生成风格",primary:"#7c7cff",secondary:"#e8f0ff",accent:"#ff79c9",text:"#252038",border:"#514978"}
+    };
+    var UI_THEME_STYLES=Object.keys(UI_THEME_STYLE_PRESETS);
+    var UI_THEME_INTENSITIES=["light","standard","maximal"];
     var UI_THEME_PRESETS={
         yellow:{name:"蜂蜜燕麦黄",color:"#dfc477"},
         pink:{name:"Baby 粉",color:"#f3c8d5"},
@@ -1873,6 +1884,11 @@ setTimeout(function installFinalUserRequestedFixes(){
         purple:{name:"Baby 紫",color:"#ddc8ff"},
         green:{name:"Baby 绿",color:"#c9f2cf"},
         red:{name:"Baby 红",color:"#ffbfc3"}
+    };
+    var UI_THEME_OFFICIAL_PACKAGES={
+        candy:{name:"糖果千禧",primary:"#ff4fa3",secondary:"#31c9ff",accent:"#ffe54f",crystals:["#ff87c5","#77ddff"],sticker:"#ffe54f",paint:"#31c9ff"},
+        rainbow:{name:"彩虹水晶",primary:"#ff5d8f",secondary:"#6c63ff",accent:"#41e6a1",crystals:["#ff5d8f","#41e6a1","#6c63ff","#ffd84d"],sticker:"#ffd84d",paint:"#41e6a1"},
+        neon:{name:"霓虹涂鸦",primary:"#ff2bd6",secondary:"#00e7ff",accent:"#b7ff2a",crystals:["#00e7ff","#ff2bd6"],sticker:"#b7ff2a",paint:"#ff2bd6"}
     };
     function validThemeHex(value){
         value=String(value||"").trim();
@@ -1892,16 +1908,70 @@ setTimeout(function installFinalUserRequestedFixes(){
     }
     function normalizeUITheme(theme){
         theme=theme&&typeof theme==="object"?theme:{};
-        var preset=UI_THEME_PRESETS[theme.preset]||UI_THEME_PRESETS.yellow;
-        var presetName=theme.preset&&UI_THEME_PRESETS[theme.preset]?theme.preset:(theme.preset==="custom"?"custom":"yellow");
-        if(["#fff2a8","#f1d477"].indexOf(String(theme.color||"").toLowerCase())>=0){presetName="yellow";theme.color=UI_THEME_PRESETS.yellow.color;}
-        return {preset:presetName,color:validThemeHex(theme.color)||preset.color,scope:theme.scope==="fill"?"fill":"global"};
+        var legacyPreset=UI_THEME_PRESETS[theme.preset]||UI_THEME_PRESETS.yellow;
+        var legacyPresetName=theme.preset&&UI_THEME_PRESETS[theme.preset]?theme.preset:(theme.preset==="custom"?"custom":"yellow");
+        if(["#fff2a8","#f1d477"].indexOf(String(theme.color||"").toLowerCase())>=0){legacyPresetName="yellow";theme.color=UI_THEME_PRESETS.yellow.color;}
+        var palette=theme.palette&&typeof theme.palette==="object"?theme.palette:{};
+        var colors=palette.colors&&typeof palette.colors==="object"?palette.colors:{};
+        var primary=validThemeHex(colors.primary)||validThemeHex(theme.color)||legacyPreset.color;
+        var secondary=validThemeHex(colors.secondary)||mixThemeColor(primary,"#ffffff",.35);
+        var accent=validThemeHex(colors.accent)||mixThemeColor(primary,"#ffffff",.58);
+        var crystal=theme.crystal&&typeof theme.crystal==="object"?theme.crystal:{};
+        var crystalColors=Array.isArray(crystal.colors)?crystal.colors.map(validThemeHex).filter(Boolean).slice(0,4):[];
+        if(crystalColors.length<2)crystalColors=[primary,secondary];
+        var style=UI_THEME_STYLE_PRESETS[theme.style]?theme.style:"classic";
+        var intensity=UI_THEME_INTENSITIES.indexOf(theme.intensity)>=0?theme.intensity:"standard";
+        var paletteMode=["official","game","custom"].indexOf(palette.mode)>=0?palette.mode:(theme.preset==="custom"?"custom":"game");
+        var normalized={
+            version:UI_THEME_VERSION,
+            style:style,
+            packageId:typeof theme.packageId==="string"?theme.packageId:null,
+            palette:{mode:paletteMode,id:typeof palette.id==="string"?palette.id:legacyPresetName,colors:{primary:primary,secondary:secondary,accent:accent}},
+            crystal:{mode:["silver","transparent","colorful","custom"].indexOf(crystal.mode)>=0?crystal.mode:"silver",colors:crystalColors},
+            stickers:{color:validThemeHex(theme.stickers&&theme.stickers.color)||accent},
+            paint:{color:validThemeHex(theme.paint&&theme.paint.color)||secondary},
+            text:{color:validThemeHex(theme.text&&theme.text.color)||shadeThemeColor(primary,.35)},
+            borders:{color:validThemeHex(theme.borders&&theme.borders.color)||shadeThemeColor(primary,.62)},
+            intensity:intensity,
+            preset:legacyPresetName,
+            color:primary,
+            scope:theme.scope==="fill"?"fill":"global"
+        };
+        return normalized;
+    }
+    function themeFromOfficialPackage(id){
+        var item=UI_THEME_OFFICIAL_PACKAGES[id]||UI_THEME_OFFICIAL_PACKAGES.candy;
+        return normalizeUITheme({
+            style:"millennium",packageId:UI_THEME_OFFICIAL_PACKAGES[id]?id:"candy",intensity:"standard",
+            palette:{mode:"official",id:UI_THEME_OFFICIAL_PACKAGES[id]?id:"candy",colors:{primary:item.primary,secondary:item.secondary,accent:item.accent}},
+            crystal:{mode:"colorful",colors:item.crystals},stickers:{color:item.sticker},paint:{color:item.paint},
+            text:{color:"#32102f"},borders:{color:"#49133f"}
+        });
+    }
+    function themeFromStylePreset(id){
+        var item=UI_THEME_STYLE_PRESETS[id]||UI_THEME_STYLE_PRESETS.classic;
+        return normalizeUITheme({style:UI_THEME_STYLE_PRESETS[id]?id:"classic",palette:{mode:"official",id:id,colors:{primary:item.primary,secondary:item.secondary,accent:item.accent}},crystal:{mode:id==="millennium"||id==="deconstructed-2020s"?"colorful":"transparent",colors:[item.accent,item.secondary]},stickers:{color:item.accent},paint:{color:item.secondary},text:{color:item.text},borders:{color:item.border},intensity:"standard"});
+    }
+    function parseAIUIThemeResponse(response){
+        var text=String(response||"").trim().replace(/^```(?:json)?\s*/i,"").replace(/```$/i,"").trim(),start=text.indexOf("{"),end=text.lastIndexOf("}");
+        if(start<0||end<=start)throw new Error("AI 没有返回有效的 UI 设定。");
+        var data;try{data=JSON.parse(text.slice(start,end+1));}catch(e){throw new Error("AI 返回的 UI 设定无法解析。");}
+        var required=["primary","secondary","accent","border","text"],missing=required.filter(function(key){return !validThemeHex(data[key]);});
+        if(missing.length)throw new Error("AI 返回的 UI 颜色不完整。");
+        return normalizeUITheme({style:"ai-generated",palette:{mode:"custom",id:"ai",colors:{primary:data.primary,secondary:data.secondary,accent:data.accent}},crystal:{mode:["silver","transparent","colorful","custom"].indexOf(data.crystalMode)>=0?data.crystalMode:"colorful",colors:[validThemeHex(data.crystal1)||data.accent,validThemeHex(data.crystal2)||data.secondary]},stickers:{color:validThemeHex(data.sticker)||data.accent},paint:{color:validThemeHex(data.paint)||data.secondary},text:{color:data.text},borders:{color:data.border},intensity:UI_THEME_INTENSITIES.indexOf(data.intensity)>=0?data.intensity:"standard"});
+    }
+    function createUIThemeExport(theme,name){return {kind:"star-producer-ui-theme",version:1,name:String(name||"我的 UI 方案").trim().slice(0,40)||"我的 UI 方案",exportedAt:new Date().toISOString(),theme:normalizeUITheme(theme)};}
+    function validateUIThemeImport(data){
+        if(!data||data.kind!=="star-producer-ui-theme")throw new Error("这不是 Star Producer UI 设定文件。");
+        if(Number(data.version)!==1)throw new Error("这个 UI 设定文件版本暂不支持。");
+        if(!data.theme||typeof data.theme!=="object")throw new Error("UI 设定内容缺失。");
+        return {name:String(data.name||"导入的 UI 方案").trim().slice(0,40)||"导入的 UI 方案",theme:normalizeUITheme(data.theme)};
     }
     function readUITheme(){
         try{return normalizeUITheme(JSON.parse(localStorage.getItem(UI_THEME_KEY)||"null"));}catch(e){return normalizeUITheme();}
     }
     function themePalette(theme){
-        var main=theme.color;
+        theme=normalizeUITheme(theme);var main=theme.palette.colors.primary;
         return {main:main,border:shadeThemeColor(main,.72),strong:shadeThemeColor(main,.58),text:shadeThemeColor(main,.40),soft:mixThemeColor(main,"#ffffff",.82),muted:mixThemeColor(main,"#ffffff",.58),body:mixThemeColor(main,"#ffffff",.91)};
     }
     function darkerButtonBorder(background){
@@ -1922,6 +1992,11 @@ setTimeout(function installFinalUserRequestedFixes(){
     }
     window.applyUITheme=function(theme,persist){
         theme=normalizeUITheme(theme);var p=themePalette(theme),root=document.documentElement.style;
+        document.documentElement.dataset.uiStyle=theme.style;
+        document.documentElement.dataset.uiIntensity=theme.intensity;
+        root.setProperty("--ui-primary",theme.palette.colors.primary);root.setProperty("--ui-secondary",theme.palette.colors.secondary);root.setProperty("--ui-accent",theme.palette.colors.accent);
+        root.setProperty("--ui-crystal-1",theme.crystal.colors[0]);root.setProperty("--ui-crystal-2",theme.crystal.colors[1]);root.setProperty("--ui-sticker",theme.stickers.color);root.setProperty("--ui-paint",theme.paint.color);
+        root.setProperty("--ui-text",theme.text.color);root.setProperty("--ui-border",theme.borders.color);
         root.setProperty("--baby-yellow",p.main);root.setProperty("--baby-yellow-border",p.border);root.setProperty("--baby-yellow-strong",p.strong);root.setProperty("--baby-yellow-text",p.text);
         if(theme.scope==="global"){
             root.setProperty("--baby-yellow-soft",p.soft);root.setProperty("--baby-yellow-muted",p.muted);root.setProperty("--ui-theme-body",p.body);
@@ -1932,44 +2007,80 @@ setTimeout(function installFinalUserRequestedFixes(){
         requestAnimationFrame(function(){outlineUIButtons(document);});
         return theme;
     };
-    function selectedThemeFromPanel(){
-        var selected=document.querySelector(".ui-theme-swatch.selected"),preset=selected?selected.dataset.preset:"custom",custom=$("uiThemeCustomHex"),scope=document.querySelector('input[name="uiThemeScope"]:checked');
-        var color=preset==="custom"?(validThemeHex(custom&&custom.value)):UI_THEME_PRESETS[preset]&&UI_THEME_PRESETS[preset].color;
-        return color?{preset:preset,color:color,scope:scope?scope.value:"global"}:null;
+    var UI_THEME_PACKAGES_KEY="starPro_ui_theme_packages_v1";
+    var pendingImportedUITheme=null;
+    function readCustomUIThemePackages(){
+        try{var data=JSON.parse(localStorage.getItem(UI_THEME_PACKAGES_KEY)||"[]");return Array.isArray(data)?data.filter(function(x){return x&&typeof x.name==="string"&&x.theme;}).map(function(x){return {id:String(x.id||("ui_"+Date.now())),name:x.name.slice(0,40),theme:normalizeUITheme(x.theme)};}):[];}catch(e){return [];}
     }
-    window.selectUIThemePreset=function(preset){
-        Array.from(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.toggle("selected",x.dataset.preset===preset);});
-        var custom=$("uiThemeCustomHex"),picker=$("uiThemeColorPicker"),color=UI_THEME_PRESETS[preset]&&UI_THEME_PRESETS[preset].color;
-        if(color){custom.value=color;picker.value=color;}previewUITheme();
-    };
-    window.syncCustomUITheme=function(value){
-        var color=validThemeHex(value);if(!color)return;
-        Array.from(document.querySelectorAll(".ui-theme-swatch")).forEach(function(x){x.classList.remove("selected");});
-        if($("uiThemeCustomHex"))$("uiThemeCustomHex").value=color;if($("uiThemeColorPicker"))$("uiThemeColorPicker").value=color;previewUITheme();
-    };
-    window.previewUITheme=function(){
+    window.readCustomUIThemePackages=readCustomUIThemePackages;
+    function writeCustomUIThemePackages(items){try{localStorage.setItem(UI_THEME_PACKAGES_KEY,JSON.stringify(items));}catch(e){alert("自定义 UI 方案保存失败：浏览器空间不足。");}}
+    function valueOfThemeControl(id,fallback){var el=$(id);return validThemeHex(el&&el.value)||fallback;}
+    function selectedThemeFromPanel(){
+        var current=readUITheme(),selectedStyle=document.querySelector('input[name="uiThemeStyle"]:checked'),style=selectedStyle&&UI_THEME_STYLE_PRESETS[selectedStyle.value]?selectedStyle.value:"classic";
+        return normalizeUITheme({
+            style:style,packageId:current.packageId,intensity:($("uiThemeIntensity")||{}).value||current.intensity,
+            palette:{mode:"custom",id:"custom",colors:{primary:valueOfThemeControl("uiThemePrimary",current.palette.colors.primary),secondary:valueOfThemeControl("uiThemeSecondary",current.palette.colors.secondary),accent:valueOfThemeControl("uiThemeAccent",current.palette.colors.accent)}},
+            crystal:{mode:($("uiThemeCrystalMode")||{}).value||current.crystal.mode,colors:[valueOfThemeControl("uiThemeCrystal1",current.crystal.colors[0]),valueOfThemeControl("uiThemeCrystal2",current.crystal.colors[1])]},
+            stickers:{color:valueOfThemeControl("uiThemeStickerColor",current.stickers.color)},paint:{color:valueOfThemeControl("uiThemePaintColor",current.paint.color)},
+            text:{color:valueOfThemeControl("uiThemeTextColor",current.text.color)},borders:{color:valueOfThemeControl("uiThemeBorderColor",current.borders.color)},scope:"global"
+        });
+    }
+    function setThemePanelValues(theme){
+        theme=normalizeUITheme(theme);var values={uiThemePrimary:theme.palette.colors.primary,uiThemeSecondary:theme.palette.colors.secondary,uiThemeAccent:theme.palette.colors.accent,uiThemeCrystal1:theme.crystal.colors[0],uiThemeCrystal2:theme.crystal.colors[1],uiThemeStickerColor:theme.stickers.color,uiThemePaintColor:theme.paint.color,uiThemeTextColor:theme.text.color,uiThemeBorderColor:theme.borders.color};
+        Object.keys(values).forEach(function(id){if($(id))$(id).value=values[id];});
+        Array.from(document.querySelectorAll('input[name="uiThemeStyle"]')).forEach(function(input){input.checked=input.value===theme.style;});
+        if($("uiThemeCrystalMode"))$("uiThemeCrystalMode").value=theme.crystal.mode;if($("uiThemeIntensity"))$("uiThemeIntensity").value=theme.intensity;
+    }
+    window.selectUIThemeStyle=function(style){var input=document.querySelector('input[name="uiThemeStyle"][value="'+style+'"]');if(input)input.checked=true;var preset=themeFromStylePreset(style),current=selectedThemeFromPanel();preset.intensity=current.intensity;setThemePanelValues(preset);previewUITheme();};
+    window.selectUIThemePreset=function(preset){var item=UI_THEME_PRESETS[preset];if(!item)return;var theme=selectedThemeFromPanel();theme.palette={mode:"game",id:preset,colors:{primary:item.color,secondary:mixThemeColor(item.color,"#ffffff",.35),accent:mixThemeColor(item.color,"#ffffff",.58)}};theme.color=item.color;theme.preset=preset;setThemePanelValues(theme);previewUITheme();};
+    window.selectOfficialUIThemePackage=function(id){var theme=themeFromOfficialPackage(id);setThemePanelValues(theme);if($("uiThemePackageName"))$("uiThemePackageName").value=UI_THEME_OFFICIAL_PACKAGES[id].name;previewUITheme();};
+    window.loadCustomUIThemePackage=function(id){var item=readCustomUIThemePackages().find(function(x){return x.id===id;});if(!item)return;setThemePanelValues(item.theme);if($("uiThemePackageName"))$("uiThemePackageName").value=item.name;$("uiThemePackageName").dataset.packageId=id;previewUITheme();};
+    window.saveCurrentUIThemePackage=function(){var name=(($("uiThemePackageName")||{}).value||"").trim()||"我的 UI 方案",items=readCustomUIThemePackages(),id=($("uiThemePackageName")||{}).dataset.packageId||("ui_"+Date.now()),found=items.find(function(x){return x.id===id;});if(found){found.name=name;found.theme=selectedThemeFromPanel();}else items.push({id:id,name:name,theme:selectedThemeFromPanel()});writeCustomUIThemePackages(items);openUIThemeSettings();};
+    window.duplicateCurrentUIThemePackage=function(){var input=$("uiThemePackageName");if(input){input.dataset.packageId="";input.value=(input.value||"我的 UI 方案")+" 副本";}saveCurrentUIThemePackage();};
+    window.renameCurrentUIThemePackage=function(){var input=$("uiThemePackageName"),id=input&&input.dataset.packageId;if(!id)return alert("请先载入一个已保存的自定义方案。");var name=prompt("输入新的方案名称",input.value||"");if(name===null||!name.trim())return;input.value=name.trim();saveCurrentUIThemePackage();};
+    window.deleteCurrentUIThemePackage=function(){var input=$("uiThemePackageName"),id=input&&input.dataset.packageId;if(!id)return alert("请先载入一个已保存的自定义方案。");if(!confirm("确定删除这个自定义 UI 方案吗？"))return;writeCustomUIThemePackages(readCustomUIThemePackages().filter(function(x){return x.id!==id;}));openUIThemeSettings();};
+    window.syncCustomUITheme=function(){previewUITheme();};
+    window.previewUITheme=function(applyGlobally){
         var theme=selectedThemeFromPanel();if(!theme)return;
         var p=themePalette(theme),box=$("uiThemePreview"),chip=$("uiThemePreviewChip");
-        if(box){box.style.background=theme.scope==="global"?p.soft:"#f9f5e7";box.style.borderColor=p.border;}
-        if(chip){chip.style.background=p.main;chip.style.borderColor=p.border;chip.style.color=p.text;}
-        applyUITheme(theme,false);
+        if(box){box.style.background="linear-gradient(135deg,"+theme.palette.colors.primary+","+theme.palette.colors.secondary+","+theme.palette.colors.accent+")";box.style.borderColor=theme.borders.color;}
+        if(chip){chip.style.background=p.soft;chip.style.borderColor=theme.borders.color;chip.style.color=theme.text.color;chip.innerText=UI_THEME_STYLE_PRESETS[theme.style].name+"预览";}
+        if(applyGlobally!==false)applyUITheme(theme,false);
     };
     window.saveUITheme=function(){
         var theme=selectedThemeFromPanel();if(!theme)return alert("请输入有效的十六进制色号，例如 #bfe3ff。");
         applyUITheme(theme,true);closeM("mInfo");
     };
     window.resetUITheme=function(){
-        applyUITheme({preset:"yellow",color:UI_THEME_PRESETS.yellow.color,scope:"global"},true);openUIThemeSettings();
+        applyUITheme({style:"classic",preset:"yellow",color:UI_THEME_PRESETS.yellow.color,scope:"global"},true);openUIThemeSettings();
+    };
+    window.exportUITheme=function(){var name=(($("uiThemePackageName")||{}).value||"我的 UI 方案").trim(),payload=createUIThemeExport(selectedThemeFromPanel(),name),blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="star-producer-ui-theme-"+(name.replace(/[\\/:*?\"<>|]/g,"-")||"custom")+".json";a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);};
+    window.importUITheme=function(input){if(!input.files||!input.files[0])return;var reader=new FileReader();reader.onload=function(){try{pendingImportedUITheme=validateUIThemeImport(JSON.parse(reader.result));setThemePanelValues(pendingImportedUITheme.theme);if($("uiThemePackageName"))$("uiThemePackageName").value=pendingImportedUITheme.name;if($("uiThemeImportStatus"))$("uiThemeImportStatus").innerHTML=`<div class="ui-theme-import-ready">已读取“${E(pendingImportedUITheme.name)}”。请查看预览后确认应用。<div><button onclick="applyImportedUITheme()">应用导入设定</button><button class="sec" onclick="cancelImportedUITheme()">取消</button></div></div>`;previewUITheme(false);}catch(e){pendingImportedUITheme=null;alert("导入失败："+e.message);}input.value="";};reader.readAsText(input.files[0]);};
+    window.applyImportedUITheme=function(){if(!pendingImportedUITheme)return;applyUITheme(pendingImportedUITheme.theme,true);pendingImportedUITheme=null;openUIThemeSettings();};
+    window.cancelImportedUITheme=function(){pendingImportedUITheme=null;setThemePanelValues(readUITheme());if($("uiThemeImportStatus"))$("uiThemeImportStatus").innerHTML="";previewUITheme(false);};
+    window.generateAIUITheme=async function(){
+        var input=$("uiThemeAIKeywords"),status=$("uiThemeAIStatus"),button=$("uiThemeAIGenerate"),keywords=(input&&input.value||"").trim();
+        if(!keywords)return alert("请输入风格关键词。");
+        if(button)button.disabled=true;if(status)status.innerText="AI 正在生成 UI……";
+        try{
+            var prompt=`根据以下关键词生成一套游戏 UI 配色和装饰参数：${keywords}\n只返回一个 JSON 对象，不要 Markdown，不要解释。字段必须是 primary、secondary、accent、border、text、crystal1、crystal2、sticker、paint、crystalMode、intensity。所有颜色必须是 #RRGGBB；crystalMode 只能是 silver、transparent、colorful、custom；intensity 只能是 light、standard、maximal。不要返回 HTML、CSS 或 JavaScript。`;
+            var response=await api(prompt);if(!response)throw new Error("AI 接口没有返回内容，请先在系统中配置可用的 API。");
+            var theme=parseAIUIThemeResponse(response);applyUITheme(theme,true);setThemePanelValues(theme);if(status)status.innerText="已根据关键词生成并应用。";
+        }catch(e){if(status)status.innerText="生成失败："+e.message;alert("AI UI 生成失败："+e.message);}finally{if(button)button.disabled=false;}
     };
     window.openUIThemeSettings=function(){
-        var theme=readUITheme(),swatches=Object.keys(UI_THEME_PRESETS).map(function(key){var item=UI_THEME_PRESETS[key],border=themePalette({color:item.color}).border;return `<button type="button" class="ui-theme-swatch ${theme.preset===key?"selected":""}" data-preset="${key}" style="--swatch-color:${item.color};--swatch-border:${border};" onclick="selectUIThemePreset('${key}')">${item.name}</button>`;}).join("");
-        $("mInfoTitle").innerText="更改 UI 颜色";
-        $("mInfoContent").innerHTML=`<p style="font-size:12px;color:#666;line-height:1.6;">选择预设色或输入自定义色号。描边会自动生成比主色更深的同系颜色。</p><div class="ui-theme-swatches">${swatches}</div><label>自定义颜色</label><div style="display:grid;grid-template-columns:52px 1fr;gap:8px;"><input id="uiThemeColorPicker" type="color" value="${theme.color}" style="height:42px;padding:3px;" oninput="syncCustomUITheme(this.value)"><input id="uiThemeCustomHex" value="${theme.color}" placeholder="#bfe3ff" oninput="syncCustomUITheme(this.value)"></div><label>应用范围</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;"><input type="radio" name="uiThemeScope" value="fill" ${theme.scope==="fill"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">只更改主填充和对应描边</label><label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:8px;"><input type="radio" name="uiThemeScope" value="global" ${theme.scope==="global"?"checked":""} onchange="previewUITheme()" style="width:auto;margin:0;">全局覆盖主题背景、次级按钮和文字</label><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复默认蜂蜜燕麦黄</button>`;
+        var theme=readUITheme(),swatches=Object.keys(UI_THEME_PRESETS).map(function(key){var item=UI_THEME_PRESETS[key],border=themePalette({color:item.color}).border;return `<button type="button" class="ui-theme-swatch" style="--swatch-color:${item.color};--swatch-border:${border};" onclick="selectUIThemePreset('${key}')">${item.name}</button>`;}).join("");
+        var styleChoices=Object.keys(UI_THEME_STYLE_PRESETS).map(function(key){var item=UI_THEME_STYLE_PRESETS[key];if(item.hidden)return "";var domId=key==="classic"?"uiThemeStyleClassic":key==="millennium"?"uiThemeStyleMillennium":"uiThemeStyle"+key.replace(/(^|-)([a-z0-9])/g,function(_,dash,ch){return ch.toUpperCase();});return `<label><input id="${domId}" type="radio" name="uiThemeStyle" value="${key}" ${theme.style===key?"checked":""} onchange="selectUIThemeStyle('${key}')">${item.name}</label>`;}).join("");
+        var official=Object.keys(UI_THEME_OFFICIAL_PACKAGES).map(function(key){var item=UI_THEME_OFFICIAL_PACKAGES[key];return `<button type="button" class="ui-theme-package" style="--package-a:${item.primary};--package-b:${item.secondary};--package-c:${item.accent};" onclick="selectOfficialUIThemePackage('${key}')">${item.name}</button>`;}).join("");
+        var custom=readCustomUIThemePackages().map(function(item){return `<button type="button" class="sec ui-theme-saved" onclick="loadCustomUIThemePackage('${item.id}')">${E(item.name)}</button>`;}).join("")||`<span style="font-size:11px;color:#777;">还没有保存自定义方案。</span>`;
+        $("mInfoTitle").innerText="自定义 UI";
+        $("mInfoContent").innerHTML=`<div class="ui-theme-style-switch">${styleChoices}</div><h3 class="tg ui-theme-heading">官方主题</h3><div id="uiThemeOfficialPackages" class="ui-theme-packages">${official}</div><h3 class="tg ui-theme-heading">游戏色表</h3><div class="ui-theme-swatches">${swatches}</div><h3 class="tg ui-theme-heading">AI 关键词生成</h3><div class="ui-theme-ai-row"><input id="uiThemeAIKeywords" placeholder="例如：冰川、透明玻璃、银色未来感"><button id="uiThemeAIGenerate" type="button" onclick="generateAIUITheme()">直接生成并应用</button></div><div id="uiThemeAIStatus" class="ui-theme-ai-status"></div><details id="uiThemeAdvancedEditor" open><summary>自由创作</summary><div class="ui-theme-color-grid"><label>主色<input id="uiThemePrimary" type="color" value="${theme.palette.colors.primary}" oninput="syncCustomUITheme()"></label><label>副色<input id="uiThemeSecondary" type="color" value="${theme.palette.colors.secondary}" oninput="syncCustomUITheme()"></label><label>强调色<input id="uiThemeAccent" type="color" value="${theme.palette.colors.accent}" oninput="syncCustomUITheme()"></label><label>水晶 1<input id="uiThemeCrystal1" type="color" value="${theme.crystal.colors[0]}" oninput="syncCustomUITheme()"></label><label>水晶 2<input id="uiThemeCrystal2" type="color" value="${theme.crystal.colors[1]}" oninput="syncCustomUITheme()"></label><label>贴纸<input id="uiThemeStickerColor" type="color" value="${theme.stickers.color}" oninput="syncCustomUITheme()"></label><label>颜料<input id="uiThemePaintColor" type="color" value="${theme.paint.color}" oninput="syncCustomUITheme()"></label><label>文字<input id="uiThemeTextColor" type="color" value="${theme.text.color}" oninput="syncCustomUITheme()"></label><label>边框<input id="uiThemeBorderColor" type="color" value="${theme.borders.color}" oninput="syncCustomUITheme()"></label></div><label>水晶类型<select id="uiThemeCrystalMode" onchange="previewUITheme()"><option value="silver">银色水晶</option><option value="transparent">透明水晶</option><option value="colorful">彩色水晶</option><option value="custom">自定义水晶</option></select></label><label>装饰浓度<select id="uiThemeIntensity" onchange="previewUITheme()"><option value="light">清爽</option><option value="standard">标准</option><option value="maximal">狂热</option></select></label><label>方案名称<input id="uiThemePackageName" value="${E(theme.packageId&&UI_THEME_OFFICIAL_PACKAGES[theme.packageId]?UI_THEME_OFFICIAL_PACKAGES[theme.packageId].name:"我的 UI 方案")}"></label><div class="ui-theme-actions"><button class="sec" onclick="saveCurrentUIThemePackage()">保存方案</button><button class="sec" onclick="duplicateCurrentUIThemePackage()">复制</button><button class="sec" onclick="renameCurrentUIThemePackage()">重命名</button><button class="sec" onclick="deleteCurrentUIThemePackage()">删除</button></div><div class="ui-theme-saved-list">${custom}</div><h4 class="tg ui-theme-heading">导入 / 导出 UI</h4><div class="ui-theme-actions"><button class="sec" onclick="exportUITheme()">导出设定</button><label class="ui-theme-file-button">导入设定<input type="file" accept=".json,application/json" onchange="importUITheme(this)"></label></div><div id="uiThemeImportStatus"></div></details><div id="uiThemePreview" class="ui-theme-preview"><span id="uiThemePreviewChip" class="ui-theme-preview-chip">主题预览</span></div><button onclick="saveUITheme()">保存并应用</button><button class="sec" onclick="resetUITheme()">恢复原版默认主题</button>`;
         $("mInfo").classList.add("open");previewUITheme();
+        if($("uiThemeCrystalMode"))$("uiThemeCrystalMode").value=theme.crystal.mode;if($("uiThemeIntensity"))$("uiThemeIntensity").value=theme.intensity;
     };
     applyUITheme(readUITheme(),false);
     if(apiPage&&!$("uiThemeSettingsCard")){
-        var themeCard=document.createElement("div");themeCard.id="uiThemeSettingsCard";themeCard.className="card";themeCard.innerHTML=`<h2 class="tg" style="font-size:16px;margin-bottom:8px;">界面主题</h2><p style="font-size:12px;color:#666;margin-bottom:8px;">设置 Baby 色主题、自定义色号及应用范围。</p><button onclick="openUIThemeSettings()">更改 UI 颜色</button>`;apiPage.insertBefore(themeCard,apiPage.firstChild);
+        var themeCard=document.createElement("div");themeCard.id="uiThemeSettingsCard";themeCard.className="card";themeCard.innerHTML=`<h2 class="tg" style="font-size:16px;margin-bottom:8px;">自定义 UI</h2><p style="font-size:12px;color:#666;margin-bottom:8px;">选择原版或 00s 千禧风，并自由搭配色卡、水晶、贴纸和颜料。</p><button onclick="openUIThemeSettings()">打开 UI 设计器</button>`;apiPage.insertBefore(themeCard,apiPage.firstChild);
     }
     outlineUIButtons(document);
     var buttonOutlineObserver=new MutationObserver(function(records){
@@ -2380,6 +2491,179 @@ input,select,textarea,.sub-tab,.g-tag,.log,.prog-wrap {
 .ui-theme-swatch.selected { box-shadow:0 0 0 3px rgba(17,24,39,.14); }
 .ui-theme-preview { padding:12px;border:2px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);border-radius:8px;margin:10px 0; }
 .ui-theme-preview-chip { display:inline-block;padding:6px 12px;border-radius:6px;background:var(--baby-yellow);border:1px solid var(--baby-yellow-border);font-size:12px;font-weight:bold;color:#2f280d; }
+.ui-theme-style-switch { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px; }
+.ui-theme-style-switch label { display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border:2px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);font-size:12px;font-weight:bold; }
+.ui-theme-style-switch input { width:auto;margin:0; }
+.ui-theme-heading { font-size:13px;margin:12px 0 6px; }
+.ui-theme-packages { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+.ui-theme-package { min-height:48px;margin:0;background:linear-gradient(135deg,var(--package-a),var(--package-b),var(--package-c)) !important;color:#28122d !important;border:2px solid #541a51 !important;text-shadow:0 1px rgba(255,255,255,.55); }
+.ui-theme-color-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0; }
+.ui-theme-color-grid label { min-width:0;font-size:11px; }
+.ui-theme-color-grid input[type="color"] { height:38px;padding:3px; }
+.ui-theme-actions,.ui-theme-saved-list { display:flex;gap:6px;flex-wrap:wrap;margin:8px 0; }
+.ui-theme-actions button,.ui-theme-saved-list button { width:auto;margin:0; }
+.ui-theme-file-button { display:inline-flex;align-items:center;padding:8px 10px;border:1px solid var(--baby-yellow-border);background:var(--baby-yellow-muted);font-size:12px;font-weight:bold;cursor:pointer; }
+.ui-theme-file-button input { display:none; }
+.ui-theme-import-ready { padding:9px;border:2px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);font-size:12px; }
+.ui-theme-ai-row { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch; }
+.ui-theme-ai-row input,.ui-theme-ai-row button { margin:0; }
+.ui-theme-ai-status { min-height:18px;margin:5px 0;font-size:11px;color:#666; }
+
+:root {
+  --ui-primary:#dfc477;
+  --ui-secondary:#eadba9;
+  --ui-accent:#f2e7c6;
+  --ui-crystal-1:#ffffff;
+  --ui-crystal-2:#d9dce8;
+  --ui-sticker:#ffe54f;
+  --ui-paint:#31c9ff;
+  --ui-text:#341135;
+  --ui-border:#541a51;
+}
+[data-ui-style="millennium"] body {
+  color:var(--ui-text);
+  background-color:var(--ui-secondary);
+  background-image:linear-gradient(115deg,color-mix(in srgb,var(--ui-primary) 22%,transparent) 25%,transparent 25%),linear-gradient(295deg,color-mix(in srgb,var(--ui-accent) 24%,transparent) 20%,transparent 20%);
+}
+[data-ui-style="millennium"] .top-bar {
+  position:relative;
+  background:linear-gradient(100deg,var(--ui-primary),var(--ui-secondary),var(--ui-accent)) !important;
+  border-bottom:3px solid var(--ui-border) !important;
+  color:var(--ui-text) !important;
+  box-shadow:0 4px 0 color-mix(in srgb,var(--ui-crystal-1) 52%,transparent);
+}
+[data-ui-style="millennium"] .top-bar::after {
+  content:"Y2K ★";
+  position:absolute;
+  right:8px;
+  bottom:-12px;
+  z-index:3;
+  padding:2px 7px;
+  border:2px solid var(--ui-border);
+  background:var(--ui-sticker);
+  color:var(--ui-text);
+  font-size:9px;
+  font-weight:bold;
+  transform:rotate(-5deg);
+  pointer-events:none;
+}
+[data-ui-style="millennium"] .card {
+  border:2px solid var(--ui-border) !important;
+  background:color-mix(in srgb,var(--baby-yellow-soft) 91%,var(--ui-crystal-1)) !important;
+  box-shadow:3px 3px 0 color-mix(in srgb,var(--ui-accent) 68%,transparent);
+}
+[data-ui-style="millennium"] .modal-box {
+  position:relative;
+  border:3px solid var(--ui-border) !important;
+  background:color-mix(in srgb,var(--baby-yellow-soft) 94%,var(--ui-crystal-2)) !important;
+  box-shadow:6px 6px 0 color-mix(in srgb,var(--ui-primary) 42%,transparent),-3px -3px 0 color-mix(in srgb,var(--ui-crystal-1) 58%,transparent);
+}
+[data-ui-style="millennium"] .modal-box::before {
+  content:"✦";
+  position:absolute;
+  top:5px;
+  right:9px;
+  color:var(--ui-crystal-1);
+  text-shadow:2px 0 var(--ui-crystal-2),-2px 0 var(--ui-border),0 2px var(--ui-border);
+  pointer-events:none;
+}
+[data-ui-style="millennium"] button {
+  border:2px solid var(--ui-border) !important;
+  box-shadow:2px 2px 0 color-mix(in srgb,var(--ui-accent) 65%,transparent);
+  color:var(--ui-text) !important;
+}
+[data-ui-style="millennium"] input,
+[data-ui-style="millennium"] select,
+[data-ui-style="millennium"] textarea {
+  border:2px solid var(--ui-border) !important;
+  background:color-mix(in srgb,#ffffff 88%,var(--ui-secondary)) !important;
+  color:var(--ui-text) !important;
+}
+[data-ui-style="millennium"] .app-icon {
+  position:relative;
+  overflow:visible;
+  border:2px solid var(--ui-border) !important;
+  border-radius:6px !important;
+  box-shadow:3px 3px 0 var(--ui-crystal-1),5px 5px 0 color-mix(in srgb,var(--ui-crystal-2) 72%,transparent) !important;
+  filter:saturate(1.16) contrast(1.06);
+}
+[data-ui-style="millennium"] .app-icon::after {
+  content:"✦";
+  position:absolute;
+  top:-8px;
+  right:-6px;
+  color:var(--ui-crystal-1);
+  font-size:12px;
+  text-shadow:1px 1px var(--ui-border);
+  pointer-events:none;
+}
+[data-ui-style="millennium"] .tg,
+[data-ui-style="millennium"] h2,
+[data-ui-style="millennium"] h3 {
+  color:var(--ui-text) !important;
+  text-decoration-color:var(--ui-paint);
+  text-decoration-thickness:4px;
+  text-underline-offset:3px;
+}
+[data-ui-style="millennium"][data-ui-intensity="light"] .top-bar::after,
+[data-ui-style="millennium"][data-ui-intensity="light"] .modal-box::before { display:none; }
+[data-ui-style="millennium"][data-ui-intensity="light"] .app-icon::after { opacity:.45; }
+[data-ui-style="millennium"][data-ui-intensity="maximal"] .card { box-shadow:4px 4px 0 var(--ui-accent),-2px -2px 0 var(--ui-crystal-1); }
+[data-ui-style="millennium"][data-ui-intensity="maximal"] .app-icon::after { content:"✦ ◆";letter-spacing:2px; }
+[data-ui-style="millennium"][data-ui-intensity="maximal"] .modal-box::after {
+  content:"POP!";
+  position:absolute;
+  left:10px;
+  bottom:7px;
+  z-index:0;
+  padding:2px 6px;
+  border:2px solid var(--ui-border);
+  background:var(--ui-sticker);
+  color:var(--ui-text);
+  font-size:9px;
+  font-weight:bold;
+  transform:rotate(7deg);
+  opacity:.55;
+  pointer-events:none;
+}
+[data-ui-style="european-vintage"] body {
+  color:var(--ui-text);
+  background-color:var(--ui-secondary);
+  background-image:linear-gradient(rgba(125,38,56,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(139,106,54,.04) 1px,transparent 1px);
+  background-size:18px 18px;
+  font-family:Georgia,"Times New Roman",serif;
+}
+[data-ui-style="european-vintage"] .top-bar { background:var(--ui-primary) !important;border-bottom:3px double var(--ui-border) !important;color:#fff8e8 !important;box-shadow:0 3px 0 color-mix(in srgb,var(--ui-border) 48%,transparent); }
+[data-ui-style="european-vintage"] .card { border:1px solid var(--ui-border) !important;background:color-mix(in srgb,var(--ui-secondary) 92%,#ffffff) !important;box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--ui-border) 13%,transparent),0 2px 5px rgba(53,37,29,.12); }
+[data-ui-style="european-vintage"] .modal-box { border:3px double var(--ui-border) !important;background:color-mix(in srgb,var(--ui-secondary) 94%,#ffffff) !important; }
+[data-ui-style="european-vintage"] button { border:1px solid var(--ui-border) !important;background:color-mix(in srgb,var(--ui-primary) 88%,#ffffff) !important;color:#fff8e8 !important;box-shadow:inset 0 0 0 1px color-mix(in srgb,#ffffff 30%,transparent); }
+[data-ui-style="european-vintage"] button.sec { background:color-mix(in srgb,var(--ui-secondary) 85%,#ffffff) !important;color:var(--ui-text) !important; }
+[data-ui-style="european-vintage"] input,[data-ui-style="european-vintage"] select,[data-ui-style="european-vintage"] textarea { border:1px solid var(--ui-border) !important;background:#fffaf0 !important;color:var(--ui-text) !important; }
+[data-ui-style="european-vintage"] .app-icon { border:2px double #e0c17a !important;border-radius:4px !important;filter:saturate(.72) sepia(.12); }
+
+[data-ui-style="computer-2010s"] body { color:var(--ui-text);background:linear-gradient(#f7fbff,#dceeff) fixed;font-family:"Segoe UI",Arial,sans-serif; }
+[data-ui-style="computer-2010s"] .top-bar { background:linear-gradient(#ffffff 0%,#dcebfa 48%,#b7d7f2 49%,#eaf5ff 100%) !important;border-bottom:1px solid var(--ui-border) !important;color:var(--ui-text) !important;box-shadow:0 2px 5px rgba(35,91,140,.2); }
+[data-ui-style="computer-2010s"] .card { border:1px solid var(--ui-border) !important;background:linear-gradient(180deg,#ffffff,#edf7ff) !important;box-shadow:0 2px 5px rgba(40,100,150,.15); }
+[data-ui-style="computer-2010s"] .modal-box { border:1px solid var(--ui-border) !important;background:#f5fbff !important;box-shadow:0 8px 28px rgba(26,83,132,.28); }
+[data-ui-style="computer-2010s"] button { border:1px solid #679ac6 !important;background:linear-gradient(#ffffff,#cfe7fb 48%,#acd2ef 52%,#e5f4ff) !important;color:var(--ui-text) !important;box-shadow:inset 0 1px #ffffff,0 1px 2px rgba(33,84,128,.18); }
+[data-ui-style="computer-2010s"] input,[data-ui-style="computer-2010s"] select,[data-ui-style="computer-2010s"] textarea { border:1px solid #7da9cf !important;background:#ffffff !important;color:var(--ui-text) !important;box-shadow:inset 0 1px 2px rgba(40,90,130,.14); }
+[data-ui-style="computer-2010s"] .app-icon { border:1px solid rgba(255,255,255,.9) !important;border-radius:8px !important;box-shadow:inset 0 1px rgba(255,255,255,.7),0 2px 4px rgba(31,77,119,.24) !important; }
+
+[data-ui-style="deconstructed-2020s"] body,[data-ui-style="ai-generated"] body { color:var(--ui-text);background:var(--ui-secondary);background-image:linear-gradient(128deg,color-mix(in srgb,var(--ui-primary) 28%,transparent) 0 16%,transparent 16% 72%,color-mix(in srgb,var(--ui-accent) 35%,transparent) 72%); }
+[data-ui-style="deconstructed-2020s"] .top-bar,[data-ui-style="ai-generated"] .top-bar { background:linear-gradient(90deg,var(--ui-primary) 0 62%,var(--ui-accent) 62%) !important;border:2px solid var(--ui-border) !important;color:var(--ui-text) !important;box-shadow:5px 5px 0 var(--ui-border); }
+[data-ui-style="deconstructed-2020s"] .card,[data-ui-style="ai-generated"] .card { border:2px solid var(--ui-border) !important;border-radius:2px !important;background:color-mix(in srgb,#ffffff 82%,var(--ui-secondary)) !important;box-shadow:5px 5px 0 color-mix(in srgb,var(--ui-primary) 70%,var(--ui-border)); }
+[data-ui-style="deconstructed-2020s"] .modal-box,[data-ui-style="ai-generated"] .modal-box { border:3px solid var(--ui-border) !important;border-radius:2px !important;background:color-mix(in srgb,#ffffff 88%,var(--ui-secondary)) !important;box-shadow:-6px 6px 0 var(--ui-accent),6px -6px 0 var(--ui-primary); }
+[data-ui-style="deconstructed-2020s"] button,[data-ui-style="ai-generated"] button { border:2px solid var(--ui-border) !important;border-radius:2px !important;background:var(--ui-primary) !important;color:var(--ui-text) !important;box-shadow:3px 3px 0 var(--ui-border); }
+[data-ui-style="deconstructed-2020s"] input,[data-ui-style="deconstructed-2020s"] select,[data-ui-style="deconstructed-2020s"] textarea,[data-ui-style="ai-generated"] input,[data-ui-style="ai-generated"] select,[data-ui-style="ai-generated"] textarea { border:2px solid var(--ui-border) !important;border-radius:2px !important;background:#ffffff !important;color:var(--ui-text) !important; }
+[data-ui-style="deconstructed-2020s"] .app-icon,[data-ui-style="ai-generated"] .app-icon { border:2px solid var(--ui-border) !important;border-radius:2px !important;box-shadow:4px 4px 0 var(--ui-accent) !important;filter:saturate(1.2) contrast(1.08); }
+[data-ui-style="deconstructed-2020s"] .tg::after { content:" / RE:MIX";font-size:8px;background:var(--ui-accent);color:var(--ui-text);padding:1px 4px;margin-left:4px;vertical-align:middle; }
+@media (max-width:560px) {
+  .ui-theme-packages,.ui-theme-color-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ui-theme-style-switch { grid-template-columns:1fr; }
+  .ui-theme-ai-row { grid-template-columns:1fr; }
+  [data-ui-style="millennium"] .top-bar::after { display:none; }
+  [data-ui-style="millennium"] .card { box-shadow:2px 2px 0 color-mix(in srgb,var(--ui-accent) 60%,transparent); }
+}
 
 #loginPage { background:#fcfaf3 !important; }
 #loginPage .card { border:1px solid var(--baby-yellow-border);background:#fff !important; }
@@ -22843,6 +23127,10 @@ document.addEventListener("DOMContentLoaded", function(){
             if(!t||!t.type)return;
             if(!t.decadeStats||typeof t.decadeStats!=="object")t.decadeStats={};
             var key=finalDecadeKey(time.y),week=Math.max(0,Number(t.stmGlobal_Week||0)),us=Math.max(0,Number(t.stmUS_Week||0));
+            if(!t._initialDecadeSeeded){
+                var startYear=Math.max(Number(t.releaseYear||time.y),key),elapsed=Math.max(1,Number(time.y||2026)-startYear+1),annual=Math.max(0,Number(t.stmGlobal_Year||0),Number(t.stmGlobal_Month||0)*12,week*52),annualUS=Math.max(0,Number(t.stmUS_Year||0),Number(t.stmUS_Month||0)*12,us*52),total=Math.max(0,Number(t.stmGlobal||0)),totalUS=Math.max(0,Number(t.stmUS||0));
+                t.decadeStats[key]=Math.max(annual,Math.floor(total*elapsed/(elapsed+1)));t.decadeUSStats=t.decadeUSStats||{};t.decadeUSStats[key]=Math.max(annualUS,Math.floor(totalUS*elapsed/(elapsed+1)));t._initialDecadeSeeded=true;
+            }
             if(!t._finalDecadeStamp||t._finalDecadeStamp!==finalDateKey()){
                 if(t._finalDecadeStamp!==finalDateKey()){t.decadeStats[key]=(t.decadeStats[key]||0)+week;t.decadeUSStats=t.decadeUSStats||{};t.decadeUSStats[key]=(t.decadeUSStats[key]||0)+us;t._finalDecadeStamp=finalDateKey();}
             }
@@ -24013,14 +24301,14 @@ function normalizeGroupState(){(ad&&ad.entertainmentGroups||[]).forEach(function
 normalizeGroupState();setTimeout(normalizeGroupState,1800);
 window.openOSTStudio=function(projectId){var p=(ad.screenProjects||[]).find(function(x){return String(x.id)===String(projectId);});if(!p)return;var escapeText=typeof E==='function'?E:function(v){return String(v||'');},released=(trackPool||[]).filter(function(t){return t&&t.isMe&&t.type==='track';}),unreleased=(lib||[]).filter(function(t){return t&&!t.released;});document.getElementById('mInfoTitle').innerText='为《'+p.name+'》争取 OST';document.getElementById('mInfoContent').innerHTML='<label>争取方式</label><select id="ostRoute"><option value="audition">主动试镜</option>'+(p.ostDirectorInvite||p.ostActorInvite?'<option value="invite">接受剧组邀请</option>':'')+(p.isFinanced?'<option value="finance">带资进组</option>':'')+'</select><label>歌曲来源</label><select id="ostSongSource"><option value="new">现场录制新歌</option>'+released.map(function(t){return '<option value="released:'+t.id+'">已发行 · '+escapeText(t.n)+'</option>';}).join('')+unreleased.map(function(t,i){return '<option value="library:'+i+'">未发行曲库 · '+escapeText(t.n)+'</option>';}).join('')+'</select><input id="ostNewName" placeholder="新 OST 名称"><input id="ostNewGenre" value="流行"><button onclick="contributeOST(\''+p.id+'\')">提交 OST 申请</button>';document.getElementById('mInfo').classList.add('open');};
 function applyOstStreamingLift(p){if(!p||!Array.isArray(p.ostTrackIds)||p._ostLiftHeat===Number(p.heat||0))return;p.ostTrackIds.forEach(function(id){var t=(trackPool||[]).find(function(x){return String(x.id)===String(id);});if(!t)return;var base=Math.max(1000,Math.floor(Number(p.heat||0)*Number(p.kind==='film'?180:p.kind==='tv'?260:90)));t.stmGlobal=Math.max(Number(t.stmGlobal||0),Number(t.stmGlobal||0)+base);t.stmGlobal_Day=Math.max(Number(t.stmGlobal_Day||0),Math.floor(base/28));t.stmGlobal_Week=Math.max(Number(t.stmGlobal_Week||0),Math.floor(base/4));t.ostBreakoutChance=Math.min(1,.1+Number(p.heat||0)/45000);});p._ostLiftHeat=Number(p.heat||0);}
-var _completeScreenFinal=window.completeScreenProduction;if(typeof _completeScreenFinal==='function')window.completeScreenProduction=function(){var r=_completeScreenFinal.apply(this,arguments);applyOstStreamingLift(r||((ad.screenProjects||[])[0]));save();return r;};
-var _ostAdvance=window.advTime;if(typeof _ostAdvance==='function')window.advTime=function(){var r=_ostAdvance.apply(this,arguments);(ad.screenProjects||[]).forEach(applyOstStreamingLift);save();return r;};
+var _completeScreenFinal=window.completeScreenProduction;if(typeof _completeScreenFinal==='function')window.completeScreenProduction=function(){var r=_completeScreenFinal.apply(this,arguments);applyOstStreamingLift(r||((ad.screenProjects||[])[0]));if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return r;};
+var _ostAdvance=window.advTime;if(typeof _ostAdvance==='function')window.advTime=function(){var r=_ostAdvance.apply(this,arguments);(ad.screenProjects||[]).forEach(applyOstStreamingLift);if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return r;};
 function repairZeroStreamSongs(){(trackPool||[]).forEach(function(t){if(!t||t.type!=='track')return;var total=Number(t.stmGlobal||0),day=Number(t.stmGlobal_Day||0),week=Number(t.stmGlobal_Week||0);if(total>0&&day<=0){t.stmGlobal_Day=1;t.stmGlobal_Week=Math.max(1,week||7);}if(total<=0&&((t.isMe||t.isGroupWork)&&Number(t.weeks||1)>0)){t.stmGlobal=1;t.stmGlobal_Day=1;t.stmGlobal_Week=7;}});}
 repairZeroStreamSongs();setInterval(repairZeroStreamSongs,1500);
 function recordAllSongTrends(){var songs=(trackPool||[]).filter(function(t){return t&&t.type==='track';}),global=songs.slice().sort(function(a,b){return Number(b.stmGlobal||0)-Number(a.stmGlobal||0);}),us=songs.slice().sort(function(a,b){return Number(b.stmUS||b.stmGlobal||0)-Number(a.stmUS||a.stmGlobal||0);}),key=[time&&time.y,time&&time.m,time&&time.w].join('_');songs.forEach(function(t){if(!Array.isArray(t.chartHistory))t.chartHistory=[];if(t._trendKey===key)return;var gi=global.indexOf(t)+1,ui=us.indexOf(t)+1;t.chartHistory.push({key:key,global:gi<=100?gi:'OUT',us:ui<=100?ui:'OUT',inGlobal:gi<=100,inUS:ui<=100,streams:Number(t.stmGlobal||0)});t.trendChart=t.chartHistory.map(function(x){return x.global;});t._trendKey=key;});}
 recordAllSongTrends();
 var _trendAdvance=window.advTime;if(typeof _trendAdvance==='function')window.advTime=function(){var r=_trendAdvance.apply(this,arguments);recordAllSongTrends();return r;};
-var _shootMVBase=window.shootMV;window.shootMV=function(tid,type){var t=(trackPool||[]).find(function(x){return String(x.id)===String(tid);});if(!t||typeof _shootMVBase!=='function')return;type=Number(type)||0;var count=type===0?Number(t.mvLyricCount||0):Number(t.mvRealCount||0),limit=type===0?5:3;if(count>=limit)return alert((type===0?'歌词 MV':'真人 MV')+' 已达到最多 '+limit+' 次拍摄次数。');if(type===0)t.hasLyricMV=false;else t.hasRealMV=false;var result=_shootMVBase.apply(this,arguments);if(type===0){t.mvLyricCount=count+1;t.hasLyricMV=false;}else{t.mvRealCount=count+1;t.hasRealMV=false;}t.mvN=Number(t.mvN||0);save();return result;};
+var _shootMVBase=window.shootMV;window.shootMV=function(tid,type){var t=(trackPool||[]).find(function(x){return String(x.id)===String(tid);});if(!t||typeof _shootMVBase!=='function')return;type=Number(type)||0;var count=type===0?Number(t.mvLyricCount||0):Number(t.mvRealCount||0),limit=type===0?5:3;if(count>=limit)return alert((type===0?'歌词 MV':'真人 MV')+' 已达到最多 '+limit+' 次拍摄次数。');if(type===0)t.hasLyricMV=false;else t.hasRealMV=false;var result=_shootMVBase.apply(this,arguments);if(type===0){t.mvLyricCount=count+1;t.hasLyricMV=false;}else{t.mvRealCount=count+1;t.hasRealMV=false;}t.mvN=Number(t.mvN||0);if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return result;};
 function normalizeEntertainmentCredits(){
   var directors=['Alex Morgan','Sofia Bennett','Jordan Reed','Maya Collins'],writersList=['Evan Brooks','Nora Hayes','Liam Carter','Ivy Morgan'],cameras=['Theo Grant','Riley Stone','Clara Woods','Noah Blake'],locations=['Vancouver Studio','Atlanta Backlot','London Stage','Los Angeles Lot'];
   if(window.ad){(ad.screenProjects||[]).forEach(function(p,i){p.director=p.director||directors[i%directors.length];p.writer=p.writer||writersList[i%writersList.length];p.camera=p.camera||cameras[i%cameras.length];p.location=p.location||locations[i%locations.length];p.scriptGrade=p.scriptGrade||'C';p.tier=p.tier||'扑街';});(ad.castingAnnouncements||[]).forEach(function(p,i){p.director=p.director||directors[i%directors.length];p.writer=p.writer||writersList[i%writersList.length];p.camera=p.camera||cameras[i%cameras.length];p.location=p.location||locations[i%locations.length];p.scriptGrade=p.scriptGrade||'C';});}
@@ -24030,8 +24318,8 @@ normalizeEntertainmentCredits();
 setTimeout(normalizeEntertainmentCredits,1800);
 function ensureScreenMarketLimits(){if(!ad.screenMarketLimits)ad.screenMarketLimits={film:50000000000,tv:180000,short:30000};return ad.screenMarketLimits;}
 window.openScreenMarketLimits=function(){var l=ensureScreenMarketLimits();document.getElementById('mInfoTitle').innerText='影视大盘限制';document.getElementById('mInfoContent').innerHTML='<p style="font-size:11px;color:#777;">限制影视作品可计入的大盘数据上限，电影按美元票房，电视剧和短剧按万小时观看量。</p><label>电影全球票房上限（美元）</label><input id="limitFilm" type="number" value="'+l.film+'"><label>电视剧观看量上限（万小时）</label><input id="limitTV" type="number" value="'+l.tv+'"><label>短剧观看量上限（万小时）</label><input id="limitShort" type="number" value="'+l.short+'"><button onclick="saveScreenMarketLimits()">保存限制</button>';document.getElementById('mInfo').classList.add('open');};
-window.saveScreenMarketLimits=function(){var l=ensureScreenMarketLimits();l.film=Math.max(0,Number(document.getElementById('limitFilm').value)||0);l.tv=Math.max(0,Number(document.getElementById('limitTV').value)||0);l.short=Math.max(0,Number(document.getElementById('limitShort').value)||0);(ad.screenProjects||[]).forEach(function(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);});save();alert('影视大盘限制已保存。');};
-var _screenComplete=window.completeCurrentScreenProduction;window.completeCurrentScreenProduction=function(){var r=_screenComplete&&_screenComplete.apply(this,arguments),l=ensureScreenMarketLimits(),p=ad.screenProjects&&ad.screenProjects[0];if(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);}save();return r;};
+window.saveScreenMarketLimits=function(){var l=ensureScreenMarketLimits();l.film=Math.max(0,Number(document.getElementById('limitFilm').value)||0);l.tv=Math.max(0,Number(document.getElementById('limitTV').value)||0);l.short=Math.max(0,Number(document.getElementById('limitShort').value)||0);(ad.screenProjects||[]).forEach(function(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);});if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();alert('影视大盘限制已保存。');};
+var _screenComplete=window.completeCurrentScreenProduction;window.completeCurrentScreenProduction=function(){var r=_screenComplete&&_screenComplete.apply(this,arguments),l=ensureScreenMarketLimits(),p=ad.screenProjects&&ad.screenProjects[0];if(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);}if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return r;};
 var _screenHub=window.openScreenProjectHub;window.openScreenProjectHub=function(){return _screenHub&&_screenHub.apply(this,arguments);};
 (function installCloudDeviceLogin(){
     'use strict';
@@ -24159,5 +24447,114 @@ var _screenHub=window.openScreenProjectHub;window.openScreenProjectHub=function(
 window.exportLocalSave=function(){try{var key=getSaveKey(),raw=localStorage.getItem(key);if(!raw){alert('当前槽位没有存档。');return;}var blob=new Blob([raw],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='star-pro-save-'+(($('selSaveSlot')||{}).value||'1')+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);}catch(e){alert('导出失败：'+e.message);}};
 window.importLocalSave=function(input){var file=input&&input.files&&input.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(){try{var data=JSON.parse(reader.result);if(!data||typeof data!=='object'||!data.ad)throw new Error('不是有效的星路存档');localStorage.setItem(getSaveKey(),JSON.stringify(data));alert('存档已导入当前槽位，正在重新加载。');location.reload();}catch(e){alert('导入失败：'+e.message);}finally{input.value='';}};reader.readAsText(file);};
 </script>
+<script>
+(function(){
+  function ensureInitialArtists(){if(typeof worldArtists==='undefined'||worldArtists.length)return;if(typeof initNPCs==='function'){initNPCs();if(typeof renderNpcList==='function')renderNpcList();}}
+  function staffStore(){if(!window.ad)return [];if(!Array.isArray(ad.backstageStaff)||ad.backstageStaff.length<50){var first=['Avery','Morgan','Jordan','Riley','Taylor','Sofia','Evan','Nora','Liam','Ivy','Maya','Theo','Clara','Noah','Alex','Mina','Leo','Harper','Quinn','Elena'],last=['Brooks','Hayes','Morgan','Grant','Collins','Stone','Bennett','Reed','Carter','Woods','Parker','Young','Cole','Foster','Lane','Bishop','Rivera','Mason','Knight','Bell'],roles=[['导演','导演'],['编剧','编剧'],['摄影','摄影指导'],['时尚主编','时尚主编'],['公司老板','公司老板']];ad.backstageStaff=[];roles.forEach(function(role,ri){var count=10+Math.floor(Math.random()*11);for(var i=0;i<count;i++){var n=first[(i+ri*3)%first.length]+' '+last[(i*2+ri)%last.length];ad.backstageStaff.push({id:'backstage_'+ri+'_'+i,n:n,role:role[0],fans:Math.floor(20000+Math.random()*980000),influence:Math.floor(35+Math.random()*65),company:role[0]==='公司老板'?['Northstar Media','Silverline Group','Orbit House','Velvet Works'][i%4]:''});}});if(typeof save==='function')save();}return ad.backstageStaff;}
+  window.openBackstageList=function(){var list=staffStore().slice().sort(function(a,b){return (b.influence+b.fans/100000)-(a.influence+a.fans/100000);}),groups={};list.forEach(function(x){(groups[x.role]||(groups[x.role]=[])).push(x);});var html=Object.keys(groups).map(function(role){return '<h4 style="margin:12px 0 5px;">'+role+'（'+groups[role].length+'）</h4>'+groups[role].map(function(x,i){return '<div class="card" style="padding:8px;margin:4px 0;"><b>'+(i+1)+'. '+E(x.n)+'</b><br><span style="font-size:11px;color:#777;">影响力 '+x.influence+' · 业内关注 '+Number(x.fans).toLocaleString()+(x.company?' · '+E(x.company):'')+'</span></div>';}).join('');}).join('');document.getElementById('mInfoTitle').innerText='幕后人员榜单';document.getElementById('mInfoContent').innerHTML='<p style="font-size:11px;color:#777;">导演、编剧、摄影、时尚主编与公司老板的综合业内榜单。</p>'+html;document.getElementById('mInfo').classList.add('open');};
+  function mountBackstage(){var old=document.getElementById('btnBackstageList');if(old)old.remove();var grid=document.getElementById('phoneGrid');if(grid&&!document.getElementById('appBackstage')){var app=document.createElement('div');app.id='appBackstage';app.className='app-icon';app.style.cssText='background:#273449;color:#fff;';app.innerHTML='<div class="picon" style="font-weight:900;">B</div><span>幕后榜单</span>';app.onclick=window.openBackstageList;grid.appendChild(app);}}
+  function removeVersionBadge(){var badge=document.getElementById('entertainmentBuildBadge');if(badge)badge.remove();}
+  function clampBillboardPoints(){var cap=Math.max(1,Number(ad&&ad.marketSettings&&ad.marketSettings.billboardCap||500)),tracks=(trackPool||[]).filter(function(t){return t&&t.type==='track';}),max=tracks.reduce(function(m,t){var v=Number(t._chartPts);return Math.max(m,isFinite(v)&&v>0?v:0);},0),scale=max>cap?cap/max:1;tracks.forEach(function(t){var value=Number(t._chartPts);if(!isFinite(value)||value<0)value=0;value=Math.max(0,Math.round(value*scale));t._chartPts=value;t._bbPtsExact=value;t._chartStr=value.toLocaleString()+' Pts';});}
+  window.openPortfolioItem=function(index){var rows=typeof portfolioRows==='function'?portfolioRows():[];if(!rows.length){(trackPool||[]).filter(function(t){return t&&t.isMe;}).forEach(function(t){rows.push({kind:t.type==='album'?'专辑':'单曲',name:t.n,metric:'全球流媒 '+Number(t.stmGlobal||0).toLocaleString(),detail:'在榜 '+Number(t.weeks||0)+' 周',raw:t});});if(ad&&ad.screenCareer&&Array.isArray(ad.screenCareer.credits))ad.screenCareer.credits.forEach(function(p){rows.push({kind:p.kind==='film'?'电影':p.kind==='tv'?'电视剧':'短剧',name:p.name,metric:p.kind==='film'?'票房 $'+Number(p.boxOffice||0).toLocaleString():'观看 '+Number(p.watchHours||0).toLocaleString()+' 万小时',detail:'热度 '+Number(p.heat||0).toLocaleString(),raw:p});});}var x=rows[index]||rows[0]||{kind:'作品',name:'当前作品',metric:'暂无汇总数据',detail:'原始数据仍保存在当前存档中',raw:{}};var raw=x.raw||{},genres=Array.isArray(raw.gnr)?raw.gnr:Array.isArray(raw.genre)?raw.genre:[raw.genre||'未设置'],lines=['类型：'+(x.kind||'未知'),'名称：'+(x.name||'未命名'),x.metric||'',x.detail||''];if(x.kind==='单曲'||x.kind==='专辑'){lines.push('曲风：'+genres.filter(Boolean).join('、'));lines.push('发行时间：'+(raw.releaseYear||'未知'));lines.push('累计销量：'+Number(raw.slTotal||0).toLocaleString());lines.push('全球流媒：'+Number(raw.stmGlobal||0).toLocaleString());}document.getElementById('mInfoTitle').innerText=(x.name||'作品')+' · 详细数据';document.getElementById('mInfoContent').innerHTML='<div class="card" style="line-height:2;white-space:pre-line;">'+(typeof E==='function'?E(lines.join('\n')):lines.join('\n'))+'</div><button class="sec" onclick="openPortfolioDetails()">返回作品列表</button>';document.getElementById('mInfo').classList.add('open');};
+  var saveDbPromise;
+  function saveDb(){if(saveDbPromise)return saveDbPromise;saveDbPromise=new Promise(function(resolve,reject){var req=indexedDB.open('starProLocalSaves',1);req.onupgradeneeded=function(){req.result.createObjectStore('saves');};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};});return saveDbPromise;}
+  function mirrorSave(slot){try{var raw=typeof saveSnapshotJSON==='function'?saveSnapshotJSON():JSON.stringify(buildSaveSnapshot());saveDb().then(function(db){var tx=db.transaction('saves','readwrite');tx.objectStore('saves').put(raw,'starProSave_'+slot);});}catch(e){console.warn('IndexedDB 存档镜像失败',e);}}
+  var originalSaveImmediate=window.saveGameImmediate;
+  window.saveGameImmediate=function(){var result=originalSaveImmediate&&originalSaveImmediate.apply(this,arguments);mirrorSave((document.getElementById('selSaveSlot')||{}).value||'1');return result;};
+  var originalLoadGame=window.loadGame;
+  window.loadGame=function(slot){var key='starProSave_'+(slot||((document.getElementById('selSaveSlot')||{}).value||'1'));try{if(localStorage.getItem(key))return originalLoadGame&&originalLoadGame.apply(this,arguments);}catch(e){}saveDb().then(function(db){var req=db.transaction('saves','readonly').objectStore('saves').get(key);req.onsuccess=function(){if(!req.result)return alert('未找到存档！');try{localStorage.setItem(key,req.result);originalLoadGame&&originalLoadGame.call(window,slot);}catch(e){alert('读取本地大容量存档失败：'+e.message);}};});};
+  ensureInitialArtists();mountBackstage();removeVersionBadge();clampBillboardPoints();setTimeout(function(){ensureInitialArtists();mountBackstage();removeVersionBadge();clampBillboardPoints();},900);setInterval(function(){removeVersionBadge();clampBillboardPoints();},1500);
+})();
+</script>
+<style>
+#desktopPetLayer{position:fixed;right:18px;bottom:76px;z-index:8500;pointer-events:none;user-select:none}
+.desktop-pet{position:relative;width:96px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;pointer-events:auto;transform:scale(var(--pet-scale,1));transform-origin:bottom right;filter:drop-shadow(0 5px 4px rgba(0,0,0,.22))}
+.desktop-pet:active{cursor:grabbing}.desktop-pet-body{position:relative;width:76px;height:68px;display:grid;place-items:center;border:3px solid #433646;background:var(--pet-color,#ddd);font-size:45px;line-height:1}
+.desktop-pet.pixel .desktop-pet-body{border-radius:3px;box-shadow:6px 0 var(--pet-accent,#6cf),0 6px #ff4fa3;image-rendering:pixelated}
+.desktop-pet.cream .desktop-pet-body{border-radius:36px 36px 30px 30px;background:radial-gradient(circle at 35% 28%,#fff 0 10%,var(--pet-color,#f5d9cd) 45%,var(--pet-accent,#ffd9ee));box-shadow:inset 0 0 0 5px rgba(255,255,255,.5)}
+.desktop-pet.shiny.pixel .desktop-pet-body{animation:pet-glitch 1.8s steps(2,end) infinite;box-shadow:6px 0 #00e7ff,-5px 3px #ff2bd6,0 7px #d8ff38}
+.desktop-pet.shiny.cream .desktop-pet-body{animation:pet-pearl 2.8s ease-in-out infinite;background:linear-gradient(125deg,#fff4fa,#ffd8ef,#dff6ff,#fff2bd,#e9ddff)}
+.desktop-pet.fusion .desktop-pet-body{border-radius:22px 5px 26px 8px;background:linear-gradient(135deg,var(--pet-color,#dff6ff) 0 48%,var(--pet-accent,#ffb7df) 48% 72%,#d8ff38 72%);box-shadow:5px 0 #00e7ff,-4px 4px #ff2bd6,inset 0 0 0 4px rgba(255,255,255,.48)}
+.desktop-pet.shiny.fusion .desktop-pet-body{animation:pet-glitch 1.8s steps(2,end) infinite,pet-pearl 3.2s ease-in-out infinite}
+.desktop-pet-name{margin-top:7px;padding:2px 7px;border:1px solid #49394d;background:rgba(255,255,255,.9);font-size:10px;font-weight:bold;color:#302331}
+.desktop-pet-speech{position:absolute;right:75%;bottom:82%;width:max-content;max-width:150px;padding:6px 8px;border:2px solid #49394d;background:#fff;font-size:10px;color:#302331;display:none}.desktop-pet:hover .desktop-pet-speech{display:block}
+.pet-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pet-toolbar label{font-size:11px}.pet-toolbar input[type=checkbox]{width:auto;margin-right:5px}
+.pet-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pet-card{position:relative}.pet-badges{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0}.pet-badge{padding:2px 5px;border:1px solid var(--baby-yellow-border);background:var(--baby-yellow-soft);font-size:9px}
+.pet-actions{display:flex;gap:5px;flex-wrap:wrap}.pet-actions button{width:auto;margin:0;font-size:10px;padding:5px 7px}.pet-shop-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.pet-shop-grid button{margin:0;min-height:48px}
+.pet-trait-list{max-height:140px;overflow:auto;font-size:10px;line-height:1.7}.pet-code-box{font-family:Consolas,monospace;font-size:9px;word-break:break-all;background:#f3f4f6;padding:6px;border:1px solid #bbb}
+@keyframes pet-glitch{0%,82%,100%{transform:translate(0);filter:hue-rotate(0)}86%{transform:translate(3px,-2px);filter:hue-rotate(110deg)}91%{transform:translate(-3px,1px);filter:hue-rotate(240deg)}}
+@keyframes pet-pearl{0%,100%{filter:saturate(1) brightness(1)}50%{filter:saturate(1.45) brightness(1.12)}}
+@media(max-width:560px){#desktopPetLayer{right:8px;bottom:66px}.pet-list{grid-template-columns:1fr}.pet-shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<div id="desktopPetLayer" aria-live="polite"></div>
+<script>
+var PET_SYSTEM_VERSION=1;
+var PET_SHINY_BASE_RATE=1/1000;
+var PET_SPECIES={cat:{name:"猫",icon:"🐱"},dog:{name:"狗",icon:"🐶"},rabbit:{name:"兔子",icon:"🐰"}};
+var PET_BASE_COLORS=["#171719","#f5f2ea","#8d8d92","#c78150","#e7c6a5","#b8a28e","#6f4e3d","#d8b4cf","#91c9df","#b7d78f","#f0d15f","#a996d9"];
+var PET_TRAIT_SLOTS=["轮廓","毛发","眼睛","耳朵","尾巴","爪印","移动","待机","互动","登场"];
+function buildPetTraitPool(family,effects,details){var out=[];effects.forEach(function(effect,ei){details.forEach(function(detail,di){out.push({id:family+"_"+(ei*10+di+1),family:family,name:effect+"·"+detail,slot:PET_TRAIT_SLOTS[di],effect:effect,detail:detail});});});return out;}
+var PIXEL_SHINY_TRAITS=buildPetTraitPool("pixel",["RGB残影","彩码错位","全息描边","数据缺口","像素溢出","扫描脉冲","乱码闪烁","帧率漂移","霓虹缓存","量子贴图"],["轮廓分色","毛色代码块","符号瞳孔","信号耳尖","延迟尾迹","数据脚印","故障冲刺","待机弹窗","互动乱码","启动重组"]);
+var CREAM_SHINY_TRAITS=buildPetTraitPool("cream",["玫瑰珍珠","蓝月极光","香槟糖霜","彩虹星砂","牛奶银河","果冻晶糖","梦境云锦","季节糖晶","音乐虹光","皇冠星屑"],["珍珠轮廓","糖霜毛色","宝石瞳孔","水晶耳尖","梦境尾迹","糖果脚印","极光移动","彩虹呼吸","泡泡互动","星光登场"]);
+function petShinyPool(style){return style==="fusion"?PIXEL_SHINY_TRAITS.concat(CREAM_SHINY_TRAITS):style==="pixel"?PIXEL_SHINY_TRAITS:CREAM_SHINY_TRAITS;}
+function petInheritedShinyRate(parentAShiny,parentBShiny){return parentAShiny&&parentBShiny?.002:parentAShiny||parentBShiny?.0015:PET_SHINY_BASE_RATE;}
+function petRandomItem(list,random){return list[Math.floor((random||Math.random)()*list.length)%list.length];}
+function pickPetShinyTraits(style,random,count){var pool=petShinyPool(style),rng=random||Math.random,total=count||2+Math.floor(rng()*3),base=Math.floor(rng()*pool.length),out=[];for(var i=0;i<total;i++)out.push(pool[(base+i*17)%pool.length]);return out;}
+function petId(prefix){return prefix+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,8);}
+function createPetBirth(species,random,options){var rng=random||Math.random,opt=options||{},style=opt.style||petRandomItem(["pixel","cream"],rng),shiny=opt.forceShiny===true||rng()<Math.max(0,Math.min(.01,Number(opt.shinyRate||PET_SHINY_BASE_RATE))),heterochromia=opt.forceHeterochromia===true||rng()<.006,color=opt.color||petRandomItem(PET_BASE_COLORS,rng),accent=opt.accent||petRandomItem(PET_BASE_COLORS,rng),traits=shiny?pickPetShinyTraits(style,rng):[];return {id:petId("pet"),code:"",name:(PET_SPECIES[species]||PET_SPECIES.cat).name+"宝宝",species:PET_SPECIES[species]?species:"cat",hybridParents:opt.hybridParents||[],generation:Number(opt.generation||1),style:style,color:color,accent:accent,eyeLeft:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",eyeRight:heterochromia?petRandomItem(PET_BASE_COLORS,rng):"#3b2a22",heterochromia:heterochromia,shiny:shiny,shinyTraits:traits.map(function(x){return x.id;}),laterShinyTraits:[],personality:petRandomItem(["黏人","好奇","冷静","活泼","骄傲","温柔","贪吃","爱听歌"],rng),stage:"幼崽",hunger:80,health:100,mood:80,affection:0,growthMode:"hybrid",buffs:[],awardFeedIds:[],demoFeedIds:[],feedHistory:[],events:[{type:"birth",text:shiny?"以闪光形态孵化":"普通孵化",at:Date.now()}],partner:null,children:[],createdAt:Date.now()};}
+function encodePetCode(pet){var payload={v:1,id:pet.id,name:pet.name,species:pet.species,hybridParents:pet.hybridParents,generation:pet.generation,style:pet.style,color:pet.color,accent:pet.accent,eyeLeft:pet.eyeLeft,eyeRight:pet.eyeRight,heterochromia:pet.heterochromia,shiny:pet.shiny,shinyTraits:pet.shinyTraits,personality:pet.personality};return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));}
+function decodePetCode(code){var data;try{data=JSON.parse(decodeURIComponent(escape(atob(String(code||"").trim()))));}catch(e){throw new Error("宠物码无效");}if(!data||data.v!==1||!PET_SPECIES[data.species])throw new Error("宠物码内容无效");return data;}
+function petStore(){
+  if(typeof ad==="undefined"||!ad)return null;
+  if(!ad.petSystem||typeof ad.petSystem!=="object")ad.petSystem={version:PET_SYSTEM_VERSION,pets:[],eggs:[],food:0,medicine:0,activePetId:null,desktopVisible:true,size:1,x:null,y:null};
+  var s=ad.petSystem;s.version=PET_SYSTEM_VERSION;if(!Array.isArray(s.pets))s.pets=[];if(!Array.isArray(s.eggs))s.eggs=[];s.pets.forEach(function(p){p.awardFeedIds=Array.isArray(p.awardFeedIds)?p.awardFeedIds:[];p.demoFeedIds=Array.isArray(p.demoFeedIds)?p.demoFeedIds:[];p.feedHistory=Array.isArray(p.feedHistory)?p.feedHistory:[];p.shinyTraits=Array.isArray(p.shinyTraits)?p.shinyTraits:[];p.laterShinyTraits=Array.isArray(p.laterShinyTraits)?p.laterShinyTraits:[];p.events=Array.isArray(p.events)?p.events:[];p.buffs=Array.isArray(p.buffs)?p.buffs:[];if(!p.code)p.code=encodePetCode(p);});return s;
+}
+function petSave(){try{var s=petStore();if(s)localStorage.setItem("starPro_pet_ui_v1",JSON.stringify({desktopVisible:s.desktopVisible,size:s.size,activePetId:s.activePetId,x:s.x,y:s.y}));}catch(e){}if(typeof saveGame==="function")saveGame();}
+function petEsc(value){return typeof E==="function"?E(value):String(value||"").replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});}
+function findPet(id){var s=petStore();return s&&s.pets.find(function(p){return p.id===id;});}
+function petSpeciesLabel(p){if(p.hybridParents&&p.hybridParents.length>1)return p.hybridParents.map(function(x){return PET_SPECIES[x]&&PET_SPECIES[x].name||x;}).join("×")+"混种";return PET_SPECIES[p.species]&&PET_SPECIES[p.species].name||"宠物";}
+function petTraitObjects(p){var pool=petShinyPool(p.style),ids=(p.shinyTraits||[]).concat(p.laterShinyTraits||[]);return ids.map(function(id){return pool.find(function(x){return x.id===id;});}).filter(Boolean);}
+function maybeAddShinyTrait(p,random){if(!p.shiny||(random||Math.random)()>=.08)return null;var pool=petShinyPool(p.style),used=(p.shinyTraits||[]).concat(p.laterShinyTraits||[]),available=pool.filter(function(x){return used.indexOf(x.id)<0&&!petTraitObjects(p).some(function(t){return t.slot===x.slot;});});if(!available.length)return null;var trait=petRandomItem(available,random||Math.random);p.laterShinyTraits.push(trait.id);p.events.unshift({type:"shinyTrait",text:"成长中显现新闪光特征："+trait.name,at:Date.now()});return trait;}
+function makePetShiny(p,source,random){if(p.shiny)return false;p.shiny=true;p.shinyTraits=pickPetShinyTraits(p.style,random);p.events.unshift({type:"shiny",text:"因"+source+"转化为闪光宠物",at:Date.now()});return true;}
+function petAwardInstances(){var rows=Array.isArray(ad&&ad.awd)?ad.awd:[],store=ad.petAwardInstances=Array.isArray(ad.petAwardInstances)?ad.petAwardInstances:[],used={};return rows.map(function(raw){var text=String(raw),index=used[text]||0;used[text]=index+1;var matches=store.filter(function(x){return x.text===text;}),item=matches[index];if(!item){item={id:petId("award"),text:text};store.push(item);}return item;});}
+function petDemoInstances(){return (typeof lib!=="undefined"&&Array.isArray(lib)?lib:[]).map(function(draft,index){if(!draft.petDemoId)draft.petDemoId=petId("demo");return {id:draft.petDemoId,text:draft.n||draft.name||("Demo "+(index+1)),raw:draft,index:index};});}
+function petDemoQuality(demo){var d=demo.raw||{},nums=[d.quality,d.q,d.catchy,d.art,d.score,d.sk].filter(function(x){return isFinite(Number(x));}).map(Number);if(nums.length)return Math.max(0,Math.min(100,nums.reduce(function(a,b){return a+b;},0)/nums.length));return Math.max(1,Math.min(100,Number(ad&&ad.sk&&ad.sk.w||50)));}
+function renderDesktopPet(){var layer=document.getElementById("desktopPetLayer"),s=petStore();if(!layer||!s||!s.desktopVisible){if(layer)layer.innerHTML="";return;}var p=findPet(s.activePetId)||s.pets[0];if(!p){layer.innerHTML="";return;}s.activePetId=p.id;var icon=(PET_SPECIES[p.species]||PET_SPECIES.cat).icon,need=p.hunger<35?"我饿了……":p.health<50?"我有点不舒服":p.mood<40?"陪陪我吧":"今天也要闪闪发光";layer.style.right=s.x===null?"18px":"auto";layer.style.bottom=s.y===null?"76px":"auto";if(s.x!==null)layer.style.left=s.x+"px";if(s.y!==null)layer.style.top=s.y+"px";layer.innerHTML='<div class="desktop-pet '+p.style+(p.shiny?' shiny':'')+'" data-pet-id="'+p.id+'" style="--pet-scale:'+Math.max(.5,Math.min(2,Number(s.size||1)))+';--pet-color:'+p.color+';--pet-accent:'+p.accent+'" onclick="openPetDetail(\''+p.id+'\')"><div class="desktop-pet-speech">'+petEsc(need)+'</div><div class="desktop-pet-body">'+icon+'</div><div class="desktop-pet-name">'+petEsc(p.name)+(p.shiny?' ✦':'')+'</div></div>';enablePetDrag(layer.querySelector(".desktop-pet"));}
+function enablePetDrag(el){if(!el||el.dataset.dragReady)return;el.dataset.dragReady="1";var sx,sy,ox,oy,moved=false;el.addEventListener("pointerdown",function(e){sx=e.clientX;sy=e.clientY;var r=document.getElementById("desktopPetLayer").getBoundingClientRect();ox=r.left;oy=r.top;moved=false;el.setPointerCapture(e.pointerId);});el.addEventListener("pointermove",function(e){if(sx===undefined)return;var dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)+Math.abs(dy)>5)moved=true;var layer=document.getElementById("desktopPetLayer"),x=Math.max(0,Math.min(innerWidth-80,ox+dx)),y=Math.max(0,Math.min(innerHeight-80,oy+dy));layer.style.left=x+"px";layer.style.top=y+"px";layer.style.right="auto";layer.style.bottom="auto";var s=petStore();s.x=x;s.y=y;});el.addEventListener("pointerup",function(e){sx=undefined;if(moved){e.preventDefault();e.stopPropagation();petSave();}});}
+window.setPetDesktopVisible=function(value){var s=petStore();if(!s)return;s.desktopVisible=!!value;petSave();renderDesktopPet();};
+window.setPetDesktopSize=function(value){var s=petStore();if(!s)return;s.size=Math.max(.5,Math.min(2,Number(value)||1));petSave();renderDesktopPet();};
+window.setActiveDesktopPet=function(id){var s=petStore();if(!s)return;s.activePetId=id;petSave();renderDesktopPet();};
+window.setPetGrowthMode=function(id,mode){var p=findPet(id);if(!p||["hybrid","ai","local"].indexOf(mode)<0)return;p.growthMode=mode;p.events.unshift({type:"mode",text:"成长模式切换为 "+mode,at:Date.now()});petSave();openPetDetail(id);};
+function petCard(p){var traits=petTraitObjects(p),badges=[petSpeciesLabel(p),p.style==="fusion"?"像素×奶油融合":p.style==="pixel"?"电子像素":"可爱奶油",p.generation+"代",p.shiny?"闪光":"普通",p.heterochromia?"异瞳":"同色瞳"];return '<div class="card pet-card"><b>'+petEsc(p.name)+'</b><div class="pet-badges">'+badges.map(function(x){return '<span class="pet-badge">'+petEsc(x)+'</span>';}).join('')+'</div><div style="font-size:10px;line-height:1.7;">饱腹 '+Math.round(p.hunger)+' · 健康 '+Math.round(p.health)+' · 心情 '+Math.round(p.mood)+'<br>性格：'+petEsc(p.personality)+' · 特征 '+traits.length+'</div><div class="pet-actions"><button onclick="openPetDetail(\''+p.id+'\')">详情</button><button class="sec" onclick="openPetFeed(\''+p.id+'\')">喂养</button><button class="sec" onclick="setActiveDesktopPet(\''+p.id+'\')">展示</button></div></div>';}
+window.openPetSystem=function(){var s=petStore();if(!s)return alert("请先开始游戏再使用桌面宠物。");var eggs=s.eggs.map(function(e){return '<div class="card"><b>'+petEsc(e.label)+'</b><br><button onclick="hatchPetEgg(\''+e.id+'\')">孵化</button></div>';}).join('');document.getElementById("mInfoTitle").innerText="桌面宠物";document.getElementById("mInfoContent").innerHTML='<div class="pet-toolbar"><label><input type="checkbox" '+(s.desktopVisible?'checked':'')+' onchange="setPetDesktopVisible(this.checked)">显示桌宠</label><label>桌宠大小 <input type="range" min="0.5" max="2" step="0.1" value="'+s.size+'" oninput="setPetDesktopSize(this.value)"></label></div><h3 class="tg">我的宠物（'+s.pets.length+'）</h3><div class="pet-list">'+(s.pets.map(petCard).join('')||'还没有宠物，请先购买宠物蛋。')+'</div><h3 class="tg">待孵化宠物蛋</h3><div class="pet-list">'+(eggs||'暂无宠物蛋')+'</div><h3 class="tg">宠物商店</h3><div class="pet-shop-grid"><button onclick="buyPetEgg(\'cat\')">猫猫蛋<br>25,000</button><button onclick="buyPetEgg(\'dog\')">狗狗蛋<br>25,000</button><button onclick="buyPetEgg(\'rabbit\')">兔兔蛋<br>25,000</button><button class="sec" onclick="buyAdultPet(\'cat\')">普通成猫<br>40,000</button><button class="sec" onclick="buyAdultPet(\'dog\')">普通成狗<br>40,000</button><button class="sec" onclick="buyAdultPet(\'rabbit\')">普通成兔<br>40,000</button><button class="sec" onclick="buyPetFood()">宠物粮 ×5<br>5,000</button><button class="sec" onclick="buyPetMedicine()">治疗用品<br>8,000</button></div><p style="font-size:10px;color:#777;">库存：宠物粮 '+s.food+' · 治疗用品 '+s.medicine+'</p>';document.getElementById("mInfo").classList.add("open");};
+window.buyPetEgg=function(species){var s=petStore();if(Number(ad.m||0)<25000)return alert("资金不足，需要 25,000。");ad.m-=25000;s.eggs.push({id:petId("egg"),species:species,label:(PET_SPECIES[species]||PET_SPECIES.cat).name+"宠物蛋",generation:1,parents:[]});petSave();openPetSystem();};
+window.buyAdultPet=function(species){var s=petStore();if(Number(ad.m||0)<40000)return alert("资金不足，需要 40,000。");ad.m-=40000;var p=createPetBirth(species,Math.random,{forceShiny:false,forceHeterochromia:false});p.shiny=false;p.heterochromia=false;p.shinyTraits=[];p.stage="成年";p.name="普通"+(PET_SPECIES[species]||PET_SPECIES.cat).name;p.code=encodePetCode(p);s.pets.push(p);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();openPetSystem();};
+window.buyPetFood=function(){var s=petStore();if(Number(ad.m||0)<5000)return alert("资金不足。");ad.m-=5000;s.food+=5;petSave();openPetSystem();};
+window.buyPetMedicine=function(){var s=petStore();if(Number(ad.m||0)<8000)return alert("资金不足。");ad.m-=8000;s.medicine+=1;petSave();openPetSystem();};
+window.hatchPetEgg=function(id){var s=petStore(),index=s.eggs.findIndex(function(e){return e.id===id;}),egg=s.eggs[index];if(!egg)return;var opt={generation:egg.generation||1,hybridParents:egg.hybridParents||[],style:egg.style,shinyRate:egg.shinyRate};if(egg.colors){opt.color=petRandomItem(egg.colors,Math.random);opt.accent=petRandomItem(egg.colors,Math.random);}var p=createPetBirth(egg.species,Math.random,opt);p.code=encodePetCode(p);s.pets.push(p);s.eggs.splice(index,1);if(!s.activePetId)s.activePetId=p.id;petSave();renderDesktopPet();alert(p.shiny?"闪光孵化！"+p.name+" 出生时拥有 "+petTraitObjects(p).map(function(x){return x.name;}).join("、"):p.heterochromia?"孵化成功！这是一只异瞳宠物。":"孵化成功！");openPetSystem();};
+window.openPetDetail=function(id){var p=findPet(id);if(!p)return;var traits=petTraitObjects(p),events=p.events.slice(0,20).map(function(x){return '<div>· '+petEsc(x.text)+'</div>';}).join('');document.getElementById("mInfoTitle").innerText=p.name;document.getElementById("mInfoContent").innerHTML='<div class="card" style="text-align:center;"><div style="font-size:55px;">'+(PET_SPECIES[p.species]||PET_SPECIES.cat).icon+'</div><b>'+petEsc(petSpeciesLabel(p))+' · '+(p.style==='fusion'?'像素×奶油融合风':p.style==='pixel'?'电子像素风':'可爱奶油风')+(p.shiny?' · 闪光':'')+(p.heterochromia?' · 异瞳':'')+'</b><p>颜色 <span style="display:inline-block;width:14px;height:14px;background:'+p.color+';border:1px solid #333;"></span> / <span style="display:inline-block;width:14px;height:14px;background:'+p.accent+';border:1px solid #333;"></span></p></div><label>宠物名称<input id="petRenameInput" value="'+petEsc(p.name)+'"></label><button class="sec" onclick="renamePet(\''+p.id+'\')">保存名称</button><label>成长模式<select onchange="setPetGrowthMode(\''+p.id+'\',this.value)"><option value="hybrid" '+(p.growthMode==='hybrid'?'selected':'')+'>混合模式</option><option value="ai" '+(p.growthMode==='ai'?'selected':'')+'>AI 模式</option><option value="local" '+(p.growthMode==='local'?'selected':'')+'>本地模式</option></select></label><div class="pet-actions"><button onclick="openPetFeed(\''+p.id+'\')">喂养</button><button class="sec" onclick="copyPetCode(\''+p.id+'\')">复制宠物码</button><button class="sec" onclick="breedWithPetCode(\''+p.id+'\')">输入宠物码恋爱 / 繁育</button><button class="sec" onclick="generatePetPersonalityAI(\''+p.id+'\')">AI 生成性格</button></div><h4 class="tg">闪光特征（'+traits.length+'）</h4><div class="pet-trait-list">'+(traits.map(function(x){return petEsc(x.name)+'（'+x.slot+'）';}).join('<br>')||'普通宠物暂无闪光特征')+'</div><h4 class="tg">成长轨迹</h4><div class="card" style="font-size:10px;line-height:1.8;">'+(events||'暂无事件')+'</div>';document.getElementById("mInfo").classList.add("open");};
+window.renamePet=function(id){var p=findPet(id),input=document.getElementById("petRenameInput");if(!p||!input)return;p.name=input.value.trim().slice(0,24)||p.name;p.code=encodePetCode(p);petSave();renderDesktopPet();openPetDetail(id);};
+window.openPetFeed=function(id){var p=findPet(id);if(!p)return;var awards=petAwardInstances().filter(function(x){return p.awardFeedIds.indexOf(x.id)<0;}),demos=petDemoInstances().filter(function(x){return p.demoFeedIds.indexOf(x.id)<0;});document.getElementById("mInfoTitle").innerText="喂养 "+p.name;document.getElementById("mInfoContent").innerHTML='<button onclick="feedPetFood(\''+id+'\')">喂宠物粮</button><button class="sec" onclick="feedPetMoney(\''+id+'\')">喂 10,000 金钱</button><button class="sec" onclick="healPet(\''+id+'\')">使用治疗用品</button><label>喂一座未喂过的奖杯<select id="petAwardFeedSelect">'+awards.map(function(x){return '<option value="'+x.id+'">'+petEsc(x.text)+'</option>';}).join('')+'</select></label><button class="sec" '+(awards.length?'':'disabled')+' onclick="feedPetAward(\''+id+'\',document.getElementById(\'petAwardFeedSelect\').value)">喂奖杯</button><label>喂一首未喂过的 Demo<select id="petDemoFeedSelect">'+demos.map(function(x){return '<option value="'+x.id+'">'+petEsc(x.text)+' · 品质 '+Math.round(petDemoQuality(x))+'</option>';}).join('')+'</select></label><button class="sec" '+(demos.length?'':'disabled')+' onclick="feedPetDemo(\''+id+'\',document.getElementById(\'petDemoFeedSelect\').value)">喂 Demo</button>';document.getElementById("mInfo").classList.add("open");};
+window.feedPetFood=function(id){var s=petStore(),p=findPet(id);if(!p||s.food<1)return alert("没有宠物粮，请先去商店购买。");s.food--;p.hunger=Math.min(100,p.hunger+35);p.health=Math.min(100,p.health+5);p.mood=Math.min(100,p.mood+7);p.feedHistory.unshift({type:"food",at:Date.now()});maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(id);};
+window.feedPetMoney=function(id){var p=findPet(id);if(!p||Number(ad.m||0)<10000)return alert("资金不足。");ad.m-=10000;p.mood=Math.min(100,p.mood+12);p.buffs.push({type:"luxury",name:"富养气质",value:1,at:Date.now()});p.feedHistory.unshift({type:"money",amount:10000,at:Date.now()});maybeAddShinyTrait(p,Math.random);petSave();openPetFeed(id);};
+window.healPet=function(id){var s=petStore(),p=findPet(id);if(!p||s.medicine<1)return alert("没有治疗用品。");s.medicine--;p.health=100;p.mood=Math.min(100,p.mood+10);p.events.unshift({type:"recover",text:"使用治疗用品恢复健康",at:Date.now()});petSave();openPetFeed(id);};
+window.feedPetAward=function(petIdValue,awardId){var p=findPet(petIdValue),item=petAwardInstances().find(function(x){return x.id===awardId;});if(!p||!item||p.awardFeedIds.indexOf(awardId)>=0)return alert("这座奖杯已经喂过，或记录不存在。");p.awardFeedIds.push(awardId);p.mood=Math.min(100,p.mood+15);p.buffs.push({type:"prestige",name:"奖杯荣光",value:1,sourceId:awardId});p.feedHistory.unshift({type:"award",sourceId:awardId,text:item.text,at:Date.now()});var chance=Math.min(.01,PET_SHINY_BASE_RATE*.12+.00008);if(!p.shiny&&Math.random()<chance)makePetShiny(p,"奖杯荣光",Math.random);else maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(petIdValue);};
+window.feedPetDemo=function(petIdValue,demoId){var p=findPet(petIdValue),demo=petDemoInstances().find(function(x){return x.id===demoId;});if(!p||!demo||p.demoFeedIds.indexOf(demoId)>=0)return alert("这首 Demo 已经喂过，或记录不存在。");var quality=petDemoQuality(demo);p.demoFeedIds.push(demoId);p.feedHistory.unshift({type:"demo",sourceId:demoId,text:demo.text,quality:quality,at:Date.now()});p.hunger=Math.min(100,p.hunger+10);var badRoll=Math.max(.03,(55-quality)/110);if(Math.random()<badRoll){p.health=Math.max(10,p.health-22);p.mood=Math.max(10,p.mood-15);p.events.unshift({type:"illness",text:"吃了品质不合适的 Demo 后拉肚子",at:Date.now()});}else{p.mood=Math.min(100,p.mood+Math.round(quality/8));p.buffs.push({type:"music",name:"Demo 共鸣",value:Math.max(1,Math.round(quality/20)),sourceId:demoId});}var playerSkill=Math.max(1,Math.min(100,Number(ad&&ad.sk&&ad.sk.w||50))),chance=Math.min(.01,PET_SHINY_BASE_RATE*.1+(quality/100)*.0008+(playerSkill/100)*.0001),changed=!p.shiny&&Math.random()<chance&&makePetShiny(p,"Demo《"+demo.text+"》",Math.random);if(changed){demo.raw.flashResonance={petId:p.id,petName:p.name,at:Date.now(),bonus:"闪光共鸣",value:Math.max(2,Math.round(quality/12))};}else maybeAddShinyTrait(p,Math.random);petSave();renderDesktopPet();openPetFeed(petIdValue);};
+window.copyPetCode=function(id){var p=findPet(id);if(!p)return;p.code=encodePetCode(p);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(p.code).then(function(){alert("宠物码已复制。");}).catch(function(){prompt("复制这个宠物码",p.code);});else prompt("复制这个宠物码",p.code);};
+function localBreedEgg(a,b){var species=a.species===b.species?a.species:petRandomItem([a.species,b.species],Math.random),hybrids=Array.from(new Set([a.species,b.species].concat(a.hybridParents||[],b.hybridParents||[]))),colors=[a.color,a.accent,b.color,b.accent].filter(Boolean);return {id:petId("egg"),species:species,label:(a.species===b.species?PET_SPECIES[species].name:hybrids.map(function(x){return PET_SPECIES[x].name;}).join("×"))+"二代蛋",generation:Math.max(Number(a.generation||1),Number(b.generation||1))+1,parents:[a.id,b.id],hybridParents:hybrids,colors:colors,style:a.style===b.style?a.style:"fusion",shinyRate:petInheritedShinyRate(!!a.shiny,!!b.shiny)};}
+window.breedWithPetCode=async function(id){var a=findPet(id);if(!a)return;var code=prompt("输入另一只宠物的宠物码");if(!code)return;var b;try{b=decodePetCode(code);}catch(e){return alert(e.message);}a.partner={id:b.id,name:b.name,species:b.species,affection:100};var egg=localBreedEgg(a,b),s=petStore();if(a.growthMode!=="local"&&typeof api==="function"){try{var aiReply=await api("根据两只可爱桌宠的父母色生成后代分区花色。只返回四个 #RRGGBB 颜色，用逗号分隔。父母色："+[a.color,a.accent,b.color,b.accent].join("、"));var aiColors=String(aiReply||"").match(/#[0-9a-f]{6}/ig);if(aiColors&&aiColors.length>=4)egg.colors=aiColors.slice(0,4).map(function(x){return x.toLowerCase();});}catch(aiError){console.warn("AI 宠物花色生成失败，已使用本地遗传",aiError);}}s.eggs.push(egg);a.children.push(egg.id);a.events.unshift({type:"love",text:"与 "+b.name+" 相恋并获得宠物蛋",at:Date.now()});petSave();alert("恋爱关系建立，并获得一颗 "+egg.label+"。跨物种后代会使用安全可爱模板。");openPetSystem();};
+window.generatePetPersonalityAI=async function(id){var p=findPet(id);if(!p)return;if(p.growthMode==="local")return alert("当前宠物使用本地模式，请切换到混合或 AI 模式。");try{var response=await api("为一只游戏桌宠生成一句20字以内的可爱性格描述。只返回文字。宠物信息："+petSpeciesLabel(p)+"，"+p.style+"风格，已有经历："+p.events.slice(0,5).map(function(x){return x.text;}).join("；"));if(!response)throw new Error("AI 无返回");p.personality=String(response).replace(/<[^>]*>/g,"").replace(/[{}\[\]`]/g,"").trim().slice(0,40)||p.personality;p.events.unshift({type:"personality",text:"AI 根据成长轨迹形成性格："+p.personality,at:Date.now()});petSave();openPetDetail(id);}catch(e){p.personality=petRandomItem(["外冷内热","爱听 Demo","喜欢追着光点跑","看到奖杯就兴奋","安静但很黏人"],Math.random);p.events.unshift({type:"personality",text:"AI 不可用，使用本地性格："+p.personality,at:Date.now()});petSave();openPetDetail(id);}};
+function mountPetSystem(){var page=document.getElementById("pApi");if(page&&!document.getElementById("petSystemSettingsCard")){var card=document.createElement("div");card.id="petSystemSettingsCard";card.className="card";card.innerHTML='<h2 class="tg" style="font-size:16px;margin-bottom:6px;">桌面宠物</h2><p style="font-size:11px;color:#666;">可选的时尚配饰支线：孵蛋、喂养、成长、恋爱、繁育与闪光轨迹。闪光特征池：电子像素 100 项 · 可爱奶油 100 项。</p><button onclick="openPetSystem()">打开宠物系统</button>';page.insertBefore(card,page.firstChild);}try{var local=JSON.parse(localStorage.getItem("starPro_pet_ui_v1")||"null"),s=petStore();if(local&&s){["desktopVisible","size","activePetId","x","y"].forEach(function(k){if(local[k]!==undefined&&s[k]===undefined)s[k]=local[k];});}}catch(e){}renderDesktopPet();}
+window.__petSystemDebug={pixelTraits:PIXEL_SHINY_TRAITS,creamTraits:CREAM_SHINY_TRAITS,createPetBirth:createPetBirth,decodePetCode:decodePetCode,encodePetCode:encodePetCode,localBreedEgg:localBreedEgg};
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(mountPetSystem,50);});else setTimeout(mountPetSystem,50);
+setInterval(function(){var s=petStore();if(!s)return;s.pets.forEach(function(p){p.hunger=Math.max(0,Number(p.hunger||0)-.25);if(p.hunger<15)p.mood=Math.max(0,p.mood-.15);});renderDesktopPet();},60000);
+</script>
 </body>
 </html>
+
+
+
+
+
+
+
