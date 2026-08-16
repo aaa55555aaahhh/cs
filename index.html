@@ -4,33 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星路制作人 - 真实乐坛重制版</title>
+<style>
+/* Dedicated shiny trait visuals: these are layered on top of the base 2D pet. */
+.pet-trait-layer.cream.effect-8.slot-8{right:-18px;top:7px;width:12px;height:12px;border:2px solid currentColor;background:rgba(255,255,255,.45);box-shadow:16px -9px 0 -2px rgba(255,255,255,.65),27px 5px 0 -3px rgba(255,255,255,.7),0 0 7px currentColor;animation:pet-bubbles 2.2s ease-in-out infinite}
+.pet-trait-layer.cream.effect-9.slot-9{left:5px;right:5px;top:-19px;height:18px;border:0;background:radial-gradient(circle at 12% 55%,#fff 0 3px,transparent 4px),radial-gradient(circle at 32% 28%,currentColor 0 3px,transparent 4px),radial-gradient(circle at 55% 62%,#fff5a8 0 3px,transparent 4px),radial-gradient(circle at 78% 30%,currentColor 0 3px,transparent 4px);animation:pet-crown-stars 1.8s ease-in-out infinite}
+.pet-trait-layer.pixel.effect-7.slot-7{inset:-13px;border:2px solid #00e7ff;box-shadow:5px 0 #ff2bd6,-4px 4px #d8ff38;animation:pet-popup-glitch 1.1s steps(2,end) infinite}
+.pet-trait-layer.pixel.effect-9.slot-9{left:2px;right:2px;top:-18px;height:16px;border:0;background:linear-gradient(90deg,transparent 0 8%,#00e7ff 8% 12%,transparent 12% 28%,#ff2bd6 28% 33%,transparent 33% 54%,#d8ff38 54% 59%,transparent 59% 78%,#00e7ff 78% 84%,transparent 84%);animation:pet-reassemble 1.4s steps(3,end) infinite}
+@keyframes pet-bubbles{0%,100%{transform:translateY(3px) scale(.82);opacity:.45}50%{transform:translate(6px,-10px) scale(1.12);opacity:1}}
+@keyframes pet-crown-stars{0%,100%{transform:translateY(3px) rotate(-4deg);opacity:.55}50%{transform:translateY(-5px) rotate(4deg);opacity:1}}
+@keyframes pet-popup-glitch{0%,100%{clip-path:inset(0 0 0 0);opacity:.65}45%{clip-path:inset(0 35% 45% 0);transform:translate(4px,-2px)}70%{clip-path:inset(45% 0 0 35%);transform:translate(-3px,2px)}}
+@keyframes pet-reassemble{0%,100%{transform:translateX(0);opacity:.55}35%{transform:translateX(-6px);opacity:1}68%{transform:translateX(5px);opacity:.8}}
+</style>
 <script>
-// 登录兜底：必须在页面按钮之前定义，避免主游戏脚本异常时入口不可用。
-(function(){
-  window.VALID_PASSWORDS = window.VALID_PASSWORDS || ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169", "3895067493", "2964441941"];
-  window.checkLoginPwd = window.checkLoginPwd || function() {
-    var input = document.getElementById("loginPwd");
-    var inputPwd = input ? input.value.trim() : "";
-    if (window.VALID_PASSWORDS.indexOf(inputPwd) === -1) {
-      alert("密码错误或已被弃用，请重新输入！");
-      return;
-    }
-    try {
-      localStorage.setItem("starPro_login_pwd", inputPwd);
-      localStorage.setItem("starPro_is_unlocked", "true");
-    } catch (e) {}
-    var loginPage = document.getElementById("loginPage");
-    if (loginPage) {
-      loginPage.classList.remove("active");
-      loginPage.style.display = "none";
-    }
-    var createPage = document.getElementById("createPage");
-    if (createPage) {
-      createPage.style.display = "block";
-      createPage.classList.add("active");
-    }
-  };
-})();
+// 登录由文件末尾的云端 device-auth 权威层统一接管。
 // ==================== 最终音乐数据一致性修复：同名新歌、概率复评、榜单走势 ====================
 document.addEventListener("DOMContentLoaded", function installFinalMusicDataFixes(){
     function arr(v){ return Array.isArray(v) ? v : []; }
@@ -18274,72 +18260,7 @@ window.confirmStartWrite = function() {
     saveGame(); 
 };
 
-// ==================== 全局密码与系统配置 (已修复冲突) ====================
-// 这里是可以随时扩充的有效密码列表
-window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169", "2964441941"];
-window.checkLoginPwd = function() {
-    let inputPwd = document.getElementById("loginPwd").value.trim();
-
-    // 验证密码
-    if (!window.VALID_PASSWORDS.includes(inputPwd)) {
-        // 密码错误：用原生 alert 兜底（绕过 gameAlert 劫持），避免模态层卡死
-        try { window.constructor.prototype.alert.call(window, "密码错误或已被弃用，请重新输入！"); }
-        catch(e){ window.gameAlert("密码错误或已被弃用，请重新输入！"); }
-        return;
-    }
-
-    // 保存免密
-    try {
-        localStorage.setItem("starPro_login_pwd", inputPwd);
-        localStorage.setItem("starPro_is_unlocked", "true");
-    } catch (e) {}
-
-    // 先切换页面（核心动作，不能被弹窗阻塞）
-    let loginPage = document.getElementById("loginPage");
-    if (loginPage) {
-        loginPage.classList.remove("active");
-        loginPage.style.display = "none";
-    }
-    let createPage = document.getElementById("createPage");
-    if (createPage) {
-        createPage.style.display = "block";
-        createPage.classList.add("active");
-    }
-
-    // 最后再提示，用 setTimeout 确保页面切换先完成，且用原生 alert 兜底
-    setTimeout(function(){
-        try { window.constructor.prototype.alert.call(window, "登录成功！进入大厅。"); }
-        catch(e){ window.gameAlert("登录成功！进入大厅。"); }
-    }, 50);
-};
-
-// 整合唯一的检测逻辑，防止多个 DOMContentLoaded 互相打架
-document.addEventListener('DOMContentLoaded', function() {
-    // 用 setTimeout(0) 延迟到所有其他 DOMContentLoaded 监听器执行完毕后再跑，
-    // 避免被后续 40+ 个监听器覆盖掉免密放行结果。
-    setTimeout(function() {
-        // 强制先隐藏所有页面，防止重叠
-        document.querySelectorAll('.page').forEach(p => {
-            p.classList.remove('active');
-            p.style.display = 'none';
-        });
-
-        let isUnlocked = localStorage.getItem("starPro_is_unlocked");
-        let savedPwd = localStorage.getItem("starPro_login_pwd");
-
-        // 严格判断：必须免密且密码存在于现在的有效数组中才放行
-        if (isUnlocked === "true" && window.VALID_PASSWORDS && window.VALID_PASSWORDS.includes(savedPwd)) {
-            let cp = document.getElementById('createPage');
-            if(cp) { cp.style.display = 'block'; cp.classList.add('active'); }
-        } else {
-            // 密码作废或未登录，清理缓存并展示登录页
-            localStorage.removeItem("starPro_is_unlocked");
-            localStorage.removeItem("starPro_login_pwd");
-            let lp = document.getElementById('loginPage');
-            if(lp) { lp.style.display = 'flex'; lp.classList.add('active'); }
-        }
-    }, 0);
-});
+// 旧的前端密码验证与免密逻辑已删除，避免与云端设备授权冲突。
 // ====== 全局致命错误捕获弹窗 ======
 window.onerror = function(msg, url, lineNo, columnNo, error) {
     if (msg && (msg.includes("reading 'f'") || msg.includes("reading 'player'"))) {
@@ -19752,6 +19673,22 @@ window.advTime = function(weeks, showMsg) {
     });
     
     if (oldAdvTimeForHistory2) oldAdvTimeForHistory2(weeks, showMsg);
+};
+window.loverChat = async function() {
+    var lover=(Array.isArray(conts)?conts:[]).find(function(c){return c&&c.isCohabiting===true;});
+    if(!lover)return alert('当前没有同居伴侣。');
+    if(!Array.isArray(lover.h))lover.h=[];
+    var key=[time.y,time.m,time.w,time.d||1].join('_');
+    if(lover.lastHomeChatKey===key)return alert(lover.n+' 今天已经和你聊过了，明天再来吧。');
+    var topics=['最近的工作压力','下一张专辑的方向','家里的日常安排','彼此最近的心情','网上关于你们的讨论'];
+    var topic=topics[Math.floor(Math.random()*topics.length)],reply='我一直都在，你按自己的节奏来就好。';
+    try{if(typeof api==='function'){var result=await api('你是玩家的同居伴侣 '+lover.n+'。围绕“'+topic+'”用自然亲密、不过度肉麻的语气回复一句中文，只返回回复内容。');if(result)reply=String(result).replace(/<[^>]*>/g,'').trim().slice(0,100)||reply;}}catch(error){}
+    lover.affinity=Math.min(100,Number(lover.affinity||0)+2);
+    lover.lastHomeChatKey=key;
+    lover.h.push({me:true,txt:'想和你聊聊'+topic+'。',at:key});lover.h.push({me:false,txt:reply,at:key});
+    if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();
+    alert(lover.n+'：'+reply+'\n\n亲密度 +2');
+    if(typeof showMap==='function')showMap('mapHome');
 };
 
 // 4. 重写榜单渲染：增加底部【上期出榜 (OUT)】显示区域
@@ -22445,7 +22382,6 @@ window.checkAutoAward = function() {
     // 1. 登录逻辑已由 15358 行的统一版本接管，此处不再重复定义 checkLoginPwd，
     //    避免普通 alert 被全局 gameAlert 劫持后造成模态层卡死。
     //    仅保留密码表，供主逻辑使用。
-    window.VALID_PASSWORDS = ["3800069889", "1639867407", "1602096774", "1320037013", "1579480272", "2081068849", "2904876518", "3879220344", "1647460199", "366880642", "2868289169", "2964441941"];
     // 2. 修复玩家头像无法更改：每次上传后强制清空 input 值
     window.uploadMyAvatar = function(input) {
         if (input.files && input.files[0]) {
@@ -23486,32 +23422,49 @@ document.addEventListener("DOMContentLoaded", function(){
                 var groupStreams=Number(t.stmGlobal_Week||t.stmGlobal||0),groupRelease=Number(t.groupReleaseWeeks||t.weeks||0);
                 if(groupStreams<5000||groupRelease<1)return 0;
             }
-            var stmUS=Number(t.stmUS_Week||0),sales=finalSalesUnits(t)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
+            var stmUS=Number(t.stmUS_Week||0),sales=finalSalesUnits(t),radio=Math.max(0,Number(t.radioAud||0));
             return Math.max(0,(sales/150)+(stmUS*.7/15000)+(stmUS*.3/45000)+(radio*3));
         }
-        function finalNormalizeMarketStreams(){
-            var cfg=finalMarketSettings(),tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=tracks.reduce(function(m,t){return Math.max(m,Number(t.stmGlobal_Day||0));},0);
-            if(top<=cfg.dailyBase||top<=0)return;
-            var scale=cfg.dailyBase/top;
-            tracks.forEach(function(t){
-                t.stmGlobal_Day=Math.max(0,Math.floor(Number(t.stmGlobal_Day||0)*scale));
-                t.stmGlobal_Week=Math.max(0,Math.floor(Number(t.stmGlobal_Week||0)*scale));
-                if(!t.stmGlobal_Week)t.stmGlobal_Week=t.stmGlobal_Day*7;
-                t.stmUS_Day=Math.min(t.stmGlobal_Day,Math.max(0,Math.floor(Number(t.stmUS_Day||0)*scale)));
-                t.stmUS_Week=Math.min(t.stmGlobal_Week,Math.max(0,Math.floor(Number(t.stmUS_Week||0)*scale)));
+        function rankStableMarketCompression(values,cap){
+            var limit=Math.max(1,Number(cap)||1),clean=Array.from(values||[]).map(function(value){return Math.max(0,Number(value)||0);}),top=clean.reduce(function(high,value){return Math.max(high,value);},0);
+            if(top<=limit)return clean.map(function(value){return Math.round(value);});
+            var previous=Infinity;
+            return clean.map(function(value,rank){
+                var c=value/limit,rankBuffer=value>limit?Math.sqrt(rank):Math.max(0,Math.sqrt(rank)-1),compressed=Math.max(0,Math.round(value/(c+rankBuffer)));
+                if(rank>0)compressed=Math.min(compressed,Math.max(0,previous-1));
+                previous=compressed;return compressed;
             });
         }
+        window.rankStableMarketCompression=rankStableMarketCompression;
+        function marketJitterValues(values,key){
+            var base=Array.from(values||[]).map(function(value){return Math.max(0,Number(value)||0);}),out=base.map(function(value,index){
+                var text=String(key||'market')+':'+index+':'+value,hash=0;for(var i=0;i<text.length;i++)hash=(hash*31+text.charCodeAt(i))>>>0;
+                return Math.max(0,Math.round(value*(.95+(hash%1001)/10000)));
+            });
+            for(var i=out.length-2;i>=0;i--)if(base[i]>base[i+1])out[i]=Math.max(out[i],out[i+1]+1);
+            return out;
+        }
+        window.marketJitterValues=marketJitterValues;
+        function finalNormalizeMarketStreams(){
+            var cfg=finalMarketSettings(),tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),stamp=String(time&&time.y||0)+'_'+String(time&&time.m||0)+'_'+String(time&&time.w||0),ordered=tracks.slice();
+            ordered.forEach(function(t){if(t._marketFloatStamp!==stamp)t._marketBaseDay=Math.max(0,Number(t.stmGlobal_Day||0));});
+            ordered.sort(function(a,b){return Number(b._marketBaseDay!=null?b._marketBaseDay:b.stmGlobal_Day||0)-Number(a._marketBaseDay!=null?a._marketBaseDay:a.stmGlobal_Day||0);});
+            var rawDays=ordered.map(function(t){if(t._marketFloatStamp!==stamp){t._marketBaseDay=Math.max(0,Number(t.stmGlobal_Day||0));t._marketBaseWeek=Math.max(0,Number(t.stmGlobal_Week||0));t._marketBaseUSDay=Math.max(0,Number(t.stmUS_Day||0));t._marketBaseUSWeek=Math.max(0,Number(t.stmUS_Week||0));}return t._marketBaseDay;}),compressed=rankStableMarketCompression(rawDays,cfg.dailyBase),floated=marketJitterValues(compressed,'stream:'+stamp);
+            ordered.forEach(function(t,rank){var rawDay=rawDays[rank],baseDay=compressed[rank],day=floated[rank],factor=baseDay>0?day/baseDay:1;t.stmGlobal_Day=day;t.stmGlobal_Week=Math.max(0,Math.round(t._marketBaseWeek*factor));if(!t.stmGlobal_Week)t.stmGlobal_Week=t.stmGlobal_Day*7;t.stmUS_Day=Math.min(t.stmGlobal_Day,Math.max(0,Math.round(t._marketBaseUSDay*factor)));t.stmUS_Week=Math.min(t.stmGlobal_Week,Math.max(0,Math.round(t._marketBaseUSWeek*factor)));t._marketFloatStamp=stamp;});
+        }
         function finalSetBillboardParts(t){
-            var stmUS=Number(t.stmUS_Week||0),salesUnits=finalSalesUnits(t)*Number(t.price||1),radio=Math.max(0,Number(t.radioAud||0));
+            var stmUS=Number(t.stmUS_Week||0),salesUnits=finalSalesUnits(t),radio=Math.max(0,Number(t.radioAud||0));
             var parts={stream:(stmUS*.7/15000)+(stmUS*.3/45000),sales:salesUnits/150,radio:radio*3},total=parts.stream+parts.sales+parts.radio;
             if(!isFinite(total)||total<=0){t._pctStm=0;t._pctSales=0;t._pctRadio=0;return;}
-            t._pctStm=Math.round(parts.stream/total*100);t._pctSales=Math.round(parts.sales/total*100);t._pctRadio=Math.max(0,100-t._pctStm-t._pctSales);
+            t._pctStm=Math.round(parts.stream/total*1000)/10;t._pctSales=Math.round(parts.sales/total*1000)/10;t._pctRadio=Math.max(0,Math.round((100-t._pctStm-t._pctSales)*10)/10);
         }
         function normalizeBillboardPointValues(values,cap){
-            var limit=Math.min(500,Math.max(1,Number(cap)||500));
+            var requested=Number(cap),limit=isFinite(requested)&&requested>0?Math.max(1,requested):500;
             var clean=Array.from(values||[]).map(function(value){value=Number(value);return isFinite(value)&&value>0?value:0;});
-            var max=clean.reduce(function(high,value){return Math.max(high,value);},0),scale=max>limit?limit/max:1;
-            return clean.map(function(value){return Math.max(0,Math.round(value*scale));});
+            var order=clean.map(function(value,index){return {value:value,index:index};}).sort(function(a,b){return b.value-a.value;});
+            var compressed=marketJitterValues(rankStableMarketCompression(order.map(function(item){return item.value;}),limit),'billboard:'+String(typeof finalDateKey==='function'?finalDateKey():'current')),result=new Array(clean.length);
+            order.forEach(function(item,rank){result[item.index]=compressed[rank];});
+            return result;
         }
         window.normalizeBillboardPointValues=normalizeBillboardPointValues;
         function finalNormalizeBillboardPoints(){
@@ -23557,8 +23510,7 @@ document.addEventListener("DOMContentLoaded", function(){
         var finalOriginalAdvTimeForMarket=window.advTime;
         window.advTime=function(weeks,showMsg){
             var result=typeof finalOriginalAdvTimeForMarket==="function"?finalOriginalAdvTimeForMarket.apply(this,arguments):undefined,cfg=finalSaveMarketSettings();
-            var tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";}),top=tracks.reduce(function(m,t){return Math.max(m,Number(t.stmGlobal_Day||0));},0);
-            if(top>0){var scale=cfg.dailyBase/top;tracks.forEach(function(t){t.stmGlobal_Day=Math.max(0,Math.floor(Number(t.stmGlobal_Day||0)*scale));t.stmGlobal_Week=t.stmGlobal_Day*7;t.stmUS_Day=Math.floor(t.stmGlobal_Day*.35);t.stmUS_Week=t.stmUS_Day*7;});}
+            var tracks=Array.from(trackPool||[]).filter(function(t){return t&&t.type==="track";});
             finalNormalizeMarketStreams();tracks.forEach(finalEnsureDecadeStats);finalNormalizeBillboardPoints();return result;
         };
         var finalOriginalSwitchChartRegion=window.switchChartRegion;
@@ -23682,7 +23634,7 @@ document.addEventListener("DOMContentLoaded", function(){
             var x=hot100Consumption(t),stream=x.paid+x.free,total=x.total;
             t.hot100PaidEquivalent=x.paid;t.hot100FreeEquivalent=x.free;t.hot100ITunesUSUnits=x.itunesUS;t.hot100OtherPureSalesUnits=x.otherPureSales;t.hot100SalesEquivalent=x.sales;t.hot100RadioEquivalent=x.radio;t.hot100ConsumptionTotal=total;
             if(total<=0){t._pctStm=0;t._pctSales=0;t._pctRadio=0;return;}
-            t._pctStm=Math.round(stream/total*100);t._pctSales=Math.round(x.sales/total*100);t._pctRadio=Math.max(0,100-t._pctStm-t._pctSales);
+            t._pctStm=Math.round(stream/total*1000)/10;t._pctSales=Math.round(x.sales/total*1000)/10;t._pctRadio=Math.max(0,Math.round((100-t._pctStm-t._pctSales)*10)/10);
         };
 
         // Award ceremonies settle once per calendar year and always publish every winner.
@@ -23941,8 +23893,6 @@ document.addEventListener("DOMContentLoaded", function(){
 (function(){
 function installRuntimeAuthority(){
     if(window.__runtimeAuthorityInstalled)return;window.__runtimeAuthorityInstalled=true;
-    if(!Array.isArray(window.VALID_PASSWORDS))window.VALID_PASSWORDS=[];
-    ['366880642','2868289169'].forEach(function(pwd){if(window.VALID_PASSWORDS.indexOf(pwd)<0)window.VALID_PASSWORDS.push(pwd);});
     var esc=window.E||function(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};window.E=esc;
     function saveNow(){if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();}
 
@@ -24285,6 +24235,9 @@ function installRuntimeAuthority(){
     function isStorageQuotaError(error){return !!error&&(error.name==='QuotaExceededError'||error.name==='NS_ERROR_DOM_QUOTA_REACHED'||error.code===22||error.code===1014);}
     function persistSnapshot(showSuccess){
         var json,key=getSaveKey(),bytes=0;
+        if(!ad||typeof ad!=='object'||!ad.r){
+            try{var existing=localStorage.getItem(key);if(existing){var oldData=JSON.parse(existing);if(oldData&&oldData.ad&&oldData.ad.r){window.__lastSaveStatus={ok:false,protected:true,key:key,error:'EMPTY_RUNTIME_BLOCKED'};return false;}}}catch(protectError){}
+        }
         try{json=saveSnapshotJSON();bytes=json.length*2;localStorage.setItem(key,json);ad._lastSaveBytes=bytes;ad._lastSaveAt=new Date().toISOString();window.__lastSaveStatus={ok:true,key:key,bytes:bytes,totalBytes:storageUsage()};if(showSuccess)alert('保存成功，存档大小 '+formatStorageBytes(bytes)+'。');return true;}
         catch(error){
             window.__lastSaveStatus={ok:false,key:key,bytes:bytes,totalBytes:storageUsage(),error:error&&error.name||String(error)};
@@ -24726,9 +24679,17 @@ normalizeEntertainmentCredits();
 setTimeout(normalizeEntertainmentCredits,1800);
 function advanceScreenHeatByTrend(){if(!ad||!Array.isArray(ad.screenProjects))return;ad.screenProjects.forEach(function(p){if(!p||p.exhibitionStatus==='已下映')return;var base=Math.max(0,Number(p.heat)||0),watch=p.kind==='film'?Number(p.boxOffice||0)/1000000:Number(p.watchHours||0),quality=(Number(p.directorLevel||3)+Number(p.writerLevel||3)+Number(p.cameraLevel||3)+Number(p.locationLevel||2))*1.8,delta=watch*.012+Number(p.reputation||50)*.08+quality-18;if(String(p.scriptGrade||'').indexOf('A')===0&&Math.random()<.18){p.screenEvents.push({type:'精美场景与紧密剧本',at:[time.y,time.m,time.d].join('-')});delta+=quality*.65;}if(Math.random()<.035+Math.min(.08,Number(p.scriptQuality||0)/1800)){p.screenEvents.push({type:'神级演技爆发',at:[time.y,time.m,time.d].join('-')});delta+=35+Math.random()*55;}var next=Math.max(0,Math.round(base+delta));p.heatDelta=Math.round(next-base);p.heat=next;p.heatHistory.push({key:[time.y,time.m,time.w].join('_'),heat:next,delta:p.heatDelta});if(p.heatHistory.length>104)p.heatHistory.shift();});}
 function ensureScreenMarketLimits(){if(!ad.screenMarketLimits)ad.screenMarketLimits={film:50000000000,tv:180000,short:30000};return ad.screenMarketLimits;}
+function applyScreenMarketCompression(){
+  var limits=ensureScreenMarketLimits(),projects=Array.isArray(ad.screenProjects)?ad.screenProjects:[];
+  [['film','boxOffice'],['tv','watchHours'],['short','watchHours']].forEach(function(pair){
+    var kind=pair[0],field=pair[1],list=projects.filter(function(p){return p&&((kind==='film'&&p.kind==='film')||(kind==='tv'&&p.kind==='tv')||(kind==='short'&&p.kind!=='film'&&p.kind!=='tv'));});
+    var raw=list.map(function(p){var key='_rawMarket_'+field;if(!isFinite(Number(p[key])))p[key]=Math.max(0,Number(p[field]||0));return Math.max(0,Number(p[key]||0));});
+    var normalized=marketJitterValues(rankStableMarketCompression(raw,Number(limits[kind]||0)),'screen:'+kind+':'+String(time&&time.y||0)+'_'+String(time&&time.m||0)+'_'+String(time&&time.w||0));list.forEach(function(p,i){p[field]=normalized[i];});
+  });
+}
 window.openScreenMarketLimits=function(){var l=ensureScreenMarketLimits();document.getElementById('mInfoTitle').innerText='影视大盘限制';document.getElementById('mInfoContent').innerHTML='<p style="font-size:11px;color:#777;">限制影视作品可计入的大盘数据上限，电影按美元票房，电视剧和短剧按万小时观看量。</p><label>电影全球票房上限（美元）</label><input id="limitFilm" type="number" value="'+l.film+'"><label>电视剧观看量上限（万小时）</label><input id="limitTV" type="number" value="'+l.tv+'"><label>短剧观看量上限（万小时）</label><input id="limitShort" type="number" value="'+l.short+'"><button onclick="saveScreenMarketLimits()">保存限制</button>';document.getElementById('mInfo').classList.add('open');};
-window.saveScreenMarketLimits=function(){var l=ensureScreenMarketLimits();l.film=Math.max(0,Number(document.getElementById('limitFilm').value)||0);l.tv=Math.max(0,Number(document.getElementById('limitTV').value)||0);l.short=Math.max(0,Number(document.getElementById('limitShort').value)||0);(ad.screenProjects||[]).forEach(function(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);});if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();alert('影视大盘限制已保存。');};
-var _screenComplete=window.completeCurrentScreenProduction;window.completeCurrentScreenProduction=function(){var r=_screenComplete&&_screenComplete.apply(this,arguments),l=ensureScreenMarketLimits(),p=ad.screenProjects&&ad.screenProjects[0];if(p){if(p.kind==='film')p.boxOffice=Math.min(Number(p.boxOffice||0),l.film);else p.watchHours=Math.min(Number(p.watchHours||0),p.kind==='tv'?l.tv:l.short);}if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return r;};
+window.saveScreenMarketLimits=function(){var l=ensureScreenMarketLimits();l.film=Math.max(0,Number(document.getElementById('limitFilm').value)||0);l.tv=Math.max(0,Number(document.getElementById('limitTV').value)||0);l.short=Math.max(0,Number(document.getElementById('limitShort').value)||0);applyScreenMarketCompression();if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();alert('影视大盘限制已保存。');};
+var _screenComplete=window.completeCurrentScreenProduction;window.completeCurrentScreenProduction=function(){var r=_screenComplete&&_screenComplete.apply(this,arguments);applyScreenMarketCompression();if(typeof saveGameImmediate==='function')saveGameImmediate();else if(typeof saveGame==='function')saveGame();return r;};
 var _screenHub=window.openScreenProjectHub;window.openScreenProjectHub=function(){return _screenHub&&_screenHub.apply(this,arguments);};
 (function installCloudDeviceLogin(){
     'use strict';
@@ -24788,7 +24749,9 @@ var _screenHub=window.openScreenProjectHub;window.openScreenProjectHub=function(
             var result=await request('/api/verify',{password:password,deviceId:deviceId()});
             if(!result.ok){
                 try{localStorage.removeItem(VERIFIED_KEY);}catch(error){}
-                if(result.data.code==='DEVICE_MISMATCH')nativeAlert('该密码已经绑定其他设备。如需换设备，请让管理员先解绑。');
+                if(result.data.code==='DEVICE_MISMATCH'){
+                    nativeAlert('该账号已经绑定其他设备。请点击“使用一次性恢复码换绑”，输入恢复码即可迁移到当前设备。');
+                }
                 else if(result.data.code==='DEVICE_ALREADY_BOUND')nativeAlert('当前设备已经绑定过另一个密码，不能再使用新的密码。');
                 else nativeAlert(result.data.message||'密码错误或已停用。');
                 return;
@@ -24806,9 +24769,47 @@ var _screenHub=window.openScreenProjectHub;window.openScreenProjectHub=function(
             if(button){button.disabled=false;button.textContent='验证并进入大厅';}
         }
     };
+    window.rebindWithRecoveryCode=async function(){
+        if(loginBusy)return;
+        var input=document.getElementById('loginPwd'),password=input?input.value.trim():'';
+        if(!password){nativeAlert('请先输入账号密码。');return;}
+        var code=window.prompt('请输入一次性恢复码（使用成功后立即作废）：');
+        if(!code||!code.trim())return;
+        loginBusy=true;
+        try{
+            var result=await request('/api/rebind',{password:password,recoveryCode:code.trim(),deviceId:deviceId()});
+            if(!result.ok){
+                nativeAlert(result.data.message||'恢复码换绑失败。');
+                return;
+            }
+            try{localStorage.setItem(VERIFIED_KEY,'true');localStorage.removeItem('starPro_login_pwd');localStorage.removeItem('starPro_is_unlocked');}catch(error){}
+            if(input)input.value='';
+            enterLobby();
+            nativeAlert('换绑成功。该恢复码已作废，请妥善保管新的恢复码。');
+        }catch(error){nativeAlert('无法连接登录服务器，请稍后重试。');}
+        finally{loginBusy=false;}
+    };
+    window.generateRecoveryCode=async function(){
+        if(loginBusy)return;
+        var input=document.getElementById('loginPwd'),password=input?input.value.trim():'';
+        if(!password){nativeAlert('请先输入账号密码。');return;}
+        loginBusy=true;
+        try{
+            var result=await request('/api/recovery-code',{password:password,deviceId:deviceId()});
+            if(!result.ok){nativeAlert(result.data.message||'恢复码生成失败。');return;}
+            window.prompt('恢复码已生成。它只能使用一次，请立即保存：',result.data.recoveryCode||'');
+        }catch(error){nativeAlert('无法连接登录服务器，请稍后重试。');}
+        finally{loginBusy=false;}
+    };
     window.autoLoginSkip=function(){showLogin();};
     try{localStorage.removeItem('starPro_login_pwd');localStorage.removeItem('starPro_is_unlocked');}catch(error){}
     function start(){
+        var login=document.getElementById('loginPage');
+        if(login&&!document.getElementById('rebindRecoveryButton')){
+            var b=document.createElement('button');b.id='rebindRecoveryButton';b.type='button';b.className='sec';b.textContent='使用一次性恢复码换绑';b.onclick=window.rebindWithRecoveryCode;
+            var anchor=login.querySelector('button');if(anchor&&anchor.parentNode)anchor.parentNode.appendChild(b);else login.appendChild(b);
+            var g=document.createElement('button');g.id='generateRecoveryButton';g.type='button';g.className='sec';g.textContent='在当前设备生成恢复码';g.onclick=window.generateRecoveryCode;b.parentNode.insertBefore(g,b);
+        }
         var verified=false;try{verified=localStorage.getItem(VERIFIED_KEY)==='true';}catch(error){}
         if(!verified){showLogin();return;}
         // Keep the password page hidden while the remembered device session is checked.
@@ -24883,7 +24884,7 @@ window.importLocalSave=function(input){var file=input&&input.files&&input.files[
   function saveDb(){if(saveDbPromise)return saveDbPromise;saveDbPromise=new Promise(function(resolve,reject){var req=indexedDB.open('starProLocalSaves',1);req.onupgradeneeded=function(){req.result.createObjectStore('saves');};req.onsuccess=function(){resolve(req.result);};req.onerror=function(){reject(req.error);};});return saveDbPromise;}
   function mirrorSave(slot){try{var raw=typeof saveSnapshotJSON==='function'?saveSnapshotJSON():JSON.stringify(buildSaveSnapshot());saveDb().then(function(db){var tx=db.transaction('saves','readwrite');tx.objectStore('saves').put(raw,'starProSave_'+slot);});}catch(e){console.warn('IndexedDB 存档镜像失败',e);}}
   var originalSaveImmediate=window.saveGameImmediate;
-  window.saveGameImmediate=function(){var result=originalSaveImmediate&&originalSaveImmediate.apply(this,arguments);mirrorSave((document.getElementById('selSaveSlot')||{}).value||'1');return result;};
+  window.saveGameImmediate=function(){var result=originalSaveImmediate&&originalSaveImmediate.apply(this,arguments);if(result!==false&&ad&&ad.r)mirrorSave((document.getElementById('selSaveSlot')||{}).value||'1');return result;};
   var originalLoadGame=window.loadGame;
   window.loadGame=function(slot){var key='starProSave_'+(slot||((document.getElementById('selSaveSlot')||{}).value||'1'));try{if(localStorage.getItem(key))return originalLoadGame&&originalLoadGame.apply(this,arguments);}catch(e){}saveDb().then(function(db){var req=db.transaction('saves','readonly').objectStore('saves').get(key);req.onsuccess=function(){if(!req.result)return alert('未找到存档！');try{localStorage.setItem(key,req.result);originalLoadGame&&originalLoadGame.call(window,slot);}catch(e){alert('读取本地大容量存档失败：'+e.message);}};});};
   ensureInitialArtists();mountBackstage();removeVersionBadge();setTimeout(function(){ensureInitialArtists();mountBackstage();removeVersionBadge();},900);setInterval(removeVersionBadge,1500);
@@ -25091,6 +25092,17 @@ var PET_TRAIT_SLOTS=["轮廓","毛发","眼睛","耳朵","尾巴","爪印","移�
 function buildPetTraitPool(family,effects,details){var out=[];effects.forEach(function(effect,ei){details.forEach(function(detail,di){out.push({id:family+"_"+(ei*10+di+1),family:family,name:effect+"·"+detail,slot:PET_TRAIT_SLOTS[di],effect:effect,detail:detail});});});return out;}
 var PIXEL_SHINY_TRAITS=buildPetTraitPool("pixel",["RGB残影","彩码错位","全息描边","数据缺口","像素溢出","扫描脉冲","乱码闪烁","帧率漂移","霓虹缓存","量子贴图"],["轮廓分色","毛色代码块","符号瞳孔","信号耳尖","延迟尾迹","数据脚印","故障冲刺","待机弹窗","互动乱码","启动重组"]);
 var CREAM_SHINY_TRAITS=buildPetTraitPool("cream",["玫瑰珍珠","蓝月极光","香槟糖霜","彩虹星砂","牛奶银河","果冻晶糖","梦境云锦","季节糖晶","音乐虹光","皇冠星屑"],["珍珠轮廓","糖霜毛色","宝石瞳孔","水晶耳尖","梦境尾迹","糖果脚印","极光移动","彩虹呼吸","泡泡互动","星光登场"]);
+var PET_SHINY_EFFECT_DESCRIPTIONS={
+pixel:["RGB红绿蓝残影沿动作方向轻微分离，形成电子屏信号拖影","彩色代码方块局部错位，像贴图坐标短暂发生偏移","细薄全息彩边环绕主体，随角度出现青紫粉色变化","身体局部出现透明数据缺口，缺口内可见流动字符和网格","少量方形像素从轮廓向外溢出，随后重新吸附回身体","横向扫描光带周期性掠过，经过区域短暂提高亮度与饱和度","短促乱码符号在毛发上闪现，保持可爱且不遮挡脸部","动作边缘出现跳帧式重影，像低帧率动画中的连续姿态","柔和霓虹色块像缓存残留一样停留数帧后淡出","身体纹理短暂拆分成彩色模块，再以正确顺序重组"],
+cream:["玫瑰色珍珠光泽沿表面滚动，点缀细小乳白珠粒","蓝紫月光极光在柔软毛发上缓慢流动，边缘带银白微光","香槟金糖霜般的细闪覆盖局部，质感柔软而非金属","细密彩虹星砂散落在毛尖，移动时留下短暂星点","乳白银河纹理在身体表面缓慢旋转，夹杂淡粉和淡蓝星云","半透明果冻晶糖形成圆润高光，颜色清透且保持二维质感","柔和彩云织锦纹理随呼吸轻微变化，像梦境中的丝带","春夏秋冬四色糖晶以小面积斑点随机闪现，不改变基础纯色","音符形虹光随动作出现，颜色依次从粉、蓝、黄、绿过渡","皇冠状星屑在头顶和轮廓附近短暂聚合，再化为细闪落下"]
+};
+var PET_SHINY_SLOT_DESCRIPTIONS={
+pixel:["仅作用于外轮廓，保持内部纯色清晰","以规则代码块覆盖少量毛色区域，不形成第二种基础毛色","集中在眼睛高光与瞳孔符号，可与异瞳独立叠加","集中在一只或两只耳尖，耳朵动作时同步变化","沿尾巴摆动方向形成短距离延迟尾迹","只在脚掌落地位置生成短暂数据脚印","在奔跑、跳跃和转身时加强，静止时明显减弱","休息时形成小型系统弹窗式装饰，不出现文字商标","被点击或抚摸时短暂出现，随后自然消失","只在登场或状态切换瞬间完整展示一次"],
+cream:["沿身体外轮廓排列珍珠与柔光，不遮挡五官","以糖霜般渐变覆盖毛尖，底层仍保持初代纯色","集中在眼睛高光，可形成星星、爱心或宝石切面且不替代异瞳","集中在一只或两只耳尖，使用小颗水晶和柔软亮片","沿尾巴摆动留下轻薄梦境光带，不产生实体第二条尾巴","脚掌落地时留下糖果色星点和小型晶糖脚印","移动时出现柔和极光丝带，静止后缓慢淡出","呼吸时亮度与彩虹色泽轻微起伏，禁止强烈频闪","被点击、喂食或抚摸时生成半透明泡泡与珍珠光点","出生、登场或觉醒时出现星光环与细小皇冠星屑"]
+};
+function buildPetShinyTextDescriptions(style){var effects=PET_SHINY_EFFECT_DESCRIPTIONS[style]||[],slots=PET_SHINY_SLOT_DESCRIPTIONS[style]||[],names=style==='pixel'?PIXEL_SHINY_TRAITS:CREAM_SHINY_TRAITS;return names.map(function(trait,i){return {id:trait.id,name:trait.name||trait.effect+'·'+trait.slot,description:'2D透明背景宠物闪光叠加层；'+effects[Math.floor(i/10)]+'；'+slots[i%10]+'；必须保留动物原本的头、脸、四肢、耳朵和尾巴结构，不改变基础纯色毛色，不生成文字、品牌、商标或现成IP，可与其他闪光层同时叠加。'};});}
+window.PET_SHINY_TEXT_DESCRIPTIONS={pixel:buildPetShinyTextDescriptions('pixel'),cream:buildPetShinyTextDescriptions('cream')};
+window.exportPetShinyDescriptions=function(style){var list=style==='cream'?window.PET_SHINY_TEXT_DESCRIPTIONS.cream:window.PET_SHINY_TEXT_DESCRIPTIONS.pixel,text=list.map(function(x,i){return (i+1)+'. '+x.name+'\n'+x.description;}).join('\n\n'),blob=new Blob([text],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(style==='cream'?'奶油风':'电子像素风')+'100种闪光特效文字描述.txt';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);};
 function petTraitVisual(trait){if(!trait||!trait.id)return "";var number=Math.max(1,Number(String(trait.id).split("_").pop())||1),effectIndex=Math.floor((number-1)/10),slotIndex=(number-1)%10,family=String(trait.family||String(trait.id).split("_")[0]).replace(/[^a-z]/g,""),hue=(effectIndex*36+slotIndex*11+(family==="cream"?18:0))%360,delay=-(slotIndex*.13+effectIndex*.07).toFixed(2);return '<i class="pet-trait-layer '+family+' effect-'+effectIndex+' slot-'+slotIndex+'" data-trait-id="'+String(trait.id).replace(/[^a-z0-9_\-]/gi,"")+'" data-effect-name="'+String(trait.effect||"").replace(/["<>]/g,"")+'" data-slot-name="'+String(trait.slot||"").replace(/["<>]/g,"")+'" style="--trait-hue:'+hue+';--trait-delay:'+delay+'s;--trait-variant:'+number+'"></i>';}
 function petShinyPool(style){return style==="fusion"?PIXEL_SHINY_TRAITS.concat(CREAM_SHINY_TRAITS):style==="pixel"?PIXEL_SHINY_TRAITS:CREAM_SHINY_TRAITS;}
 function petInheritedShinyRate(parentAShiny,parentBShiny){return parentAShiny&&parentBShiny?.002:parentAShiny||parentBShiny?.0015:PET_SHINY_BASE_RATE;}
@@ -25182,11 +25194,23 @@ setInterval(function(){var s=petStore();if(!s)return;s.pets.forEach(function(p){
     if(!source&&ad&&ad.entertainmentGroups)ad.entertainmentGroups.some(function(x){if(String(x.id)===String(id)||String('group_'+x.id)===String(id)){source=x;return true;}return false;});
     if(!source)return oldNpc&&oldNpc.apply(this,arguments);
     var box=document.getElementById('mInfoContent');document.getElementById('mInfoTitle').innerText='编辑艺人 / 演员 / 团体';
-    box.innerHTML='<label>名称</label><input id="npcEditName" value="'+String(source.n||source.name||'').replace(/"/g,'&quot;')+'"><label>简介</label><textarea id="npcEditBio" rows="3">'+String(source.bio||source.desc||'')+'</textarea><button onclick="saveNpcUnified(\''+source.id+'\')">保存修改</button>';
+    var editKey=String(id),avatar=source.avatar?'<img id="npcEditAvatarPreview" src="'+source.avatar+'" style="width:72px;height:72px;object-fit:cover;border-radius:50%;">':'<div id="npcEditAvatarPreview" style="width:72px;height:72px;border-radius:50%;background:#eee;display:grid;place-items:center;">无头像</div>';
+    box.innerHTML='<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">'+avatar+'<label class="sec" style="padding:8px;cursor:pointer;">修改当前艺人头像<input type="file" accept="image/*" style="display:none" onchange="setNpcUnifiedAvatar(\''+editKey+'\',this)"></label></div><label>名称</label><input id="npcEditName" value="'+String(source.n||source.name||'').replace(/"/g,'&quot;')+'"><label>简介</label><textarea id="npcEditBio" rows="3">'+String(source.bio||source.desc||'')+'</textarea><button onclick="saveNpcUnified(\''+editKey+'\')">保存修改</button>';
     document.getElementById('mInfo').classList.add('open');
   };
-  window.saveNpcUnified=function(id){var all=[].concat(worldArtists||[],ad&&ad.screenActors||[],ad&&ad.entertainmentGroups||[]),x=all.find(function(a){return String(a.id)===String(id);});if(!x)return;var n=(document.getElementById('npcEditName')||{}).value.trim();if(n)x.n=x.name=n;x.bio=(document.getElementById('npcEditBio')||{}).value||x.bio;save();if(typeof renderNpcList==='function')renderNpcList();alert('修改已保存。');closeM('mInfo');};
-  var oldChart=window.renderChart;window.renderChart=function(){var r=oldChart&&oldChart.apply(this,arguments),isAlbum=String(window.curChType||'')==='album'||String(window.curChType||'')==='album_daily',expected=(trackPool||[]).filter(function(t){return t&&t.type===(isAlbum?'album':'track');});var box=document.getElementById('mChartContent');if(box){var rows=Array.from(box.children);rows.forEach(function(row,i){row.dataset.chartType=isAlbum?'album':'track';if(i>=expected.length)row.style.display='none';});}return r;};
+  function resolveNpc(key){key=String(key||'');if(key.indexOf('screen_')===0)return (ad&&ad.screenActors||[]).find(function(x){return 'screen_'+x.id===key;});if(key.indexOf('group_')===0)return (ad&&ad.entertainmentGroups||[]).find(function(x){return 'group_'+x.id===key;});return (worldArtists||[]).find(function(x){return String(x.id)===key;});}
+  window.setNpcUnifiedAvatar=function(id,input){var file=input&&input.files&&input.files[0],x=resolveNpc(id);if(!file||!x)return;var reader=new FileReader();reader.onload=function(){x.avatar=reader.result;input.value='';save();openNpcDetail(id);};reader.readAsDataURL(file);};
+  window.saveNpcUnified=function(id){var x=resolveNpc(id);if(!x)return;var n=(document.getElementById('npcEditName')||{}).value.trim();if(n){if(x.n!==undefined)x.n=n;if(x.name!==undefined)x.name=n;}x.bio=(document.getElementById('npcEditBio')||{}).value||x.bio;save();if(typeof renderNpcList==='function')renderNpcList();alert('修改已保存。');closeM('mInfo');};
+  var oldChart=window.renderChart;window.renderChart=function(){
+    var r=oldChart&&oldChart.apply(this,arguments),platform=typeof curChartPlatform!=='undefined'?curChartPlatform:'Spot',chartType=typeof curChType!=='undefined'?String(curChType).toLowerCase():'track',region=typeof curChReg!=='undefined'?curChReg:'Global',isAlbum=chartType==='album'||chartType==='album_daily',isDaily=chartType.indexOf('daily')>=0,type=isAlbum?'album':'track',expected=(trackPool||[]).filter(function(t){return t&&t.type===type;}),box=document.getElementById('mChartContent');
+    if(!box)return r;
+    function metric(t){if(isAlbum)return Number(t.slTotal||t.stmGlobal||0);if(platform==='BB')return Number(t._chartPts||0);if(platform==='Sale')return Number(t.salesWeek||t.weeklySales||t.pureSalesWeek||t.slTotal||0);if(region==='US')return Number(t[isDaily?'stmUS_Day':'stmUS_Week']||0);return Number(t[isDaily?'stmGlobal_Day':'stmGlobal_Week']||0);}
+    function unit(){if(isAlbum)return ' EAU';if(platform==='BB')return ' Pts';if(platform==='Sale')return ' 份';return ' Streams';}
+    expected.sort(function(a,b){return metric(b)-metric(a);});
+    var rows=Array.from(box.children),first=expected[0],wrong=first&&rows[0]&&rows[0].textContent.indexOf(String(first.n||''))<0,wrongUnit=platform!=='BB'&&rows.some(function(row){return /\bPts\b/.test(row.textContent||'');}),limit=Math.min(expected.length,isAlbum&&platform==='BB'?200:100);
+    if(wrong||wrongUnit||rows.length!==limit){box.innerHTML=expected.slice(0,limit).map(function(t,i){return '<div data-chart-type="'+type+'" class="card" style="display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px;align-items:center;"><b>'+(i+1)+'</b><div><b>'+String(t.n||'未命名')+'</b><br><span style="font-size:11px;color:#777;">'+String(t.artist||'未知艺人')+'</span></div><b style="font-size:11px;">'+metric(t).toLocaleString()+unit()+'</b></div>';}).join('')||'<p style="text-align:center;color:#888;">本榜暂无'+(isAlbum?'专辑':'单曲')+'数据</p>';}
+    else rows.forEach(function(row){row.dataset.chartType=type;});return r;
+  };
   // Clear stale player-avatar nodes before applying the current artist image.
   var oldAvatar=window.uploadMyAvatar;window.uploadMyAvatar=function(input){var r=oldAvatar&&oldAvatar.apply(this,arguments);setTimeout(function(){var current=ad&&ad.avatar||'';document.querySelectorAll('[data-player-avatar],img.player-avatar').forEach(function(img){if(current)img.src=current;else img.removeAttribute('src');});},30);return r;};
 })();
@@ -25194,8 +25218,43 @@ setInterval(function(){var s=petStore();if(!s)return;s.pets.forEach(function(p){
 (function(){
   if(typeof window.save!=='function')window.save=function(){return typeof saveGameImmediate==='function'?saveGameImmediate():typeof saveGame==='function'?saveGame():undefined;};
   function actors(){var a=[],seen={};function add(x){if(x&&x.id&&!seen[x.id]){seen[x.id]=1;a.push(x);}}(ad&&ad.screenActors||[]).forEach(add);(worldArtists||[]).forEach(function(x){if(x&&(x.acting!==undefined||x.career==='演员'))add(x);});return a;}
+  window.renderNpcList=function(){var box=document.getElementById('uiNpcList');if(!box)return;var list=[],seen={};function add(x,id,name,kind){if(!x||seen[id])return;seen[id]=1;list.push({id:id,name:name||'未命名',kind:kind||'艺人',fans:Number(x.fans||0),avatar:x.avatar||''});}(worldArtists||[]).forEach(function(x){add(x,x.id,x.n,'Solo艺人');});(ad&&ad.screenActors||[]).forEach(function(x){add(x,'screen_'+x.id,x.n,'演员');});(ad&&ad.entertainmentGroups||[]).forEach(function(x){add(x,'group_'+x.id,x.name||x.n,'团体');});list.sort(function(a,b){return b.fans-a.fans;});box.innerHTML=list.map(function(x,i){return '<div class="card" style="display:grid;grid-template-columns:28px 44px minmax(0,1fr) auto;gap:8px;align-items:center;"><b>'+(i+1)+'</b>'+(x.avatar?'<img src="'+x.avatar+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">':'<div style="width:44px;height:44px;border-radius:50%;background:#eee;"></div>')+'<div><b>'+x.name+'</b><br><span style="font-size:10px;color:#777;">'+x.kind+' · 粉丝 '+x.fans.toLocaleString()+'</span></div><button class="sec inline" onclick="openNpcDetail(\''+x.id+'\')">编辑</button></div>';}).join('')||'<p>暂无艺人</p>';};
   window.openRecommendActor=function(){var p=ad&&ad.screenCareer&&ad.screenCareer.currentProduction;if(!p)return alert('请先进入影视项目。');var used=p.recommended||[],list=actors().filter(function(x){return used.indexOf(x.id)<0;});document.getElementById('mInfoTitle').innerText='《'+(p.name||'当前项目')+'》选角沟通';document.getElementById('mInfoContent').innerHTML='<p>当前已推荐 '+used.length+' 位演员，名单已实时更新。</p><select id="recommendScreenActor">'+list.map(function(x){return '<option value="'+x.id+'">'+(x.n||x.name||'未命名')+'</option>';}).join('')+'</select><button onclick="recommendActorToDirector()">向导演推荐</button><button onclick="startScreenProduction(false)">按周期拍摄</button><button class="sec" onclick="startScreenProduction(true)">一键拍摄完成</button>';document.getElementById('mInfo').classList.add('open');};
   window.recommendActorToDirector=function(){var p=ad&&ad.screenCareer&&ad.screenCareer.currentProduction,s=document.getElementById('recommendScreenActor'),a=actors().find(function(x){return s&&String(x.id)===String(s.value);});if(!p||!a)return alert('请先选择演员。');p.recommended=p.recommended||[];if(!(Number(p.investment||0)>0)&&p.recommended.length>=1)return alert('普通项目最多推荐一位演员。');p.recommended.push(a.id);p.directorRelation=Math.min(100,Number(p.directorRelation||35)+3);window.save();alert('已向导演推荐 '+(a.n||a.name)+'。');window.openRecommendActor();};
+  var settleCeremony=window.startCeremonyUI,confirmAwardPerformance=window.confirmPerformance;
+  window.startCeremonyUI=function(){var state=ad&&ad.awardData&&ad.awardData.nominations||{},prefix=String(time&&time.y||'')+'_',nominated=Object.keys(state).some(function(k){if(k.indexOf(prefix)!==0)return false;return Object.keys(state[k]||{}).some(function(c){return (state[k][c]||[]).some(function(x){return x&&x.isMe;});});});if(!nominated)return settleCeremony&&settleCeremony.apply(this,arguments);window.performContext={type:'award',minSongs:1,maxSongs:5,afterCeremony:true,options:[{val:'top',name:'顶级舞美',cost:10000000,songs:5,boost:3},{val:'normal',name:'常规舞美',cost:1000000,songs:5,boost:1.5},{val:'minimal',name:'简约纯享版',cost:0,songs:5,boost:.7}]};if(typeof openSetlistUI==='function')return openSetlistUI('提名典礼现场版表演');return settleCeremony&&settleCeremony.apply(this,arguments);};
+  window.confirmPerformance=function(){var award=window.performContext&&window.performContext.type==='award',ctx=window.performContext,r=confirmAwardPerformance&&confirmAwardPerformance.apply(this,arguments);if(award&&ctx&&ctx.afterCeremony){window.performContext=null;setTimeout(function(){settleCeremony&&settleCeremony();},20);}return r;};
+  function fashionInviteState(){if(!ad.fashionInvites)ad.fashionInvites={weeksWithout:0,lastKey:'',history:[]};if(!Array.isArray(ad.magazineCovers))ad.magazineCovers=[];if(!Array.isArray(ad.pendingMagazineIssues))ad.pendingMagazineIssues=[];if(!Array.isArray(ad.magazineSales))ad.magazineSales=[];if(!Array.isArray(ad.endorsements))ad.endorsements=[];if(!Array.isArray(ad.coutureLoans))ad.coutureLoans=[];if(!ad.wardrobe)ad.wardrobe={};ad.wardrobe.hc=Number(ad.wardrobe.hc||0);return ad.fashionInvites;}
+  function fashionRelationship(){return (conts||[]).reduce(function(best,c){var role=String(c&&c.t||c&&c.role||'');return /主编|编辑|时尚|品牌|设计师/.test(role)?Math.max(best,Number(c.affinity||c.rel||0)):best;},0);}
+  function playerFashionRank(){var mine=Number(ad&&ad.st&&ad.st.f||0),higher=(worldArtists||[]).filter(function(x){return Number(x.fans||0)>mine;}).length;return higher+1;}
+  function runFashionInvitationWeek(){if(!ad||!ad.r)return;var s=fashionInviteState(),key=[time.y,time.m,time.w].join('_');if(s.lastKey===key)return;s.lastKey=key;s.weeksWithout++;var rank=playerFashionRank(),rel=fashionRelationship(),fashion=Number(ad.sk&&ad.sk.fa||0),top=rank===1,chance=Math.min(.75,.025+(top?.22:rank<=5?.10:rank<=20?.04:0)+rel/500+fashion/2500),pity=top&&s.weeksWithout>=4;if(!pity&&Math.random()>chance)return;var mags=ad.fashionMags||window.fashionMags||[],brands=ad.luxuryBrands||window.luxuryBrands||[],couture=ad.coutureBrands||[],counts=[ad.pendingMagazineIssues.length,ad.endorsements.length,ad.coutureLoans.length],kind=counts.indexOf(Math.min.apply(Math,counts)),notice='';if(kind===0&&mags.length){var m=mags[Math.floor(Math.random()*mags.length)],record={id:'mag_'+Date.now(),year:time.y,month:time.m,magazine:m.n,issue:time.m===9?'金九刊':time.m===10?'银十刊':'常规刊',shooting:false,shootDone:false,saleProcessed:false};ad.pendingMagazineIssues.push(record);notice='杂志拍摄邀请：'+m.n+' 邀请 '+ad.s+' 拍摄'+record.issue+'，拍摄约 1 天，发售后才会统计销量。';}else if(kind===1&&brands.length){var b=brands[Math.floor(Math.random()*brands.length)],title=(b.titles&&b.titles[0])||'品牌大使';ad.endorsements.push({year:time.y,month:time.m,brand:b.n,title:title});if(!Array.isArray(b.ambassadors))b.ambassadors=[];if(b.ambassadors.indexOf(ad.s)<0)b.ambassadors.push(ad.s);notice='代言邀请：'+b.n+' 邀请 '+ad.s+' 成为'+title+'。';}else if(couture.length){var c=couture[Math.floor(Math.random()*couture.length)],loan={year:time.y,month:time.m,brand:c.n,event:'公开活动借衣'};ad.coutureLoans.push(loan);ad.wardrobe.hc++;if(!Array.isArray(c.wearHistory))c.wearHistory=[];c.wearHistory.unshift({name:ad.s,date:time.y+'年'+time.m+'月',loan:true});notice='高定借衣：'+c.n+' 主动借给 '+ad.s+' 一套高定礼服，已加入衣橱。';}if(!notice)return;s.weeksWithout=0;s.history.unshift({year:time.y,month:time.m,week:time.w,text:notice,rank:rank,editorRelation:rel});if(posts&&Array.isArray(posts.mom))posts.mom.unshift({t:'时尚邀约',c:notice});save();alert(notice+'\n当前粉丝排名：#'+rank+(rel?' · 时尚人脉 '+rel:''));}
+  var advFashionInvites=window.advTime;window.advTime=function(weeks,showMsg){var n=Math.max(1,Number(weeks)||1),r=advFashionInvites&&advFashionInvites.apply(this,arguments);for(var i=0;i<n;i++)runFashionInvitationWeek();return r;};
+  window.checkFashionInvitations=function(){runFashionInvitationWeek();return fashionInviteState();};
+  window.openMagazineProjects=function(){fashionInviteState();var rows=ad.pendingMagazineIssues.map(function(x){return '<div class="card"><b>'+x.magazine+' · '+x.issue+'</b><br><span style="font-size:11px;">'+x.year+'年'+x.month+'月刊 · '+(x.shootDone?'拍摄完成，等待发售':'等待拍摄')+'</span>'+(x.shootDone?'':'<button onclick="shootMagazineIssue(\''+x.id+'\')">完成约一天拍摄</button>')+'</div>';}).join('');document.getElementById('mInfoTitle').innerText='杂志拍摄与发售';document.getElementById('mInfoContent').innerHTML=rows||'暂无杂志邀请';document.getElementById('mInfo').classList.add('open');};
+  window.shootMagazineIssue=function(id){var x=ad.pendingMagazineIssues.find(function(v){return v.id===id;});if(!x||x.shootDone)return;if(typeof costEnergy==='function'&&!costEnergy(12))return;if(typeof advHour==='function')advHour(24);x.shootDone=true;x.shootYear=time.y;x.shootMonth=time.m;x.shootDay=time.d||1;save();alert('杂志拍摄完成，将在 '+x.year+'年'+x.month+'月1日发售，并于2日生成首日销量大字报。');openMagazineProjects();};
+  function processMagazineSales(){fashionInviteState();var now=Number(time.y)*12+Number(time.m),day=Number(time.d||1);ad.pendingMagazineIssues.forEach(function(x){if(x.saleProcessed||!x.shootDone)return;var due=Number(x.year)*12+Number(x.month);if(now<due||(now===due&&day<2))return;var fans=Math.max(1000,Number(ad.st&&ad.st.f||0)),tier=x.issue==='金九刊'?1.65:x.issue==='银十刊'?1.45:x.issue.indexOf('周年')>=0?1.35:1,price=Math.max(8,Math.round(12*tier)),buyers=Math.max(1000,Math.floor(Math.sqrt(fans)*850*tier*(.85+Math.random()*.3))),rival=(ad.fashionRivals||[]).sort(function(a,b){return Number(b.sales||0)-Number(a.sales||0);})[0],boost=0;if(rival&&Number(rival.sales||0)>buyers)boost=.10+Math.random()*.10;else if(Math.random()<.12)boost=.05+Math.random()*.15;buyers=Math.floor(buyers*(1+boost));var points=[.004,.035,.11,.22,.58,.78,1],labels=['第1分钟','第10分钟','第30分钟','第1小时','第6小时','第12小时','第24小时'],poster=labels.map(function(label,i){return {label:label,copies:Math.floor(buyers*points[i])};}),sale={id:x.id,artist:ad.s,magazine:x.magazine,issue:x.issue,year:x.year,month:x.month,unitPrice:price,buyers:buyers,totalSales:buyers*price,poster:poster,createdAt:time.y+'年'+time.m+'月'+day+'日'};ad.magazineSales.push(sale);ad.magazineCovers.push({year:x.year,month:x.month,magazine:x.magazine,issue:x.issue});x.saleProcessed=true;if(posts&&Array.isArray(posts.mom))posts.mom.unshift({t:'销量大字报 · '+x.magazine+' '+x.issue,c:poster.map(function(p){return p.label+' '+p.copies.toLocaleString()+'份';}).join(' · ')+(boost?' · 粉圈动员提升 '+Math.round(boost*100)+'%':'')});});save();}
+  window.openMagazineSalesChart=function(scope){processMagazineSales();scope=scope||'year';var list=ad.magazineSales.filter(function(x){return scope==='history'||Number(x.year)===Number(time.y);}).sort(function(a,b){return b.buyers-a.buyers;}),prev=ad._magazineChartRanks||{},next={};document.getElementById('mInfoTitle').innerText='杂志销量榜';document.getElementById('mInfoContent').innerHTML='<div style="display:flex;gap:6px"><button onclick="openMagazineSalesChart(\'year\')">本年度</button><button class="sec" onclick="openMagazineSalesChart(\'history\')">历史总榜</button></div>'+list.map(function(x,i){var rank=i+1,old=prev[x.id],move=old===undefined?'NEW':old>rank?'↑'+(old-rank):old<rank?'↓'+(rank-old):'—';next[x.id]=rank;return '<div class="card"><b>#'+rank+' '+x.artist+' · '+x.magazine+'</b> <span>'+move+'</span><br><span style="font-size:11px;">'+x.issue+' · 单价 $'+x.unitPrice+' · 购买 '+x.buyers.toLocaleString()+' 人 · 总销售额 $'+x.totalSales.toLocaleString()+'</span><button class="sec" onclick="viewMagazinePoster(\''+x.id+'\')">销量大字报</button></div>';}).join('')||'<p>暂无已发售杂志</p>';ad._magazineChartRanks=next;document.getElementById('mInfo').classList.add('open');};
+  window.viewMagazinePoster=function(id){var x=ad.magazineSales.find(function(v){return v.id===id;});if(!x)return;document.getElementById('mInfoTitle').innerText=x.magazine+' · 销量大字报';document.getElementById('mInfoContent').innerHTML=x.poster.map(function(p){return '<div class="card"><b>'+p.label+'</b><br>'+p.copies.toLocaleString()+' 份</div>';}).join('');};
+  window.openCoutureLoanChart=function(){
+    fashionInviteState();
+    var totals={},dates={};
+    (ad.coutureLoans||[]).forEach(function(x){var name=ad.s||'玩家';totals[name]=(totals[name]||0)+1;dates[name]=dates[name]||String(x.year||time.y)+'年'+String(x.month||time.m)+'月';});
+    var couture=ad.coutureBrands||window.coutureBrands||[];
+    couture.forEach(function(brand){(brand.wearHistory||[]).forEach(function(x){var name=x&&x.name;if(!name)return;totals[name]=(totals[name]||0)+1;dates[name]=dates[name]||String(x.date||'历史记录');});});
+    var rows=Object.keys(totals).map(function(name){return {name:name,count:totals[name],date:dates[name]};}).sort(function(a,b){return b.count-a.count||a.name.localeCompare(b.name);});
+    var previous=ad._coutureLoanRanks||{},next={};
+    document.getElementById('mInfoTitle').innerText='高定借出榜';
+    document.getElementById('mInfoContent').innerHTML=rows.map(function(x,i){var rank=i+1,old=previous[x.name],move=old===undefined?'NEW':old>rank?'↑'+(old-rank):old<rank?'↓'+(rank-old):'→';next[x.name]=rank;return '<div class="card"><b>#'+rank+' '+x.name+'</b> <span style="font-weight:bold;color:'+(String(move).charAt(0)==='↑'?'#16803a':String(move).charAt(0)==='↓'?'#c62828':'#666')+';">'+move+'</span><br><span style="font-size:11px;color:#666;">累计借到高定 '+Number(x.count).toLocaleString()+' 套 · 首次达成 '+x.date+'</span></div>';}).join('')||'<p style="text-align:center;color:#888;">尚无高定借出记录</p>';
+    ad._coutureLoanRanks=next;if(typeof save==='function')save();document.getElementById('mInfo').classList.add('open');
+  };
+  function mountFashionRankingApps(){
+    var grid=document.getElementById('phoneGrid');if(!grid)return;
+    if(!document.getElementById('appMagazineSales'))grid.insertAdjacentHTML('beforeend','<div class="app-icon" id="appMagazineSales" style="background:#ef476f;color:#fff;" onclick="openMagazineSalesChart(\'year\')"><div class="picon">M</div><span>杂志销量榜</span></div>');
+    if(!document.getElementById('appCoutureLoans'))grid.insertAdjacentHTML('beforeend','<div class="app-icon" id="appCoutureLoans" style="background:#f4c542;color:#3b2c00;" onclick="openCoutureLoanChart()"><div class="picon">HC</div><span>高定借出榜</span></div>');
+  }
+  var advMagazineSales=window.advTime;window.advTime=function(){var r=advMagazineSales&&advMagazineSales.apply(this,arguments);processMagazineSales();return r;};
+  setTimeout(function(){var map=document.getElementById('mapFashion');if(map&&!document.getElementById('magazineSalesEntry'))map.insertAdjacentHTML('afterbegin','<div id="magazineSalesEntry" class="card"><b>杂志发行数据</b><br><button onclick="openMagazineProjects()">拍摄与待发售</button><button class="sec" onclick="openMagazineSalesChart(\'year\')">杂志销量榜</button></div>');mountFashionRankingApps();},1200);
+  setTimeout(mountFashionRankingApps,2400);
   var oldLoad=window.loadGame;window.loadGame=function(slot){var r=oldLoad&&oldLoad.apply(this,arguments);setTimeout(function(){if(typeof ensureInitialArtists==='function')ensureInitialArtists();if(typeof updAttr==='function')updAttr();},80);return r;};
   function restoreSnapshot(data){
     if(!data||typeof data!=='object'||!data.ad||typeof data.ad!=='object')throw new Error('存档缺少玩家核心数据');
@@ -25204,8 +25263,60 @@ setInterval(function(){var s=petStore();if(!s)return;s.pets.forEach(function(p){
     if(typeof ensureInitialArtists==='function')ensureInitialArtists();if(typeof updTimeUI==='function')updTimeUI();if(typeof updAttr==='function')updAttr();if(typeof renderAlb==='function')renderAlb();
   }
   function readIndexedSave(key){return new Promise(function(resolve,reject){if(!window.indexedDB)return resolve(null);var request=indexedDB.open('starProLocalSaves',1);request.onerror=function(){reject(request.error);};request.onsuccess=function(){var get=request.result.transaction('saves','readonly').objectStore('saves').get(key);get.onsuccess=function(){resolve(get.result||null);};get.onerror=function(){reject(get.error);};};});}
-  window.mainMenuLoad=async function(){var slot=(document.getElementById('mainMenuSlot')||{}).value||'1',key='starProSave_'+slot,raw=null;if(document.getElementById('selSaveSlot'))document.getElementById('selSaveSlot').value=slot;try{raw=localStorage.getItem(key);if(!raw)raw=await readIndexedSave(key);if(!raw)return alert('存档槽位 '+slot+' 为空。');var data=JSON.parse(raw);restoreSnapshot(data);try{localStorage.setItem(key,raw);}catch(e){}document.getElementById('createPage').style.display='none';document.getElementById('createPage').classList.remove('active');var main=document.getElementById('gameMain');if(main){main.style.display='block';main.classList.add('active');}var top=document.getElementById('topBar');if(top)top.style.display='flex';alert('读取成功：已恢复 '+trackPool.length+' 项音乐数据、'+worldArtists.length+' 位艺人。');}catch(error){console.error('读档失败',error);alert('读取失败：'+(error&&error.message||String(error)));}};
+  window.mainMenuLoad=async function(){var slot=(document.getElementById('mainMenuSlot')||{}).value||'1',key='starProSave_'+slot,raw=null;if(document.getElementById('selSaveSlot'))document.getElementById('selSaveSlot').value=slot;try{raw=localStorage.getItem(key);if(!raw)raw=await readIndexedSave(key);if(!raw)return alert('存档槽位 '+slot+' 为空。');var data=typeof raw==='string'?JSON.parse(raw):raw;if(data&&data.value)data=typeof data.value==='string'?JSON.parse(data.value):data.value;restoreSnapshot(data);var serialized=typeof raw==='string'?raw:JSON.stringify(data);try{localStorage.setItem(key,serialized);}catch(e){}document.querySelectorAll('.page').forEach(function(page){page.classList.remove('active');page.style.display='none';});document.getElementById('createPage').style.display='none';document.getElementById('createPage').classList.remove('active');var main=document.getElementById('gameMain');if(main){main.style.display='block';main.classList.add('active');}document.querySelectorAll('#gameMain .tab-page').forEach(function(page){page.classList.remove('active');});var attr=document.getElementById('pAttr');if(attr)attr.classList.add('active');document.querySelectorAll('.nav-btn').forEach(function(button){button.classList.remove('active');});var firstNav=document.querySelector('.nav-btn');if(firstNav)firstNav.classList.add('active');var top=document.getElementById('topBar');if(top)top.style.display='flex';if(window.GameRuntime&&typeof GameRuntime.repair==='function')GameRuntime.repair({scope:'all',save:false});if(typeof updTimeUI==='function')updTimeUI();if(typeof updAttr==='function')updAttr();if(typeof renderAlb==='function')renderAlb();alert('读取成功：已恢复 '+trackPool.length+' 项音乐数据、'+worldArtists.length+' 位艺人。');}catch(error){console.error('读档失败',error);alert('读取失败：'+(error&&error.message||String(error)));}};
 })();
+
+// Final time-flow authority: normalize legacy saves before every linked weekly settlement.
+(function installSafeTimeFlow(){
+  function arrayField(object,key){if(object&&!Array.isArray(object[key]))object[key]=[];return object&&object[key];}
+  function normalizeTimeState(){
+    if(!window.ad||typeof window.ad!=='object')window.ad={};
+    if(!ad.st||typeof ad.st!=='object')ad.st={f:0};
+    if(!ad.sk||typeof ad.sk!=='object')ad.sk={};
+    ['screenActors','entertainmentGroups','castingAnnouncements','screenProjects','pendingMagazineIssues','magazineSales','magazineCovers','endorsements','coutureLoans','fashionRivals'].forEach(function(key){arrayField(ad,key);});
+    if(!ad.screenCareer||typeof ad.screenCareer!=='object')ad.screenCareer={};
+    if(!Array.isArray(ad.screenCareer.credits))ad.screenCareer.credits=[];
+    if(!Array.isArray(ad.screenCareer.blacklists))ad.screenCareer.blacklists=[];
+    if(!ad.groupCareer||typeof ad.groupCareer!=='object')ad.groupCareer={activeGroupId:'',soloStatus:'solo'};
+    if(!ad.wardrobe||typeof ad.wardrobe!=='object')ad.wardrobe={hc:0};
+    if(!ad.fashionInvites||typeof ad.fashionInvites!=='object')ad.fashionInvites={weeksWithout:0,lastKey:'',history:[]};
+    if(!Array.isArray(ad.fashionInvites.history))ad.fashionInvites.history=[];
+    if(!window.posts||typeof window.posts!=='object')window.posts={};
+    ['mom','wb','x','ins','tiktok'].forEach(function(key){arrayField(posts,key);});
+    if(!Array.isArray(window.trackPool))window.trackPool=[];
+    trackPool.forEach(function(t){
+      if(!t||typeof t!=='object')return;
+      if(!Array.isArray(t.gnr))t.gnr=t.gnr?[String(t.gnr)]:[];
+      ['heatHistory','trendChart','trueTrend','_unlimitedTrend','radioHistory','chartHistory','spotifyUSHistory'].forEach(function(key){if(!Array.isArray(t[key]))t[key]=[];});
+    });
+    ad.screenProjects.forEach(function(p){if(!p||typeof p!=='object')return;['screenEvents','heatHistory','ostTrackIds','broadcastRuns','recommended'].forEach(function(key){if(!Array.isArray(p[key]))p[key]=[];});});
+    ad.entertainmentGroups.forEach(function(g){if(!g||typeof g!=='object')return;if(!Array.isArray(g.members))g.members=[];if(!g.relations||typeof g.relations!=='object')g.relations={};});
+    var pets=ad.petSystem&&Array.isArray(ad.petSystem.pets)?ad.petSystem.pets:ad.pets&&Array.isArray(ad.pets)?ad.pets:[];
+    pets.forEach(function(p){if(!p||typeof p!=='object')return;['children','events','buffs','feedHistory','awardFeedIds','demoFeedIds','shinyTraits','laterShinyTraits'].forEach(function(key){if(!Array.isArray(p[key]))p[key]=[];});});
+    (Array.isArray(window.fashionMags)?window.fashionMags:[]).forEach(function(m){if(!Array.isArray(m.history))m.history=[];});
+    (Array.isArray(window.luxuryBrands)?window.luxuryBrands:[]).forEach(function(b){if(!Array.isArray(b.ambassadors))b.ambassadors=[];if(!Array.isArray(b.blacklist))b.blacklist=[];});
+    if(window.GameRuntime&&typeof GameRuntime.repair==='function')GameRuntime.repair({scope:'data',save:false});
+  }
+  var timeFlowBusy=false;
+  window.advTimeByFlow=function(){
+    if(timeFlowBusy)return;
+    timeFlowBusy=true;
+    try{
+      normalizeTimeState();
+      var select=document.getElementById('selTimeFlow'),value=parseInt(select&&select.value,10)||7;
+      if(value===1&&typeof window.advHour==='function')window.advHour(24);
+      else if(value===30&&typeof window.advTime==='function')window.advTime(4,true);
+      else if(typeof window.advTime==='function')window.advTime(1,true);
+    }catch(error){
+      console.error('时间推演失败',error);
+      var message='时间推演失败：'+(error&&error.message||String(error));
+      if(typeof window.gameAlert==='function')window.gameAlert(message);else window.alert(message);
+    }finally{timeFlowBusy=false;}
+  };
+})();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){document.querySelectorAll('button').forEach(function(b){if(/导出(像素风|奶油风)100种描述/.test(b.textContent||''))b.remove();});},100);});
 </script>
 </body>
 </html>
